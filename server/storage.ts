@@ -13,10 +13,18 @@ import {
   type InsertAuditLog,
   type SubmissionWithUser,
   type ContestWithStats,
-  type UserWithStats
+  type UserWithStats,
+  users,
+  contests,
+  submissions,
+  votes,
+  gloryLedger,
+  auditLog
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
+import { db } from "./db";
+import { eq, and, desc, sql, count, countDistinct, sum } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -435,4 +443,422 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DbStorage implements IStorage {
+  constructor() {
+    this.seedDatabase().catch(err => {
+      console.error("[DB] Failed to seed database:", err);
+    });
+  }
+
+  private async seedDatabase() {
+    const existingAdmin = await db.query.users.findFirst({
+      where: eq(users.email, "bellapokerstars@gmail.com")
+    });
+
+    if (!existingAdmin) {
+      const adminPasswordHash = await bcrypt.hash("Admin123!", 10);
+      await db.insert(users).values({
+        username: "admin",
+        email: "bellapokerstars@gmail.com",
+        passwordHash: adminPasswordHash,
+        role: "admin",
+        status: "approved",
+        gloryBalance: 0
+      });
+      console.log("[DB] Created admin user");
+    }
+
+    const existingContest = await db.query.contests.findFirst({
+      where: eq(contests.slug, "weekly-top-5")
+    });
+
+    if (!existingContest) {
+      await db.insert(contests).values({
+        title: "Weekly Top 5 Challenge",
+        slug: "weekly-top-5",
+        description: "Submit your best creative work this week! Top 5 submissions share a prize pool of 1,000 GLORY points.",
+        rules: "Submit original artwork only (images or videos up to 100MB). One submission per user per contest. Voting ends when the contest timer reaches zero. Top 5 submissions win GLORY: 40%, 25%, 15%, 10%, 10%. Admin approval required before submissions are visible.",
+        coverImageUrl: null,
+        status: "active",
+        prizeGlory: 1000,
+        startAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        endAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+      });
+      console.log("[DB] Created sample contest");
+    }
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await db.query.users.findFirst({
+      where: eq(users.id, id)
+    });
+    return result;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.query.users.findFirst({
+      where: eq(users.email, email)
+    });
+    return result;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await db.query.users.findFirst({
+      where: eq(users.username, username)
+    });
+    return result;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user as User;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const [user] = await db.update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getUsersWithFilters(filters: { status?: string; role?: string }): Promise<UserWithStats[]> {
+    const conditions = [];
+    if (filters.status) conditions.push(eq(users.status, filters.status));
+    if (filters.role) conditions.push(eq(users.role, filters.role));
+
+    const usersData = await db.query.users.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined
+    });
+
+    const result: UserWithStats[] = [];
+    for (const user of usersData) {
+      const submissionCount = await db.select({ count: count() })
+        .from(submissions)
+        .where(eq(submissions.userId, user.id));
+      
+      const totalVotesResult = await db.select({ total: sum(submissions.votesCount) })
+        .from(submissions)
+        .where(eq(submissions.userId, user.id));
+
+      result.push({
+        ...user,
+        submissionCount: submissionCount[0]?.count || 0,
+        totalVotes: Number(totalVotesResult[0]?.total) || 0,
+        contestWins: 0
+      });
+    }
+
+    return result;
+  }
+
+  async getContest(id: string): Promise<Contest | undefined> {
+    const result = await db.query.contests.findFirst({
+      where: eq(contests.id, id)
+    });
+    return result;
+  }
+
+  async getContestBySlug(slug: string): Promise<Contest | undefined> {
+    const result = await db.query.contests.findFirst({
+      where: eq(contests.slug, slug)
+    });
+    return result;
+  }
+
+  async getContests(filters?: { status?: string }): Promise<ContestWithStats[]> {
+    const contestsData = await db.query.contests.findMany({
+      where: filters?.status ? eq(contests.status, filters.status) : undefined
+    });
+
+    const result: ContestWithStats[] = [];
+    for (const contest of contestsData) {
+      const submissionCount = await db.select({ count: count() })
+        .from(submissions)
+        .where(eq(submissions.contestId, contest.id));
+      
+      const participantCount = await db.select({ count: countDistinct(submissions.userId) })
+        .from(submissions)
+        .where(eq(submissions.contestId, contest.id));
+      
+      const totalVotesResult = await db.select({ total: sum(submissions.votesCount) })
+        .from(submissions)
+        .where(eq(submissions.contestId, contest.id));
+
+      result.push({
+        ...contest,
+        submissionCount: submissionCount[0]?.count || 0,
+        participantCount: participantCount[0]?.count || 0,
+        totalVotes: Number(totalVotesResult[0]?.total) || 0
+      });
+    }
+
+    return result;
+  }
+
+  async createContest(insertContest: InsertContest): Promise<Contest> {
+    const [contest] = await db.insert(contests).values(insertContest).returning();
+    return contest as Contest;
+  }
+
+  async updateContest(id: string, updates: Partial<Contest>): Promise<Contest | undefined> {
+    const [contest] = await db.update(contests)
+      .set(updates)
+      .where(eq(contests.id, id))
+      .returning();
+    return contest;
+  }
+
+  async getSubmission(id: string): Promise<Submission | undefined> {
+    const result = await db.query.submissions.findFirst({
+      where: eq(submissions.id, id)
+    });
+    return result;
+  }
+
+  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string }): Promise<SubmissionWithUser[]> {
+    const conditions = [];
+    if (filters.contestId) conditions.push(eq(submissions.contestId, filters.contestId));
+    if (filters.userId) conditions.push(eq(submissions.userId, filters.userId));
+    if (filters.status) conditions.push(eq(submissions.status, filters.status));
+
+    const submissionsData = await db.query.submissions.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined
+    });
+
+    const result: SubmissionWithUser[] = [];
+    for (const submission of submissionsData) {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, submission.userId),
+        columns: { id: true, username: true }
+      });
+      const contest = await db.query.contests.findFirst({
+        where: eq(contests.id, submission.contestId),
+        columns: { id: true, title: true }
+      });
+      
+      if (user && contest) {
+        result.push({
+          ...submission,
+          user,
+          contest
+        });
+      }
+    }
+
+    return result;
+  }
+
+  async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
+    const [submission] = await db.insert(submissions).values(insertSubmission).returning();
+    return submission as Submission;
+  }
+
+  async updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission | undefined> {
+    const [submission] = await db.update(submissions)
+      .set(updates)
+      .where(eq(submissions.id, id))
+      .returning();
+    return submission;
+  }
+
+  async getTopSubmissionsByContest(contestId: string, limit = 10): Promise<SubmissionWithUser[]> {
+    const submissionsData = await db.query.submissions.findMany({
+      where: and(
+        eq(submissions.contestId, contestId),
+        eq(submissions.status, "approved")
+      ),
+      orderBy: [desc(submissions.votesCount)],
+      limit
+    });
+
+    const result: SubmissionWithUser[] = [];
+    for (const submission of submissionsData) {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, submission.userId),
+        columns: { id: true, username: true }
+      });
+      const contest = await db.query.contests.findFirst({
+        where: eq(contests.id, submission.contestId),
+        columns: { id: true, title: true }
+      });
+      
+      if (user && contest) {
+        result.push({
+          ...submission,
+          user,
+          contest
+        });
+      }
+    }
+
+    return result;
+  }
+
+  async getVote(userId: string, submissionId: string): Promise<Vote | undefined> {
+    const result = await db.query.votes.findFirst({
+      where: and(
+        eq(votes.userId, userId),
+        eq(votes.submissionId, submissionId)
+      )
+    });
+    return result;
+  }
+
+  async createVote(insertVote: InsertVote): Promise<Vote> {
+    try {
+      const [vote] = await db.insert(votes).values(insertVote).returning();
+      
+      await db.update(submissions)
+        .set({ votesCount: sql`${submissions.votesCount} + 1` })
+        .where(eq(submissions.id, insertVote.submissionId));
+
+      return vote;
+    } catch (error: any) {
+      if (error.code === '23505') {
+        throw new Error("You have already voted for this submission");
+      }
+      throw error;
+    }
+  }
+
+  async getVoteCountByUser(userId: string, since: Date): Promise<number> {
+    const result = await db.select({ count: count() })
+      .from(votes)
+      .where(and(
+        eq(votes.userId, userId),
+        sql`${votes.createdAt} >= ${since}`
+      ));
+    
+    return result[0]?.count || 0;
+  }
+
+  async createGloryTransaction(insertTransaction: InsertGloryLedger): Promise<GloryLedger> {
+    const [transaction] = await db.insert(gloryLedger).values(insertTransaction).returning();
+    
+    await this.updateUserGloryBalance(transaction.userId, transaction.delta);
+    
+    return transaction as GloryLedger;
+  }
+
+  async getGloryTransactions(userId: string): Promise<GloryLedger[]> {
+    const result = await db.query.gloryLedger.findMany({
+      where: eq(gloryLedger.userId, userId),
+      orderBy: [desc(gloryLedger.createdAt)]
+    });
+    return result;
+  }
+
+  async updateUserGloryBalance(userId: string, delta: number): Promise<void> {
+    await db.update(users)
+      .set({ 
+        gloryBalance: sql`${users.gloryBalance} + ${delta}`,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async createAuditLog(insertLog: InsertAuditLog): Promise<AuditLog> {
+    const [log] = await db.insert(auditLog).values(insertLog).returning();
+    return log as AuditLog;
+  }
+
+  async getAuditLogs(limit = 100): Promise<AuditLog[]> {
+    const result = await db.query.auditLog.findMany({
+      orderBy: [desc(auditLog.createdAt)],
+      limit
+    });
+    return result;
+  }
+
+  async getLeaderboard(limit = 20): Promise<UserWithStats[]> {
+    const usersData = await db.query.users.findMany({
+      where: eq(users.status, "approved"),
+      orderBy: [desc(users.gloryBalance)],
+      limit
+    });
+
+    const result: UserWithStats[] = [];
+    for (const user of usersData) {
+      const submissionCount = await db.select({ count: count() })
+        .from(submissions)
+        .where(eq(submissions.userId, user.id));
+      
+      const totalVotesResult = await db.select({ total: sum(submissions.votesCount) })
+        .from(submissions)
+        .where(eq(submissions.userId, user.id));
+
+      result.push({
+        ...user,
+        submissionCount: submissionCount[0]?.count || 0,
+        totalVotes: Number(totalVotesResult[0]?.total) || 0,
+        contestWins: 0
+      });
+    }
+
+    return result;
+  }
+
+  async distributeContestRewards(contestId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      const contest = await tx.query.contests.findFirst({
+        where: eq(contests.id, contestId)
+      });
+
+      console.log("[REWARD] Starting distribution for contest:", contestId, "status:", contest?.status);
+      
+      if (!contest || contest.status !== "active") {
+        console.log("[REWARD] Skipping - contest not found or not active");
+        return;
+      }
+
+      const topSubmissionsData = await tx.query.submissions.findMany({
+        where: and(
+          eq(submissions.contestId, contestId),
+          eq(submissions.status, "approved")
+        ),
+        orderBy: [desc(submissions.votesCount)],
+        limit: 5
+      });
+
+      console.log("[REWARD] Found top submissions:", topSubmissionsData.length, "submissions");
+      
+      const prizePercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+      
+      for (let i = 0; i < Math.min(topSubmissionsData.length, 5); i++) {
+        const submission = topSubmissionsData[i];
+        const user = await tx.query.users.findFirst({
+          where: eq(users.id, submission.userId),
+          columns: { id: true, username: true }
+        });
+        
+        const prize = Math.floor(contest.prizeGlory * prizePercentages[i]);
+        
+        console.log(`[REWARD] Awarding ${prize} GLORY to user ${user?.username} (${i + 1}st place)`);
+        
+        await tx.insert(gloryLedger).values({
+          userId: submission.userId,
+          delta: prize,
+          reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
+          contestId: contestId,
+          submissionId: submission.id
+        });
+
+        await tx.update(users)
+          .set({ 
+            gloryBalance: sql`${users.gloryBalance} + ${prize}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, submission.userId));
+      }
+
+      await tx.update(contests)
+        .set({ status: "ended" })
+        .where(eq(contests.id, contestId));
+
+      console.log("[REWARD] Contest ended, rewards distributed to", topSubmissionsData.length, "winners");
+    });
+  }
+}
+
+export const storage = new DbStorage();
