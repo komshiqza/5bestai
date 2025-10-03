@@ -26,6 +26,7 @@ import { useAuth, isAdmin } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { CreateContestModal } from "@/components/CreateContestModal";
 
 export default function AdminDashboard() {
   const { data: user } = useAuth();
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [userStatusFilter, setUserStatusFilter] = useState("all");
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [isCreateContestModalOpen, setIsCreateContestModalOpen] = useState(false);
 
   // Redirect if not admin
   if (!user || !isAdmin(user)) {
@@ -137,6 +139,48 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to end contest.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createContestMutation = useMutation({
+    mutationFn: async (formData: any) => {
+      const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      
+      const startAt = formData.startDateOption === 'now' 
+        ? new Date() 
+        : new Date(`${formData.startDate}T${formData.startTime || '00:00'}`);
+      
+      const endAt = new Date(`${formData.endDate}T${formData.endTime || '23:59'}`);
+      
+      const contestData = {
+        title: formData.title,
+        slug,
+        description: formData.description,
+        rules: formData.description,
+        prizeGlory: parseInt(formData.prizePool) || 0,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        status: formData.status || 'draft',
+        coverImageUrl: null
+      };
+
+      const response = await apiRequest("POST", "/api/admin/contests", contestData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contests"] });
+      setIsCreateContestModalOpen(false);
+      toast({
+        title: "Contest created",
+        description: "The contest has been successfully created.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create contest.",
         variant: "destructive",
       });
     },
@@ -514,7 +558,11 @@ export default function AdminDashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Contest Management</CardTitle>
-                  <Button className="gradient-glory" data-testid="create-contest-button">
+                  <Button 
+                    className="gradient-glory" 
+                    data-testid="create-contest-button"
+                    onClick={() => setIsCreateContestModalOpen(true)}
+                  >
                     <Trophy className="w-4 h-4 mr-2" />
                     Create Contest
                   </Button>
@@ -657,6 +705,12 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <CreateContestModal
+        isOpen={isCreateContestModalOpen}
+        onClose={() => setIsCreateContestModalOpen(false)}
+        onSubmit={(formData) => createContestMutation.mutate(formData)}
+      />
     </div>
   );
 }

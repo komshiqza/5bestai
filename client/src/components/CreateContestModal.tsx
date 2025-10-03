@@ -69,18 +69,15 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleArrayToggle = (field: string, value: string) => {
+  const handleArrayToggle = (field: 'allowedMediaTypes' | 'votingMethods', value: string) => {
     setFormData(prev => {
-      const currentValue = prev[field as keyof typeof prev];
-      if (Array.isArray(currentValue)) {
-        return {
-          ...prev,
-          [field]: currentValue.includes(value)
-            ? currentValue.filter((item: string) => item !== value)
-            : [...currentValue, value]
-        };
-      }
-      return prev;
+      const currentValue = prev[field];
+      return {
+        ...prev,
+        [field]: currentValue.includes(value)
+          ? currentValue.filter(item => item !== value)
+          : [...currentValue, value]
+      };
     });
   };
 
