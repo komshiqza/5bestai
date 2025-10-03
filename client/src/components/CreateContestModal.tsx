@@ -159,20 +159,16 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     return newErrors.length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    let finalFormData = { ...formData };
+  const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
+    let finalFormData = { ...dataToSubmit };
     
     // If coverImage is a File, upload it first
-    if (formData.coverImage && formData.coverImage instanceof File) {
+    if (dataToSubmit.coverImage && dataToSubmit.coverImage instanceof File) {
       const uploadFormData = new FormData();
-      uploadFormData.append('file', formData.coverImage);
+      uploadFormData.append('file', dataToSubmit.coverImage);
       uploadFormData.append('type', 'image');
       uploadFormData.append('title', 'Contest Cover Image');
-      uploadFormData.append('description', `Cover image for ${formData.title}`);
+      uploadFormData.append('description', `Cover image for ${dataToSubmit.title}`);
       
       try {
         const response = await fetch('/api/submissions', {
@@ -884,20 +880,26 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                handleInputChange('status', 'draft');
-                handleSubmit();
+              onClick={async () => {
+                const draftData = { ...formData, status: 'draft' };
+                if (validateForm()) {
+                  await handleSubmitWithData(draftData);
+                }
               }}
               className="px-6 py-2 rounded-xl border border-slate-300/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              data-testid="button-save-draft"
             >
               Save as Draft
             </button>
             <button
-              onClick={() => {
-                handleInputChange('status', 'published');
-                handleSubmit();
+              onClick={async () => {
+                const publishedData = { ...formData, status: 'published' };
+                if (validateForm()) {
+                  await handleSubmitWithData(publishedData);
+                }
               }}
               className="px-6 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors font-semibold"
+              data-testid="button-create-contest"
             >
               Create Contest
             </button>
