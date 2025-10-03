@@ -1,11 +1,11 @@
 import { Heart, User, Trophy, Play, Eye } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "../lib/queryClient";
+import { useAuth, isAuthenticated, isApproved } from "../lib/auth";
+import { useToast } from "../hooks/use-toast";
 import { useState } from "react";
 
 interface SubmissionCardProps {
@@ -30,11 +30,11 @@ interface SubmissionCardProps {
   className?: string;
 }
 
-export function SubmissionCard({ 
-  submission, 
-  showVoting = true, 
+export function SubmissionCard({
+  submission,
+  showVoting = true,
   rank,
-  className = "" 
+  className = "",
 }: SubmissionCardProps) {
   const { data: user } = useAuth();
   const { toast } = useToast();
@@ -96,24 +96,36 @@ export function SubmissionCard({
     voteMutation.mutate();
   };
 
-  const displayUrl = submission.type === "video" ? submission.thumbnailUrl || submission.mediaUrl : submission.mediaUrl;
+  const displayUrl =
+    submission.type === "video"
+      ? submission.thumbnailUrl || submission.mediaUrl
+      : submission.mediaUrl;
 
   return (
-    <Card className={`group relative overflow-hidden hover:border-primary/50 transition-all duration-300 ${className}`} data-testid={`submission-card-${submission.id}`}>
+    <Card
+      className={`group relative overflow-hidden hover:border-primary/50 transition-all duration-300 ${className}`}
+      data-testid={`submission-card-${submission.id}`}
+    >
       <div className="relative aspect-square overflow-hidden">
-        <img 
-          src={displayUrl} 
+        <img
+          src={displayUrl}
           alt={submission.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        
+
         {/* Type badge */}
         <div className="absolute top-3 right-3">
           <Badge variant="secondary" className="text-xs">
             {submission.type === "image" ? (
-              <><Eye className="w-3 h-3 mr-1" />Image</>
+              <>
+                <Eye className="w-3 h-3 mr-1" />
+                Image
+              </>
             ) : (
-              <><Play className="w-3 h-3 mr-1" />Video</>
+              <>
+                <Play className="w-3 h-3 mr-1" />
+                Video
+              </>
             )}
           </Badge>
         </div>
@@ -121,7 +133,10 @@ export function SubmissionCard({
         {/* Rank badge */}
         {rank && (
           <div className="absolute top-3 left-3">
-            <Badge className="gradient-glory text-xs font-bold text-white" data-testid={`rank-badge-${rank}`}>
+            <Badge
+              className="gradient-glory text-xs font-bold text-white"
+              data-testid={`rank-badge-${rank}`}
+            >
               #{rank}
             </Badge>
           </div>
@@ -138,14 +153,19 @@ export function SubmissionCard({
       </div>
 
       <CardContent className="p-4">
-        <h3 className="font-semibold text-lg mb-2 line-clamp-1" data-testid={`submission-title-${submission.id}`}>
+        <h3
+          className="font-semibold text-lg mb-2 line-clamp-1"
+          data-testid={`submission-title-${submission.id}`}
+        >
           {submission.title}
         </h3>
-        
+
         <div className="flex items-center justify-between text-sm mb-3">
           <div className="flex items-center space-x-2 text-muted-foreground">
             <User className="w-3 h-3" />
-            <span data-testid={`submission-author-${submission.id}`}>@{submission.user.username}</span>
+            <span data-testid={`submission-author-${submission.id}`}>
+              @{submission.user.username}
+            </span>
           </div>
         </div>
 
@@ -155,7 +175,7 @@ export function SubmissionCard({
               <Trophy className="w-3 h-3" />
               <span>{submission.contest.title}</span>
             </div>
-            
+
             <Button
               variant={hasVoted ? "default" : "outline"}
               size="sm"
@@ -165,7 +185,10 @@ export function SubmissionCard({
               data-testid={`vote-button-${submission.id}`}
             >
               <Heart className={`w-4 h-4 ${hasVoted ? "fill-current" : ""}`} />
-              <span className="font-semibold" data-testid={`votes-count-${submission.id}`}>
+              <span
+                className="font-semibold"
+                data-testid={`votes-count-${submission.id}`}
+              >
                 {submission.votesCount}
               </span>
             </Button>
