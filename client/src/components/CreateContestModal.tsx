@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Upload, Plus, Minus, Calendar, Trophy, Users, Settings, Eye, FileText } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { X, Upload, Plus, Minus, Calendar, Trophy, Users, Settings, Eye, FileText, Image as ImageIcon } from 'lucide-react';
 
 interface CreateContestModalProps {
   isOpen: boolean;
@@ -62,11 +63,35 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
   });
 
   const [errors, setErrors] = useState<string[]>([]);
+  const [coverImagePreview, setCoverImagePreview] = useState<string>('');
+  const [showImageSelector, setShowImageSelector] = useState(false);
+
+  const { data: submissions = [] } = useQuery({
+    queryKey: ['/api/submissions', { forGallery: true }],
+    queryFn: async () => {
+      const response = await fetch('/api/submissions', { credentials: 'include' });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: showImageSelector
+  });
 
   if (!isOpen) return null;
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleInputChange('coverImage', file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleArrayToggle = (field: 'allowedMediaTypes' | 'votingMethods', value: string) => {
@@ -236,14 +261,67 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
                     Cover Image
                   </label>
-                  <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-4 text-center hover:border-violet-500 transition-colors cursor-pointer">
-                    <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Click to upload cover image</p>
-                  </div>
+                  
+                  {coverImagePreview ? (
+                    <div className="relative group">
+                      <img 
+                        src={coverImagePreview} 
+                        alt="Cover preview" 
+                        className="w-full h-48 object-cover rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCoverImagePreview('');
+                          handleInputChange('coverImage', null);
+                        }}
+                        className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="block">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCoverImageUpload}
+                          className="hidden"
+                          id="cover-image-upload"
+                        />
+                        <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-4 text-center hover:border-violet-500 transition-colors cursor-pointer">
+                          <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Click to upload cover image</p>
+                          <p className="text-xs text-slate-500 mt-1">Or choose from options below</p>
+                        </div>
+                      </label>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowImageSelector(true)}
+                          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          Choose from Gallery
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // This will be handled by selecting top submission
+                            setCoverImagePreview('/api/submissions/top-voted/image');
+                          }}
+                          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          Use Top Voted Image
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center">
@@ -773,6 +851,64 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
           </div>
         </div>
       </div>
+
+      {/* Image Gallery Selector Modal */}
+      {showImageSelector && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-6xl w-full max-h-[80vh] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <ImageIcon className="h-6 w-6 text-violet-600" />
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Select Cover Image</h2>
+              </div>
+              <button
+                onClick={() => setShowImageSelector(false)}
+                className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {submissions
+                  .filter((sub: any) => sub.status === 'approved' && sub.type === 'image')
+                  .map((submission: any) => (
+                    <button
+                      key={submission.id}
+                      type="button"
+                      onClick={() => {
+                        setCoverImagePreview(submission.mediaUrl);
+                        handleInputChange('coverImage', submission.mediaUrl);
+                        setShowImageSelector(false);
+                      }}
+                      className="group relative aspect-square rounded-xl overflow-hidden border-2 border-transparent hover:border-violet-500 transition-all"
+                    >
+                      <img
+                        src={submission.mediaUrl}
+                        alt={submission.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-0 left-0 right-0 p-3">
+                          <p className="text-white text-sm font-medium truncate">{submission.title}</p>
+                          <p className="text-white/80 text-xs">{submission.votesCount} votes</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+
+              {submissions.filter((sub: any) => sub.status === 'approved' && sub.type === 'image').length === 0 && (
+                <div className="text-center py-12">
+                  <ImageIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-600 dark:text-slate-400">No approved images available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
