@@ -20,6 +20,11 @@ import {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
+  
+  // Serve uploaded files from public/uploads directory
+  const express = await import("express");
+  const path = await import("path");
+  app.use("/uploads", express.default.static(path.join(process.cwd(), "public", "uploads")));
 
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
@@ -234,9 +239,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
           isUserAdmin = decoded.role === "admin";
-          console.log("[DEBUG] Decoded JWT:", decoded);
         } catch (error) {
-          console.log("[DEBUG] JWT verification failed:", error);
+          // Token invalid, treat as unauthenticated
         }
       }
       
@@ -245,18 +249,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admins can see all submissions with any status filter, others only see approved
       const effectiveStatus = isUserAdmin ? (status as string | undefined) : "approved";
       
-      console.log("[DEBUG] GET /api/submissions - isUserAdmin:", isUserAdmin, "effectiveStatus:", effectiveStatus);
-      
       const submissions = await storage.getSubmissions({
         contestId: contestId as string | undefined,
         userId: userId as string | undefined,
         status: effectiveStatus
       });
 
-      console.log("[DEBUG] GET /api/submissions - found", submissions.length, "submissions");
       res.json(submissions);
     } catch (error) {
-      console.error("[DEBUG] Error in GET /api/submissions:", error);
       res.status(500).json({ error: "Failed to fetch submissions" });
     }
   });
