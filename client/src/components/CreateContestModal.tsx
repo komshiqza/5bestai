@@ -902,9 +902,21 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
               onClick={async () => {
                 const publishedData = { ...formData, status: 'published' };
                 console.log('Create Contest clicked', publishedData);
-                const isValid = validateForm();
-                console.log('Validation result:', isValid, 'Errors:', errors);
-                if (isValid) {
+                
+                // Validate inline to get immediate error list
+                const validationErrors: string[] = [];
+                if (!publishedData.title.trim()) validationErrors.push('Contest title is required');
+                if (!publishedData.description.trim()) validationErrors.push('Description is required');
+                if (publishedData.startDateOption === 'later' && !publishedData.startDate) validationErrors.push('Start date is required when not starting now');
+                if (!publishedData.endDate) validationErrors.push('Submission deadline is required');
+                if (publishedData.votingStartOption === 'later' && !publishedData.votingStartDate) validationErrors.push('Voting start date is required when not starting now');
+                if (!publishedData.votingEndDate) validationErrors.push('Contest end date is required');
+                if (!publishedData.prizePool || publishedData.prizePool === '') validationErrors.push('Prize pool is required');
+                
+                console.log('Validation errors:', validationErrors);
+                setErrors(validationErrors);
+                
+                if (validationErrors.length === 0) {
                   console.log('Calling handleSubmitWithData...');
                   await handleSubmitWithData(publishedData);
                 } else {
