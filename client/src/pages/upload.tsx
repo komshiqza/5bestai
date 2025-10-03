@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Image as ImageIcon, Video, CloudUpload, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload as UploadIcon, Image as ImageIcon, Video, CloudUpload, CheckCircle, AlertCircle } from "lucide-react";
 import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -247,7 +247,7 @@ export default function Upload() {
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold flex items-center justify-center" data-testid="upload-title">
-              <Upload className="w-8 h-8 text-primary mr-3" />
+              <UploadIcon className="w-8 h-8 text-primary mr-3" />
               Submit Your Work
             </CardTitle>
             <p className="text-muted-foreground">
@@ -454,7 +454,7 @@ export default function Upload() {
                     "Uploading..."
                   ) : (
                     <>
-                      <Upload className="w-5 h-5 mr-2" />
+                      <UploadIcon className="w-5 h-5 mr-2" />
                       Submit Entry
                     </>
                   )}
