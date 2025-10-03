@@ -398,10 +398,16 @@ export class MemStorage implements IStorage {
   // Contest distribution
   async distributeContestRewards(contestId: string): Promise<void> {
     const contest = this.contests.get(contestId);
-    if (!contest || contest.status !== "active") return;
+    console.log("[REWARD] Starting distribution for contest:", contestId, "status:", contest?.status);
+    
+    if (!contest || contest.status !== "active") {
+      console.log("[REWARD] Skipping - contest not found or not active");
+      return;
+    }
 
     // Get top 5 submissions
     const topSubmissions = await this.getTopSubmissionsByContest(contestId, 5);
+    console.log("[REWARD] Found top submissions:", topSubmissions.length, "submissions");
     
     // Prize distribution: 40%, 25%, 15%, 10%, 10%
     const prizePercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
@@ -409,6 +415,8 @@ export class MemStorage implements IStorage {
     for (let i = 0; i < Math.min(topSubmissions.length, 5); i++) {
       const submission = topSubmissions[i];
       const prize = Math.floor(contest.prizeGlory * prizePercentages[i]);
+      
+      console.log(`[REWARD] Awarding ${prize} GLORY to user ${submission.username} (${i + 1}st place)`);
       
       // Create glory transaction
       await this.createGloryTransaction({
@@ -423,6 +431,7 @@ export class MemStorage implements IStorage {
     // Update contest status to ended
     contest.status = "ended";
     this.contests.set(contestId, contest);
+    console.log("[REWARD] Contest ended, rewards distributed to", topSubmissions.length, "winners");
   }
 }
 
