@@ -203,20 +203,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/contests/:id/end", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      console.log("[END CONTEST] Request received for contest:", req.params.id);
       const contest = await storage.getContest(req.params.id);
       if (!contest) {
-        console.log("[END CONTEST] Contest not found");
         return res.status(404).json({ error: "Contest not found" });
       }
 
-      console.log("[END CONTEST] Contest status:", contest.status);
       if (contest.status !== "active") {
         return res.status(400).json({ error: "Contest is not active" });
       }
 
       // Distribute rewards using transaction-like approach
-      console.log("[END CONTEST] Calling distributeContestRewards");
       await storage.distributeContestRewards(contest.id);
 
       // Log admin action
@@ -226,10 +222,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         meta: { contestId: contest.id, prizePool: contest.prizeGlory }
       });
 
-      console.log("[END CONTEST] Success - rewards distributed");
       res.json({ message: "Contest ended and rewards distributed successfully" });
     } catch (error) {
-      console.error("[END CONTEST] Error:", error);
       res.status(500).json({ error: "Failed to end contest and distribute rewards" });
     }
   });
