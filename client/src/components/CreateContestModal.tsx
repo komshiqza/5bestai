@@ -160,6 +160,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
   };
 
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
+    console.log('handleSubmitWithData called with:', dataToSubmit);
     let finalFormData = { ...dataToSubmit };
     
     // If coverImage is a File, upload it first
@@ -197,7 +198,9 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       return;
     }
     
+    console.log('Calling onSubmit with:', finalFormData);
     onSubmit(finalFormData);
+    console.log('Calling onClose');
     onClose();
   };
 
@@ -882,7 +885,10 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
             <button
               onClick={async () => {
                 const draftData = { ...formData, status: 'draft' };
-                if (validateForm()) {
+                console.log('Save as Draft clicked', draftData);
+                const isValid = validateForm();
+                console.log('Validation result:', isValid, 'Errors:', errors);
+                if (isValid) {
                   await handleSubmitWithData(draftData);
                 }
               }}
@@ -894,8 +900,14 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
             <button
               onClick={async () => {
                 const publishedData = { ...formData, status: 'published' };
-                if (validateForm()) {
+                console.log('Create Contest clicked', publishedData);
+                const isValid = validateForm();
+                console.log('Validation result:', isValid, 'Errors:', errors);
+                if (isValid) {
+                  console.log('Calling handleSubmitWithData...');
                   await handleSubmitWithData(publishedData);
+                } else {
+                  console.error('Validation failed, not submitting');
                 }
               }}
               className="px-6 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors font-semibold"
