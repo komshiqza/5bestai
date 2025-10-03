@@ -223,13 +223,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submission routes
-  app.get("/api/submissions", async (req, res) => {
+  app.get("/api/submissions", async (req: AuthRequest, res) => {
     try {
       const { contestId, userId, status } = req.query;
+      
+      // Check if user is authenticated
+      const authToken = req.cookies.authToken;
+      let isUserAdmin = false;
+      
+      if (authToken) {
+        try {
+          const jwt = await import("jsonwebtoken");
+          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as { role: string };
+          isUserAdmin = decoded.role === "admin";
+        } catch (error) {
+          // Token invalid, treat as unauthenticated
+        }
+      }
+      
+      // Admins can see all submissions with any status filter, others only see approved
+      const effectiveStatus = isUserAdmin ? (status as string | undefined) : "approved";
+      
       const submissions = await storage.getSubmissions({
-        contestId: contestId as string,
-        userId: userId as string,
-        status: status as string || "approved" // Default to approved for public view
+        contestId: contestId as string | undefined,
+        userId: userId as string | undefined,
+        status: effectiveStatus
       });
 
       res.json(submissions);
