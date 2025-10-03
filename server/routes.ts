@@ -261,6 +261,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Simple file upload endpoint for cover images, etc.
+  app.post("/api/upload", authenticateToken, upload.single("file"), async (req: AuthRequest, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "File is required" });
+      }
+
+      // Upload file and return URL
+      const uploadResult = await uploadFile(req.file);
+      res.status(200).json({ 
+        url: uploadResult.url,
+        thumbnailUrl: uploadResult.thumbnailUrl 
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
   app.post("/api/submissions", authenticateToken, requireApproved, upload.single("file"), async (req: AuthRequest, res) => {
     try {
       if (!req.file) {

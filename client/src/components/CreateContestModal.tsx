@@ -134,74 +134,43 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     }));
   };
 
-  const validateForm = () => {
-    const newErrors: string[] = [];
-
-    if (!formData.title.trim()) newErrors.push('Contest title is required');
-    if (!formData.description.trim()) newErrors.push('Description is required');
-    if (formData.startDateOption === 'later' && !formData.startDate) newErrors.push('Start date is required when not starting now');
-    if (!formData.endDate) newErrors.push('Submission deadline is required');
-    if (formData.votingStartOption === 'later' && !formData.votingStartDate) newErrors.push('Voting start date is required when not starting now');
-    if (!formData.votingEndDate) newErrors.push('Contest end date is required');
-    if (!formData.prizePool || formData.prizePool === '') newErrors.push('Prize pool is required');
-
-    if (formData.entryFee && (!formData.entryFeeAmount || formData.entryFeeAmount <= 0)) {
-      newErrors.push('Entry fee amount is required when entry fee is enabled');
-    }
-
-    const totalPrizes = formData.prizeDistribution.reduce((sum, prize) => sum + prize.value, 0);
-    const prizePool = parseFloat(formData.prizePool) || 0;
-    if (totalPrizes > prizePool) {
-      newErrors.push('Prize distribution total cannot exceed prize pool');
-    }
-
-    console.log('Validation errors:', newErrors);
-    setErrors(newErrors);
-    return newErrors.length === 0;
-  };
 
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
-    console.log('handleSubmitWithData called with:', dataToSubmit);
     let finalFormData = { ...dataToSubmit };
     
     // If coverImage is a File, upload it first
     if (dataToSubmit.coverImage && dataToSubmit.coverImage instanceof File) {
       const uploadFormData = new FormData();
       uploadFormData.append('file', dataToSubmit.coverImage);
-      uploadFormData.append('type', 'image');
-      uploadFormData.append('title', 'Contest Cover Image');
-      uploadFormData.append('description', `Cover image for ${dataToSubmit.title}`);
       
       try {
-        const response = await fetch('/api/submissions', {
+        const response = await fetch('/api/upload', {
           method: 'POST',
           credentials: 'include',
           body: uploadFormData
         });
         
         if (!response.ok) {
-          setErrors([...errors, 'Failed to upload cover image. Please try again.']);
+          setErrors(['Failed to upload cover image. Please try again.']);
           return;
         }
         
-        const submission = await response.json();
-        finalFormData.coverImage = submission.mediaUrl;
+        const result = await response.json();
+        finalFormData.coverImage = result.url;
       } catch (error) {
         console.error('Failed to upload cover image:', error);
-        setErrors([...errors, 'Failed to upload cover image. Please check your connection and try again.']);
+        setErrors(['Failed to upload cover image. Please check your connection and try again.']);
         return;
       }
     }
     
     // Ensure coverImage is a string URL or null/undefined, not a File
     if (finalFormData.coverImage && typeof finalFormData.coverImage !== 'string') {
-      setErrors([...errors, 'Invalid cover image format. Please try uploading again.']);
+      setErrors(['Invalid cover image format. Please try uploading again.']);
       return;
     }
     
-    console.log('Calling onSubmit with:', finalFormData);
     onSubmit(finalFormData);
-    console.log('Calling onClose');
     onClose();
   };
 
@@ -886,10 +855,15 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
             <button
               onClick={async () => {
                 const draftData = { ...formData, status: 'draft' };
-                console.log('Save as Draft clicked', draftData);
-                const isValid = validateForm();
-                console.log('Validation result:', isValid, 'Errors:', errors);
-                if (isValid) {
+                
+                // Validate inline
+                const validationErrors: string[] = [];
+                if (!draftData.title.trim()) validationErrors.push('Contest title is required');
+                if (!draftData.description.trim()) validationErrors.push('Description is required');
+                
+                setErrors(validationErrors);
+                
+                if (validationErrors.length === 0) {
                   await handleSubmitWithData(draftData);
                 }
               }}
@@ -901,7 +875,6 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
             <button
               onClick={async () => {
                 const publishedData = { ...formData, status: 'published' };
-                console.log('Create Contest clicked', publishedData);
                 
                 // Validate inline to get immediate error list
                 const validationErrors: string[] = [];
@@ -913,14 +886,10 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                 if (!publishedData.votingEndDate) validationErrors.push('Contest end date is required');
                 if (!publishedData.prizePool || publishedData.prizePool === '') validationErrors.push('Prize pool is required');
                 
-                console.log('Validation errors:', validationErrors);
                 setErrors(validationErrors);
                 
                 if (validationErrors.length === 0) {
-                  console.log('Calling handleSubmitWithData...');
                   await handleSubmitWithData(publishedData);
-                } else {
-                  console.error('Validation failed, not submitting');
                 }
               }}
               className="px-6 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors font-semibold"
