@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
@@ -231,7 +232,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (authToken) {
         try {
-          const jwt = await import("jsonwebtoken");
           const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
           isUserAdmin = decoded.role === "admin";
           console.log("[DEBUG] Decoded JWT:", decoded);
