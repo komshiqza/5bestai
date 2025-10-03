@@ -1,117 +1,180 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Calendar, Trophy, Share2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Trophy, Users, Image, Clock } from "lucide-react";
-import { Link } from "wouter";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 
-interface ContestCardProps {
-  contest: {
-    id: string;
-    title: string;
-    description: string;
-    status: string;
-    prizeGlory: number;
-    startAt: string;
-    endAt: string;
-    submissionCount: number;
-    participantCount: number;
-    totalVotes: number;
-  };
-  className?: string;
+interface Contest {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  rules: string;
+  coverImageUrl?: string;
+  status: string;
+  prizeGlory: number;
+  startAt: string;
+  endAt: string;
+  createdAt: string;
 }
 
-export function ContestCard({ contest, className = "" }: ContestCardProps) {
+interface ContestCardProps {
+  contest: Contest;
+}
+
+export function ContestCard({ contest }: ContestCardProps) {
+  const [, setLocation] = useLocation();
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const endTime = new Date(contest.endAt).getTime();
+      const now = new Date().getTime();
+      const difference = endTime - now;
+
+      if (difference > 0) {
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+        setTimeLeft({ days, hours, minutes, seconds });
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      }
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [contest.endAt]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-success/20 text-success border-success/30";
-      case "draft":
-        return "bg-muted text-muted-foreground border-border";
+        return "bg-green-500/20 text-green-400 border-green-500/30";
+      case "upcoming":
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       case "ended":
-        return "bg-destructive/20 text-destructive border-destructive/30";
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
       default:
-        return "bg-muted text-muted-foreground border-border";
+        return "bg-primary/20 text-primary border-primary/30";
     }
   };
 
-  const getTimeRemaining = (endDate: string) => {
-    const end = new Date(endDate);
-    const now = new Date();
-    const diff = end.getTime() - now.getTime();
-    
-    if (diff <= 0) return "Ended";
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    if (days > 0) {
-      return `${days}d ${hours}h left`;
-    }
-    return `${hours}h left`;
-  };
-
+  const defaultImage = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80";
+  
   return (
-    <Card className={`group hover:border-primary/50 transition-all duration-300 ${className}`} data-testid={`contest-card-${contest.id}`}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold mb-2" data-testid={`contest-title-${contest.id}`}>
-              {contest.title}
-            </h3>
-            <p className="text-muted-foreground text-sm line-clamp-2" data-testid={`contest-description-${contest.id}`}>
-              {contest.description}
-            </p>
-          </div>
-          <Badge className={getStatusColor(contest.status)} data-testid={`contest-status-${contest.id}`}>
-            {contest.status === "active" && <div className="w-2 h-2 bg-current rounded-full mr-2 animate-pulse" />}
+    <div className="relative min-h-[600px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group">
+      {/* Background image with smooth zoom on hover */}
+      <img
+        src={contest.coverImageUrl || defaultImage}
+        alt={contest.title}
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+      />
+
+      {/* Readability overlays (always on) */}
+      {/* Soft dark veil that slightly increases on hover */}
+      <div className="absolute inset-0 bg-black/25 transition-colors duration-500 group-hover:bg-black/35" />
+      {/* Gradient from bottom for text contrast */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#171121] via-[#171121]/70 to-transparent pointer-events-none" />
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col justify-end h-full p-4 sm:p-6 text-center">
+        {/* Status */}
+        <div className="absolute top-4 left-4">
+          <div
+            className={`px-2 sm:px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-sm ${getStatusColor(contest.status)}`}
+          >
             {contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-primary" data-testid={`contest-prize-${contest.id}`}>
-              {contest.prizeGlory.toLocaleString()}
-            </div>
-            <div className="text-xs text-muted-foreground">GLORY Prize</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold" data-testid={`contest-submissions-${contest.id}`}>
-              {contest.submissionCount}
-            </div>
-            <div className="text-xs text-muted-foreground">Submissions</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold" data-testid={`contest-participants-${contest.id}`}>
-              {contest.participantCount}
-            </div>
-            <div className="text-xs text-muted-foreground">Participants</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold" data-testid={`contest-votes-${contest.id}`}>
-              {contest.totalVotes}
-            </div>
-            <div className="text-xs text-muted-foreground">Total Votes</div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-            <div className="flex items-center space-x-1">
-              <Clock className="w-4 h-4" />
-              <span data-testid={`contest-time-remaining-${contest.id}`}>
-                {contest.status === "active" ? getTimeRemaining(contest.endAt) : contest.status === "ended" ? "Ended" : "Not started"}
+        {/* Prize */}
+        <div className="absolute top-4 right-4">
+          <div className="glassmorphism px-3 py-1 rounded-lg">
+            <div className="flex items-center gap-1 text-yellow-400">
+              <Trophy size={14} />
+              <span className="text-xs sm:text-sm font-bold text-white">
+                {contest.prizeGlory.toLocaleString()} GLORY
               </span>
             </div>
           </div>
-          
-          <Link href={`/contests/${contest.id}`} data-testid={`contest-view-link-${contest.id}`}>
-            <Button className="gradient-glory hover:opacity-90 transition-opacity">
-              View Contest
-            </Button>
-          </Link>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Title + Desc */}
+        <div className="mb-6">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white drop-shadow mb-2">
+            {contest.title}
+          </h1>
+          <p className="text-xs sm:text-sm lg:text-base text-white/85 max-w-md mx-auto line-clamp-2">
+            {contest.description}
+          </p>
+        </div>
+
+        {/* Countdown */}
+        <div className="mb-6 flex justify-center gap-1 sm:gap-2 lg:gap-3">
+          {[
+            { label: "Days", val: String(timeLeft.days).padStart(2, "0") },
+            { label: "Hours", val: String(timeLeft.hours).padStart(2, "0") },
+            { label: "Min", val: String(timeLeft.minutes).padStart(2, "0") },
+            {
+              label: "Sec",
+              val: String(timeLeft.seconds).padStart(2, "0"),
+              pulse: true,
+            },
+          ].map(({ label, val, pulse }) => (
+            <div key={label} className="flex flex-col items-center">
+              <div className="glassmorphism flex h-10 w-10 sm:h-12 sm:w-12 lg:h-16 lg:w-16 items-center justify-center rounded-lg">
+                <p
+                  className={`text-sm sm:text-lg lg:text-2xl font-bold text-white ${pulse ? "animate-pulse" : ""}`}
+                >
+                  {val}
+                </p>
+              </div>
+              <p className="mt-1 text-xs font-medium text-white/75 uppercase tracking-widest">
+                {label}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Info */}
+        <div className="mb-6 flex flex-wrap justify-center gap-2">
+          <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
+            <p className="text-xs font-medium text-white/80">Status</p>
+            <p className="text-xs sm:text-sm lg:text-lg font-bold text-primary mt-1 capitalize">
+              {contest.status}
+            </p>
+          </div>
+          <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
+            <p className="text-xs font-medium text-white/80">Prize</p>
+            <p className="text-xs sm:text-sm lg:text-lg font-bold text-yellow-400 mt-1">
+              {contest.prizeGlory.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-center items-center">
+          <Button
+            onClick={() => setLocation(`/contests/${contest.slug}`)}
+            className="rounded-lg bg-background-dark/80 backdrop-blur-sm border border-primary/30 text-white font-bold transition-all duration-300 hover:border-primary/50 px-6 py-3 text-base hover:bg-primary/20 w-full sm:w-auto min-w-[140px] sm:min-w-[160px] h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm tracking-wide hover:scale-105 flex items-center justify-center"
+            data-testid={`button-view-contest-${contest.id}`}
+          >
+            <Calendar size={16} className="mr-2" />
+            <span className="truncate">View Contest</span>
+          </Button>
+        </div>
+
+        {/* Share */}
+        <div className="mt-4 flex justify-center items-center gap-3">
+          <p className="text-xs font-medium text-white/75">Share:</p>
+          <div className="flex items-center gap-2">
+            <button className="group flex items-center justify-center rounded-full size-8 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors">
+              <Share2 className="text-white" size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
