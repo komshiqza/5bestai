@@ -92,6 +92,7 @@ export class MemStorage implements IStorage {
 
     // Create sample approved users
     const users = [
+      { username: "tbppworld", email: "tbppworld@gmail.com", gloryBalance: 0 },
       { username: "creative_legend", email: "legend@example.com", gloryBalance: 12380 },
       { username: "design_master", email: "master@example.com", gloryBalance: 8450 },
       { username: "pixel_wizard", email: "wizard@example.com", gloryBalance: 7920 },
