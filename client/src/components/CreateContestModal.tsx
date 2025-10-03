@@ -140,10 +140,10 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     if (!formData.title.trim()) newErrors.push('Contest title is required');
     if (!formData.description.trim()) newErrors.push('Description is required');
     if (formData.startDateOption === 'later' && !formData.startDate) newErrors.push('Start date is required when not starting now');
-    if (!formData.endDate) newErrors.push('End date is required');
+    if (!formData.endDate) newErrors.push('Submission deadline is required');
     if (formData.votingStartOption === 'later' && !formData.votingStartDate) newErrors.push('Voting start date is required when not starting now');
     if (!formData.votingEndDate) newErrors.push('Contest end date is required');
-    if (!formData.prizePool) newErrors.push('Prize pool is required');
+    if (!formData.prizePool || formData.prizePool === '') newErrors.push('Prize pool is required');
 
     if (formData.entryFee && (!formData.entryFeeAmount || formData.entryFeeAmount <= 0)) {
       newErrors.push('Entry fee amount is required when entry fee is enabled');
@@ -155,6 +155,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       newErrors.push('Prize distribution total cannot exceed prize pool');
     }
 
+    console.log('Validation errors:', newErrors);
     setErrors(newErrors);
     return newErrors.length === 0;
   };
