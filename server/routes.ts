@@ -244,12 +244,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admins can see all submissions with any status filter, others only see approved
       const effectiveStatus = isUserAdmin ? (status as string | undefined) : "approved";
       
+      console.log("[DEBUG] GET /api/submissions - isUserAdmin:", isUserAdmin, "effectiveStatus:", effectiveStatus);
+      
       const submissions = await storage.getSubmissions({
         contestId: contestId as string | undefined,
         userId: userId as string | undefined,
         status: effectiveStatus
       });
 
+      console.log("[DEBUG] GET /api/submissions - found", submissions.length, "submissions");
       res.json(submissions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch submissions" });

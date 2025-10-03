@@ -244,6 +244,7 @@ export class MemStorage implements IStorage {
 
   async getSubmissions(filters: { contestId?: string; userId?: string; status?: string }): Promise<SubmissionWithUser[]> {
     let submissions = Array.from(this.submissions.values());
+    console.log("[DEBUG] getSubmissions - total in memory:", submissions.length, "filters:", filters);
     
     if (filters.contestId) {
       submissions = submissions.filter(s => s.contestId === filters.contestId);
@@ -253,6 +254,7 @@ export class MemStorage implements IStorage {
     }
     if (filters.status) {
       submissions = submissions.filter(s => s.status === filters.status);
+      console.log("[DEBUG] getSubmissions - after status filter:", submissions.length);
     }
 
     return submissions.map(submission => {
@@ -276,6 +278,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     this.submissions.set(id, submission);
+    console.log("[DEBUG] Created submission:", id, "status:", submission.status, "total submissions:", this.submissions.size);
     return submission;
   }
 
