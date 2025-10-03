@@ -676,7 +676,12 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm" data-testid={`edit-contest-${contest.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setLocation(`/contest/${contest.slug}`)}
+                              data-testid={`edit-contest-${contest.id}`}
+                            >
                               <Eye className="w-4 h-4 mr-2" />
                               View
                             </Button>
