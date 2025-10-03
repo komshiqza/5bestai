@@ -160,36 +160,49 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
   };
 
   const handleSubmit = async () => {
-    if (validateForm()) {
-      let finalFormData = { ...formData };
-      
-      // If coverImage is a File, upload it first
-      if (formData.coverImage && formData.coverImage instanceof File) {
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', formData.coverImage);
-        uploadFormData.append('type', 'image');
-        uploadFormData.append('title', 'Contest Cover Image');
-        uploadFormData.append('description', `Cover image for ${formData.title}`);
-        
-        try {
-          const response = await fetch('/api/submissions', {
-            method: 'POST',
-            credentials: 'include',
-            body: uploadFormData
-          });
-          
-          if (response.ok) {
-            const submission = await response.json();
-            finalFormData.coverImage = submission.mediaUrl;
-          }
-        } catch (error) {
-          console.error('Failed to upload cover image:', error);
-        }
-      }
-      
-      onSubmit(finalFormData);
-      onClose();
+    if (!validateForm()) {
+      return;
     }
+
+    let finalFormData = { ...formData };
+    
+    // If coverImage is a File, upload it first
+    if (formData.coverImage && formData.coverImage instanceof File) {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', formData.coverImage);
+      uploadFormData.append('type', 'image');
+      uploadFormData.append('title', 'Contest Cover Image');
+      uploadFormData.append('description', `Cover image for ${formData.title}`);
+      
+      try {
+        const response = await fetch('/api/submissions', {
+          method: 'POST',
+          credentials: 'include',
+          body: uploadFormData
+        });
+        
+        if (!response.ok) {
+          setErrors([...errors, 'Failed to upload cover image. Please try again.']);
+          return;
+        }
+        
+        const submission = await response.json();
+        finalFormData.coverImage = submission.mediaUrl;
+      } catch (error) {
+        console.error('Failed to upload cover image:', error);
+        setErrors([...errors, 'Failed to upload cover image. Please check your connection and try again.']);
+        return;
+      }
+    }
+    
+    // Ensure coverImage is a string URL or null/undefined, not a File
+    if (finalFormData.coverImage && typeof finalFormData.coverImage !== 'string') {
+      setErrors([...errors, 'Invalid cover image format. Please try uploading again.']);
+      return;
+    }
+    
+    onSubmit(finalFormData);
+    onClose();
   };
 
   return (
