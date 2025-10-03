@@ -222,24 +222,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Submission routes
+  // Submission routes - optional auth (public can see approved, admins can see all)
   app.get("/api/submissions", async (req: AuthRequest, res) => {
     try {
-      const { contestId, userId, status } = req.query;
-      
-      // Check if user is authenticated
+      // Try to authenticate but don't require it
       const authToken = req.cookies.authToken;
       let isUserAdmin = false;
       
       if (authToken) {
         try {
           const jwt = await import("jsonwebtoken");
-          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as { role: string };
+          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
           isUserAdmin = decoded.role === "admin";
+          console.log("[DEBUG] Decoded JWT:", decoded);
         } catch (error) {
-          // Token invalid, treat as unauthenticated
+          console.log("[DEBUG] JWT verification failed:", error);
         }
       }
+      
+      const { contestId, userId, status } = req.query;
       
       // Admins can see all submissions with any status filter, others only see approved
       const effectiveStatus = isUserAdmin ? (status as string | undefined) : "approved";
@@ -255,6 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("[DEBUG] GET /api/submissions - found", submissions.length, "submissions");
       res.json(submissions);
     } catch (error) {
+      console.error("[DEBUG] Error in GET /api/submissions:", error);
       res.status(500).json({ error: "Failed to fetch submissions" });
     }
   });
