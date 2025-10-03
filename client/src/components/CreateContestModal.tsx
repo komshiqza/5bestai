@@ -311,9 +311,19 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            // This will be handled by selecting top submission
-                            setCoverImagePreview('/api/submissions/top-voted/image');
+                          onClick={async () => {
+                            const response = await fetch('/api/submissions', { credentials: 'include' });
+                            if (response.ok) {
+                              const allSubmissions = await response.json();
+                              const topVoted = allSubmissions
+                                .filter((sub: any) => sub.status === 'approved' && sub.type === 'image')
+                                .sort((a: any, b: any) => b.votesCount - a.votesCount)[0];
+                              
+                              if (topVoted) {
+                                setCoverImagePreview(topVoted.mediaUrl);
+                                handleInputChange('coverImage', topVoted.mediaUrl);
+                              }
+                            }
                           }}
                           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         >
