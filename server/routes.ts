@@ -289,12 +289,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Contest is not accepting submissions" });
       }
 
-      // Check if user already submitted to this contest
-      const existingSubmissions = await storage.getSubmissions({ contestId, userId: req.user!.id });
-      if (existingSubmissions.length > 0) {
-        return res.status(400).json({ error: "You have already submitted to this contest" });
-      }
-
       // Upload file
       const uploadResult = await uploadFile(req.file);
 
