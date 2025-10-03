@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 4%, 9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --popover: hsl(240, 4%, 9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --primary: hsl(270, 80%, 58%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(240, 5%, 26%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 5%, 16%);
+  --muted-foreground: hsl(240, 5%, 64%);
+  --accent: hsl(270, 80%, 58%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --success: hsl(142, 76%, 36%);
+  --success-foreground: hsl(0, 0%, 100%);
+  --border: hsl(240, 5%, 26%);
+  --input: hsl(240, 5%, 26%);
+  --ring: hsl(270, 80%, 58%);
+  --radius: 0.5rem;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  .gradient-glory {
+    background: linear-gradient(135deg, hsl(270, 80%, 58%) 0%, hsl(280, 70%, 48%) 100%);
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .podium-1 {
+    height: 200px;
+    background: linear-gradient(135deg, hsl(45, 100%, 50%) 0%, hsl(45, 100%, 40%) 100%);
+  }
+
+  .podium-2 {
+    height: 160px;
+    background: linear-gradient(135deg, hsl(0, 0%, 75%) 0%, hsl(0, 0%, 65%) 100%);
+  }
+
+  .podium-3 {
+    height: 120px;
+    background: linear-gradient(135deg, hsl(28, 80%, 52%) 0%, hsl(28, 70%, 42%) 100%);
+  }
+
+  .vote-pulse {
+    animation: pulse 1s ease-in-out;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}

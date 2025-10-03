@@ -1,0 +1,166 @@
+import { useQuery } from "@tanstack/react-query";
+import { ContestCard } from "@/components/contest-card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Trophy, Search, Filter } from "lucide-react";
+import { useState } from "react";
+
+export default function Contests() {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: contests = [], isLoading } = useQuery({
+    queryKey: ["/api/contests"],
+    queryFn: async () => {
+      const response = await fetch("/api/contests");
+      if (!response.ok) throw new Error("Failed to fetch contests");
+      return response.json();
+    },
+  });
+
+  const filteredContests = contests.filter((contest: any) => {
+    const matchesStatus = statusFilter === "all" || contest.status === statusFilter;
+    const matchesSearch = contest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         contest.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  const getStatusCounts = () => {
+    return {
+      all: contests.length,
+      active: contests.filter((c: any) => c.status === "active").length,
+      draft: contests.filter((c: any) => c.status === "draft").length,
+      ended: contests.filter((c: any) => c.status === "ended").length,
+    };
+  };
+
+  const statusCounts = getStatusCounts();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen py-16" data-testid="contests-loading">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-muted rounded w-1/3 mb-4"></div>
+            <div className="h-4 bg-muted rounded w-2/3 mb-8"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-64 bg-muted rounded-lg"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen py-16" data-testid="contests-page">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-black tracking-tight mb-4 flex items-center justify-center" data-testid="contests-title">
+            <Trophy className="w-10 h-10 text-primary mr-3" />
+            Creative Contests
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Join exciting competitions, showcase your talent, and compete for GLORY rewards
+          </p>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="flex items-center space-x-2 flex-wrap">
+            <Button
+              variant={statusFilter === "all" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setStatusFilter("all")}
+              className={statusFilter === "all" ? "gradient-glory" : ""}
+              data-testid="filter-all"
+            >
+              All ({statusCounts.all})
+            </Button>
+            <Button
+              variant={statusFilter === "active" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setStatusFilter("active")}
+              className={statusFilter === "active" ? "bg-success text-success-foreground hover:bg-success/90" : ""}
+              data-testid="filter-active"
+            >
+              Active ({statusCounts.active})
+            </Button>
+            <Button
+              variant={statusFilter === "draft" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setStatusFilter("draft")}
+              className={statusFilter === "draft" ? "bg-muted text-muted-foreground" : ""}
+              data-testid="filter-draft"
+            >
+              Draft ({statusCounts.draft})
+            </Button>
+            <Button
+              variant={statusFilter === "ended" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setStatusFilter("ended")}
+              className={statusFilter === "ended" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              data-testid="filter-ended"
+            >
+              Ended ({statusCounts.ended})
+            </Button>
+          </div>
+
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search contests..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="search-contests"
+            />
+          </div>
+        </div>
+
+        {/* Contests Grid */}
+        {filteredContests.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="contests-grid">
+            {filteredContests.map((contest: any) => (
+              <ContestCard key={contest.id} contest={contest} />
+            ))}
+          </div>
+        ) : contests.length === 0 ? (
+          <div className="text-center py-12" data-testid="contests-empty">
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+              <Trophy className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No contests yet</h3>
+            <p className="text-muted-foreground">
+              Check back soon for exciting creative competitions!
+            </p>
+          </div>
+        ) : (
+          <div className="text-center py-12" data-testid="contests-no-results">
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+              <Filter className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No contests match your filters</h3>
+            <p className="text-muted-foreground mb-4">
+              Try adjusting your search or filter criteria
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStatusFilter("all");
+                setSearchQuery("");
+              }}
+              data-testid="clear-filters"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
