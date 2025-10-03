@@ -1,14 +1,16 @@
 import { Link, useLocation } from "wouter";
 import { useAuth, useLogout, isAuthenticated, isAdmin } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, Users, Menu, LogOut, User, Shield } from "lucide-react";
+import { Trophy, Upload, Users, Menu, LogOut, User, Shield, Sun, Moon } from "lucide-react";
 import { useState } from "react";
 
 export function Navbar() {
   const { data: user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const logout = useLogout();
   const [, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -51,6 +53,21 @@ export function Navbar() {
 
           {/* User Actions */}
           <div className="flex items-center space-x-3">
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="w-10 h-10"
+              data-testid="button-theme-toggle"
+            >
+              {theme === "light" ? (
+                <Moon className="w-5 h-5" />
+              ) : (
+                <Sun className="w-5 h-5" />
+              )}
+            </Button>
+
             {isAuthenticated(user) && (
               <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-muted" data-testid="glory-balance">
                 <Trophy className="text-primary w-4 h-4" />
