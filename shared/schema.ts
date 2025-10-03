@@ -106,6 +106,13 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertContestSchema = createInsertSchema(contests).omit({
   id: true,
   createdAt: true
+}).extend({
+  startAt: z.union([z.date(), z.string()]).transform(val => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
+  endAt: z.union([z.date(), z.string()]).transform(val => 
+    typeof val === 'string' ? new Date(val) : val
+  )
 });
 
 export const insertSubmissionSchema = createInsertSchema(submissions).omit({
