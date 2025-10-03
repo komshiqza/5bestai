@@ -159,9 +159,35 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     return newErrors.length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      onSubmit(formData);
+      let finalFormData = { ...formData };
+      
+      // If coverImage is a File, upload it first
+      if (formData.coverImage && formData.coverImage instanceof File) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', formData.coverImage);
+        uploadFormData.append('type', 'image');
+        uploadFormData.append('title', 'Contest Cover Image');
+        uploadFormData.append('description', `Cover image for ${formData.title}`);
+        
+        try {
+          const response = await fetch('/api/submissions', {
+            method: 'POST',
+            credentials: 'include',
+            body: uploadFormData
+          });
+          
+          if (response.ok) {
+            const submission = await response.json();
+            finalFormData.coverImage = submission.mediaUrl;
+          }
+        } catch (error) {
+          console.error('Failed to upload cover image:', error);
+        }
+      }
+      
+      onSubmit(finalFormData);
       onClose();
     }
   };
@@ -280,6 +306,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                           handleInputChange('coverImage', null);
                         }}
                         className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        data-testid="button-remove-cover-image"
                       >
                         Remove
                       </button>
@@ -293,6 +320,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                           onChange={handleCoverImageUpload}
                           className="hidden"
                           id="cover-image-upload"
+                          data-testid="input-cover-image-upload"
                         />
                         <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-4 text-center hover:border-violet-500 transition-colors cursor-pointer">
                           <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
@@ -306,6 +334,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                           type="button"
                           onClick={() => setShowImageSelector(true)}
                           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          data-testid="button-choose-from-gallery"
                         >
                           Choose from Gallery
                         </button>
@@ -326,6 +355,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                             }
                           }}
                           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          data-testid="button-use-top-voted-image"
                         >
                           Use Top Voted Image
                         </button>
@@ -874,6 +904,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
               <button
                 onClick={() => setShowImageSelector(false)}
                 className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                data-testid="button-close-gallery-modal"
               >
                 <X size={20} />
               </button>
@@ -893,6 +924,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                         setShowImageSelector(false);
                       }}
                       className="group relative aspect-square rounded-xl overflow-hidden border-2 border-transparent hover:border-violet-500 transition-all"
+                      data-testid={`button-gallery-image-${submission.id}`}
                     >
                       <img
                         src={submission.mediaUrl}
