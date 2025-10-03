@@ -679,7 +679,7 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => setLocation(`/contest/${contest.slug}`)}
+                              onClick={() => setLocation(`/contests/${contest.slug}`)}
                               data-testid={`edit-contest-${contest.id}`}
                             >
                               <Eye className="w-4 h-4 mr-2" />

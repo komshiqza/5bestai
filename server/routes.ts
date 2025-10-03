@@ -146,7 +146,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contests/:id", async (req, res) => {
     try {
-      const contest = await storage.getContest(req.params.id);
+      // Try to get contest by ID first, then by slug
+      let contest = await storage.getContest(req.params.id);
+      if (!contest) {
+        contest = await storage.getContestBySlug(req.params.id);
+      }
+      
       if (!contest) {
         return res.status(404).json({ error: "Contest not found" });
       }
