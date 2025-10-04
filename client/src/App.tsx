@@ -15,6 +15,7 @@ import Upload from "@/pages/upload";
 import Profile from "@/pages/profile";
 import Leaderboard from "@/pages/leaderboard";
 import AdminDashboard from "@/pages/admin/dashboard";
+import AdminContestDetail from "@/pages/admin/contest-detail";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -32,6 +33,7 @@ function Router() {
           <Route path="/profile" component={Profile} />
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/contest/:id" component={AdminContestDetail} />
           <Route component={NotFound} />
         </Switch>
       </main>

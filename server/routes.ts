@@ -263,6 +263,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/admin/contests/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const contest = await storage.getContest(req.params.id);
+      if (!contest) {
+        return res.status(404).json({ error: "Contest not found" });
+      }
+
+      await storage.deleteContest(req.params.id);
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "DELETE_CONTEST",
+        meta: { contestId: contest.id, title: contest.title }
+      });
+
+      res.json({ message: "Contest deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contest:", error);
+      res.status(500).json({ 
+        error: "Failed to delete contest",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Submission routes - optional auth (public can see approved, users can see approved + their own pending)
   app.get("/api/submissions", async (req: AuthRequest, res) => {
     try {
@@ -418,6 +444,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedSubmission);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
+  app.delete("/api/admin/submissions/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const submission = await storage.getSubmission(req.params.id);
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      await storage.deleteSubmission(req.params.id);
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "DELETE_SUBMISSION",
+        meta: { submissionId: submission.id, userId: submission.userId }
+      });
+
+      res.json({ message: "Submission deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting submission:", error);
+      res.status(500).json({ 
+        error: "Failed to delete submission",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

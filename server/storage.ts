@@ -41,12 +41,14 @@ export interface IStorage {
   getContests(filters?: { status?: string }): Promise<ContestWithStats[]>;
   createContest(contest: InsertContest): Promise<Contest>;
   updateContest(id: string, updates: Partial<Contest>): Promise<Contest | undefined>;
+  deleteContest(id: string): Promise<boolean>;
   
   // Submissions
   getSubmission(id: string): Promise<Submission | undefined>;
   getSubmissions(filters: { contestId?: string; userId?: string; status?: string }): Promise<SubmissionWithUser[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission | undefined>;
+  deleteSubmission(id: string): Promise<boolean>;
   getTopSubmissionsByContest(contestId: string, limit?: number): Promise<SubmissionWithUser[]>;
   
   // Votes
@@ -255,6 +257,10 @@ export class MemStorage implements IStorage {
     return updatedContest;
   }
 
+  async deleteContest(id: string): Promise<boolean> {
+    return this.contests.delete(id);
+  }
+
   // Submissions
   async getSubmission(id: string): Promise<Submission | undefined> {
     return this.submissions.get(id);
@@ -304,6 +310,10 @@ export class MemStorage implements IStorage {
     const updatedSubmission = { ...submission, ...updates };
     this.submissions.set(id, updatedSubmission);
     return updatedSubmission;
+  }
+
+  async deleteSubmission(id: string): Promise<boolean> {
+    return this.submissions.delete(id);
   }
 
   async getTopSubmissionsByContest(contestId: string, limit = 10): Promise<SubmissionWithUser[]> {
@@ -623,6 +633,12 @@ export class DbStorage implements IStorage {
     return contest;
   }
 
+  async deleteContest(id: string): Promise<boolean> {
+    const result = await db.delete(contests)
+      .where(eq(contests.id, id));
+    return true;
+  }
+
   async getSubmission(id: string): Promise<Submission | undefined> {
     const result = await db.query.submissions.findFirst({
       where: eq(submissions.id, id)
@@ -674,6 +690,12 @@ export class DbStorage implements IStorage {
       .where(eq(submissions.id, id))
       .returning();
     return submission;
+  }
+
+  async deleteSubmission(id: string): Promise<boolean> {
+    const result = await db.delete(submissions)
+      .where(eq(submissions.id, id));
+    return true;
   }
 
   async getTopSubmissionsByContest(contestId: string, limit = 10): Promise<SubmissionWithUser[]> {
