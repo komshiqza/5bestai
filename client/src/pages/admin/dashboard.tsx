@@ -20,7 +20,9 @@ import {
   AlertTriangle,
   Calendar,
   Eye,
-  BarChart3
+  BarChart3,
+  DollarSign,
+  Loader2
 } from "lucide-react";
 import { useAuth, isAdmin } from "@/lib/auth";
 import { useLocation } from "wouter";
@@ -76,6 +78,15 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const response = await fetch("/api/admin/audit-logs", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch audit logs");
+      return response.json();
+    },
+  });
+
+  const { data: cashoutRequests = [] } = useQuery({
+    queryKey: ["/api/admin/cashout/requests"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/cashout/requests", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch cashout requests");
       return response.json();
     },
   });
@@ -271,6 +282,78 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
     },
   });
 
+  const approveCashoutMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      return apiRequest("/api/admin/cashout/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      toast({
+        title: "Cashout Approved",
+        description: "GLORY has been deducted. Remember to send tokens and mark as sent.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve cashout.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectCashoutMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      return apiRequest("/api/admin/cashout/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      toast({
+        title: "Cashout Rejected",
+        description: "The cashout request has been rejected.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject cashout.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const markCashoutSentMutation = useMutation({
+    mutationFn: async ({ requestId, txHash }: { requestId: string; txHash: string }) => {
+      return apiRequest("/api/admin/cashout/mark-sent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, txHash }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      toast({
+        title: "Cashout Marked as Sent",
+        description: "The transaction has been recorded successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark cashout as sent.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Helper functions
   const getInitials = (username: string) => {
     return username.substring(0, 2).toUpperCase();
@@ -398,7 +481,7 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
 
         {/* Admin Tabs */}
         <Tabs defaultValue="users" className="space-y-4" data-testid="admin-tabs">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users" data-testid="tab-users">
               <Users className="w-4 h-4 mr-2" />
               Users
@@ -410,6 +493,10 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
             <TabsTrigger value="contests" data-testid="tab-contests">
               <Trophy className="w-4 h-4 mr-2" />
               Contests
+            </TabsTrigger>
+            <TabsTrigger value="cashouts" data-testid="tab-cashouts">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Cashouts
             </TabsTrigger>
             <TabsTrigger value="audit" data-testid="tab-audit">
               <BarChart3 className="w-4 h-4 mr-2" />
