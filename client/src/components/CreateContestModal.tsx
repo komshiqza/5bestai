@@ -851,53 +851,26 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
             Cancel
           </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={async () => {
-                const draftData = { ...formData, status: 'draft' };
-                
-                // Validate inline
-                const validationErrors: string[] = [];
-                if (!draftData.title.trim()) validationErrors.push('Contest title is required');
-                if (!draftData.description.trim()) validationErrors.push('Description is required');
-                
-                setErrors(validationErrors);
-                
-                if (validationErrors.length === 0) {
-                  await handleSubmitWithData(draftData);
-                }
-              }}
-              className="px-6 py-2 rounded-xl border border-slate-300/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              data-testid="button-save-draft"
-            >
-              Save as Draft
-            </button>
-            <button
-              onClick={async () => {
-                const publishedData = { ...formData, status: 'published' };
-                
-                // Validate inline to get immediate error list
-                const validationErrors: string[] = [];
-                if (!publishedData.title.trim()) validationErrors.push('Contest title is required');
-                if (!publishedData.description.trim()) validationErrors.push('Description is required');
-                if (publishedData.startDateOption === 'later' && !publishedData.startDate) validationErrors.push('Start date is required when not starting now');
-                if (!publishedData.endDate) validationErrors.push('Submission deadline is required');
-                if (publishedData.votingStartOption === 'later' && !publishedData.votingStartDate) validationErrors.push('Voting start date is required when not starting now');
-                if (!publishedData.votingEndDate) validationErrors.push('Contest end date is required');
-                if (!publishedData.prizePool || publishedData.prizePool === '') validationErrors.push('Prize pool is required');
-                
-                setErrors(validationErrors);
-                
-                if (validationErrors.length === 0) {
-                  await handleSubmitWithData(publishedData);
-                }
-              }}
-              className="px-6 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors font-semibold"
-              data-testid="button-create-contest"
-            >
-              Create Contest
-            </button>
-          </div>
+          <button
+            onClick={async () => {
+              const draftData = { ...formData, status: 'draft' };
+              
+              // Validate inline
+              const validationErrors: string[] = [];
+              if (!draftData.title.trim()) validationErrors.push('Contest title is required');
+              if (!draftData.description.trim()) validationErrors.push('Description is required');
+              
+              setErrors(validationErrors);
+              
+              if (validationErrors.length === 0) {
+                await handleSubmitWithData(draftData);
+              }
+            }}
+            className="px-6 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 transition-colors font-semibold"
+            data-testid="button-create-contest"
+          >
+            Create Contest
+          </button>
         </div>
       </div>
 
