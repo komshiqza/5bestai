@@ -1,4 +1,4 @@
-import { X, Trophy, Calendar, Users, FileText } from "lucide-react";
+import { X, Trophy, Calendar, Users, FileText, Award, CheckSquare, Image, Shield } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 
 interface ContestRulesCardProps {
@@ -87,6 +87,102 @@ export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardP
               </p>
             </div>
           </div>
+
+          {/* Prize Distribution */}
+          {contest.config?.prizeDistribution && contest.config.prizeDistribution.length > 0 && (
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Award className="h-5 w-5 text-violet-400" />
+                Prize Distribution
+              </h4>
+              <div className="space-y-2">
+                {contest.config.prizeDistribution.map((prize: any) => (
+                  <div key={prize.place} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span className="text-slate-300 font-medium">{prize.place === 1 ? '🥇' : prize.place === 2 ? '🥈' : prize.place === 3 ? '🥉' : `${prize.place}th`} Place</span>
+                    <span className="text-white font-bold">{prize.value.toLocaleString()} {contest.config.currency || 'GLORY'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Voting Rules */}
+          {contest.config && (
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <CheckSquare className="h-5 w-5 text-violet-400" />
+                Voting Rules
+              </h4>
+              <div className="space-y-2 text-slate-300">
+                {contest.config.voteLimitPerPeriod && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Votes per Period</span>
+                    <span className="text-white font-semibold">{contest.config.voteLimitPerPeriod}</span>
+                  </div>
+                )}
+                {contest.config.votePeriodHours && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Period Duration</span>
+                    <span className="text-white font-semibold">{contest.config.votePeriodHours} hours</span>
+                  </div>
+                )}
+                {contest.config.totalVoteLimit !== undefined && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Total Vote Limit</span>
+                    <span className="text-white font-semibold">{contest.config.totalVoteLimit === 0 ? 'Unlimited' : contest.config.totalVoteLimit}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Participation Rules */}
+          {contest.config && (
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-violet-400" />
+                Participation Rules
+              </h4>
+              <div className="space-y-2 text-slate-300">
+                {contest.config.maxSubmissions && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Max Submissions per User</span>
+                    <span className="text-white font-semibold">{contest.config.maxSubmissions}</span>
+                  </div>
+                )}
+                {contest.config.allowedMediaTypes && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Allowed Media Types</span>
+                    <span className="text-white font-semibold">{contest.config.allowedMediaTypes.join(', ')}</span>
+                  </div>
+                )}
+                {contest.config.fileSizeLimit && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>File Size Limit</span>
+                    <span className="text-white font-semibold">{contest.config.fileSizeLimit}MB</span>
+                  </div>
+                )}
+                {contest.config.eligibility && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Eligibility</span>
+                    <span className="text-white font-semibold capitalize">{contest.config.eligibility.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                {contest.config.entryFee && contest.config.entryFeeAmount && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Entry Fee</span>
+                    <span className="text-white font-semibold">{contest.config.entryFeeAmount} {contest.config.currency || 'GLORY'}</span>
+                  </div>
+                )}
+                {!contest.config.entryFee && (
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <span>Entry Fee</span>
+                    <span className="text-green-400 font-semibold">Free to Enter</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Rules */}
           <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
