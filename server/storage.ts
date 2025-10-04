@@ -588,11 +588,22 @@ export class DbStorage implements IStorage {
         .from(submissions)
         .where(eq(submissions.contestId, contest.id));
 
+      // Get top submission image (highest voted approved submission)
+      const topSubmission = await db.query.submissions.findFirst({
+        where: and(
+          eq(submissions.contestId, contest.id),
+          eq(submissions.status, 'approved')
+        ),
+        orderBy: [desc(submissions.votesCount)],
+        columns: { mediaUrl: true }
+      });
+
       result.push({
         ...contest,
         submissionCount: submissionCount[0]?.count || 0,
         participantCount: participantCount[0]?.count || 0,
-        totalVotes: Number(totalVotesResult[0]?.total) || 0
+        totalVotes: Number(totalVotesResult[0]?.total) || 0,
+        topSubmissionImageUrl: topSubmission?.mediaUrl || null
       });
     }
 

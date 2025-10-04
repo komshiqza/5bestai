@@ -186,6 +186,7 @@ export type ContestWithStats = Contest & {
   submissionCount: number;
   participantCount: number;
   totalVotes: number;
+  topSubmissionImageUrl?: string | null;
 };
 
 export type UserWithStats = User & {
