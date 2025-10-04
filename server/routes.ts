@@ -201,6 +201,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/admin/contests/:id/activate", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const contest = await storage.getContest(req.params.id);
+      if (!contest) {
+        return res.status(404).json({ error: "Contest not found" });
+      }
+
+      if (contest.status !== "draft") {
+        return res.status(400).json({ error: "Only draft contests can be activated" });
+      }
+
+      // Update contest status to active
+      const updatedContest = await storage.updateContest(contest.id, { status: "active" });
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "ACTIVATE_CONTEST",
+        meta: { contestId: contest.id, title: contest.title }
+      });
+
+      res.json({ message: "Contest activated successfully", contest: updatedContest });
+    } catch (error) {
+      console.error("Error activating contest:", error);
+      res.status(500).json({ 
+        error: "Failed to activate contest",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.post("/api/admin/contests/:id/end", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const contest = await storage.getContest(req.params.id);

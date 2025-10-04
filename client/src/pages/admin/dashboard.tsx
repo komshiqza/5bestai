@@ -123,6 +123,27 @@ export default function AdminDashboard() {
     },
   });
 
+  const activateContestMutation = useMutation({
+    mutationFn: async (contestId: string) => {
+      const response = await apiRequest("PATCH", `/api/admin/contests/${contestId}/activate`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contests"] });
+      toast({
+        title: "Contest activated",
+        description: "Contest is now active and users can submit entries.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to activate contest.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const endContestMutation = useMutation({
     mutationFn: async (contestId: string) => {
       const response = await apiRequest("POST", `/api/admin/contests/${contestId}/end`);
@@ -685,6 +706,19 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                               <Eye className="w-4 h-4 mr-2" />
                               View
                             </Button>
+                            {contest.status === "draft" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-primary/20 text-primary hover:bg-primary/30 border-primary/30"
+                                onClick={() => activateContestMutation.mutate(contest.id)}
+                                disabled={activateContestMutation.isPending}
+                                data-testid={`activate-contest-${contest.id}`}
+                              >
+                                <Trophy className="w-4 h-4 mr-2" />
+                                Activate
+                              </Button>
+                            )}
                             {contest.status === "active" && (
                               <Button
                                 variant="outline"
