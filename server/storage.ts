@@ -433,26 +433,26 @@ export class MemStorage implements IStorage {
     // Get top 5 submissions
     const topSubmissions = await this.getTopSubmissionsByContest(contestId, 5);
     
-    // Use custom prize distribution from config if available, otherwise use default
-    const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
-    let prizePercentages = defaultPercentages;
+    // Get prize distribution from config (fixed amounts) or use default percentages
+    const config = contest.config as any;
+    let prizes: number[] = [];
     
-    if ((contest.config as any)?.prizeDistribution && Array.isArray((contest.config as any).prizeDistribution)) {
-      const configPercentages = (contest.config as any).prizeDistribution
-        .map((p: any) => {
-          const num = Number(p);
-          return isNaN(num) ? null : num / 100;
-        })
-        .filter((p: any) => p !== null);
-      
-      if (configPercentages.length === 5) {
-        prizePercentages = configPercentages;
-      }
+    if (config?.prizeDistribution && Array.isArray(config.prizeDistribution)) {
+      // Use fixed prize amounts from config
+      prizes = config.prizeDistribution
+        .map((p: any) => Number(p.value))
+        .filter((v: number) => !isNaN(v) && v > 0);
+    } else {
+      // Fallback to percentage-based distribution
+      const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+      prizes = defaultPercentages.map(p => Math.floor(contest.prizeGlory * p));
     }
     
-    for (let i = 0; i < Math.min(topSubmissions.length, 5); i++) {
+    const numPrizes = Math.min(topSubmissions.length, prizes.length);
+    
+    for (let i = 0; i < numPrizes; i++) {
       const submission = topSubmissions[i];
-      const prize = Math.floor(contest.prizeGlory * prizePercentages[i]);
+      const prize = prizes[i];
       
       // Create glory transaction
       await this.createGloryTransaction({
@@ -883,28 +883,27 @@ export class DbStorage implements IStorage {
       return;
     }
     
-    // Use custom prize distribution from config if available, otherwise use default
-    const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
-    let prizePercentages = defaultPercentages;
+    // Get prize distribution from config (fixed amounts) or use default percentages
+    const config = contest.config as any;
+    let prizes: number[] = [];
     
-    if ((contest.config as any)?.prizeDistribution && Array.isArray((contest.config as any).prizeDistribution)) {
-      const configPercentages = (contest.config as any).prizeDistribution
-        .map((p: any) => {
-          const num = Number(p);
-          return isNaN(num) ? null : num / 100;
-        })
-        .filter((p: any) => p !== null);
-      
-      if (configPercentages.length === 5) {
-        prizePercentages = configPercentages;
-      }
+    if (config?.prizeDistribution && Array.isArray(config.prizeDistribution)) {
+      // Use fixed prize amounts from config
+      prizes = config.prizeDistribution
+        .map((p: any) => Number(p.value))
+        .filter((v: number) => !isNaN(v) && v > 0);
+    } else {
+      // Fallback to percentage-based distribution
+      const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+      prizes = defaultPercentages.map(p => Math.floor(contest.prizeGlory * p));
     }
     
+    const numPrizes = Math.min(topSubmissionsData.length, prizes.length);
     let awardedCount = 0;
     
-    for (let i = 0; i < Math.min(topSubmissionsData.length, 5); i++) {
+    for (let i = 0; i < numPrizes; i++) {
       const submission = topSubmissionsData[i];
-      const prize = Math.floor(contest.prizeGlory * prizePercentages[i]);
+      const prize = prizes[i];
       
       const user = await db.query.users.findFirst({
         where: eq(users.id, submission.userId)
