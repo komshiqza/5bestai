@@ -62,10 +62,9 @@ export default function AdminContestDetail() {
       const startDateTime = new Date(`${formData.startDate}T${formData.startTime || '00:00'}`);
       const endDateTime = new Date(`${formData.endDate}T${formData.endTime || '23:59'}`);
       
-      const updateData = {
+      const updateData: any = {
         title: formData.title,
         description: formData.description,
-        coverImageUrl: typeof formData.coverImage === 'string' ? formData.coverImage : null,
         prizeGlory: parseInt(formData.prizePool) || 0,
         startAt: startDateTime.toISOString(),
         endAt: endDateTime.toISOString(),
@@ -89,6 +88,14 @@ export default function AdminContestDetail() {
           featured: formData.featured,
         }
       };
+
+      // Only include coverImageUrl if it's a valid string URL
+      if (formData.coverImage && typeof formData.coverImage === 'string') {
+        updateData.coverImageUrl = formData.coverImage;
+      } else {
+        // Send empty string to trigger backend auto-cover logic
+        updateData.coverImageUrl = '';
+      }
 
       const response = await apiRequest("PATCH", `/api/admin/contests/${id}`, updateData);
       return response.json();

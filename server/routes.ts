@@ -183,7 +183,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/contests/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const updatedContest = await storage.updateContest(req.params.id, req.body);
+      let updateData = { ...req.body };
+      
+      // If no cover image is provided or it's explicitly set to null/empty, use top voted submission
+      if (!updateData.coverImageUrl || updateData.coverImageUrl === '') {
+        const topSubmissions = await storage.getTopSubmissionsByContest(req.params.id, 1);
+        if (topSubmissions.length > 0 && topSubmissions[0].type === 'image') {
+          updateData.coverImageUrl = topSubmissions[0].mediaUrl;
+        }
+      }
+      
+      const updatedContest = await storage.updateContest(req.params.id, updateData);
       if (!updatedContest) {
         return res.status(404).json({ error: "Contest not found" });
       }
