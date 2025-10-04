@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
+import { WalletConnect } from "@/components/wallet/WalletConnect";
+import { CashoutRequest } from "@/components/wallet/CashoutRequest";
 
 export default function Profile() {
   const { data: user } = useAuth();
@@ -323,10 +325,10 @@ export default function Profile() {
               </TabsContent>
 
               {/* Settings Tab */}
-              <TabsContent value="settings" className="space-y-4" data-testid="settings-tab">
+              <TabsContent value="settings" className="space-y-6" data-testid="settings-tab">
                 <Card>
                   <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold mb-4">Account Settings</h3>
+                    <h3 className="text-lg font-semibold mb-4">Account Information</h3>
                     <div className="space-y-4">
                       <div>
                         <label className="text-sm font-medium">Username</label>
@@ -350,13 +352,11 @@ export default function Profile() {
                         <p className="text-muted-foreground capitalize">{user.role}</p>
                       </div>
                     </div>
-                    <div className="mt-6 p-4 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        Settings and profile management features are coming soon.
-                      </p>
-                    </div>
                   </CardContent>
                 </Card>
+
+                <WalletConnect />
+                <CashoutRequest />
               </TabsContent>
             </Tabs>
           </div>
