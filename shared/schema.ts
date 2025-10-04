@@ -80,7 +80,8 @@ export const gloryLedger = pgTable("glory_ledger", {
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userIdx: index("glory_ledger_user_idx").on(table.userId),
-  createdAtIdx: index("glory_ledger_created_at_idx").on(table.createdAt)
+  createdAtIdx: index("glory_ledger_created_at_idx").on(table.createdAt),
+  contestSubmissionUnique: unique("glory_ledger_contest_submission_unique").on(table.contestId, table.submissionId)
 }));
 
 // Audit Log table

@@ -794,66 +794,98 @@ export class DbStorage implements IStorage {
   }
 
   async distributeContestRewards(contestId: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      const contest = await tx.query.contests.findFirst({
-        where: eq(contests.id, contestId)
-      });
+    const contest = await db.query.contests.findFirst({
+      where: eq(contests.id, contestId)
+    });
+    
+    if (!contest) {
+      throw new Error("Contest not found");
+    }
+
+    if (contest.status === "ended") {
+      throw new Error("Contest has already ended");
+    }
+
+    if (contest.status !== "active") {
+      throw new Error("Contest is not active");
+    }
+
+    const topSubmissionsData = await db.query.submissions.findMany({
+      where: and(
+        eq(submissions.contestId, contestId),
+        eq(submissions.status, "approved")
+      ),
+      orderBy: [desc(submissions.votesCount)],
+      limit: 5
+    });
+    
+    if (topSubmissionsData.length === 0) {
+      console.log("No approved submissions found for contest", contestId);
+      await db.update(contests)
+        .set({ status: "ended" })
+        .where(eq(contests.id, contestId));
+      return;
+    }
+    
+    const prizePercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+    let awardedCount = 0;
+    
+    for (let i = 0; i < Math.min(topSubmissionsData.length, 5); i++) {
+      const submission = topSubmissionsData[i];
+      const prize = Math.floor(contest.prizeGlory * prizePercentages[i]);
       
-      if (!contest || contest.status !== "active") {
-        throw new Error("Contest not found or not active");
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, submission.userId)
+      });
+
+      if (!user) {
+        console.error("User not found for submission:", submission.id);
+        continue;
       }
 
-      const topSubmissionsData = await tx.query.submissions.findMany({
+      const existingLedger = await db.query.gloryLedger.findFirst({
         where: and(
-          eq(submissions.contestId, contestId),
-          eq(submissions.status, "approved")
-        ),
-        orderBy: [desc(submissions.votesCount)],
-        limit: 5
+          eq(gloryLedger.contestId, contestId),
+          eq(gloryLedger.submissionId, submission.id)
+        )
       });
-      
-      if (topSubmissionsData.length === 0) {
-        console.log("No approved submissions found for contest", contestId);
+
+      if (existingLedger) {
+        console.log(`Reward already distributed for submission ${submission.id}, skipping`);
+        awardedCount++;
+        continue;
       }
-      
-      const prizePercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
-      
-      for (let i = 0; i < Math.min(topSubmissionsData.length, 5); i++) {
-        const submission = topSubmissionsData[i];
-        const prize = Math.floor(contest.prizeGlory * prizePercentages[i]);
-        
-        const user = await tx.query.users.findFirst({
-          where: eq(users.id, submission.userId)
-        });
 
-        if (!user) {
-          console.error("User not found for submission:", submission.id);
-          continue;
-        }
-
-        await tx.insert(gloryLedger).values({
+      try {
+        await db.insert(gloryLedger).values({
           userId: submission.userId,
           delta: prize,
           reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
           contestId: contestId,
           submissionId: submission.id
-        });
+        }).onConflictDoNothing();
 
-        const newBalance = user.gloryBalance + prize;
-        await tx.update(users)
+        await db.update(users)
           .set({ 
-            gloryBalance: newBalance,
+            gloryBalance: sql`${users.gloryBalance} + ${prize}`,
             updatedAt: new Date()
           })
           .where(eq(users.id, submission.userId));
 
         console.log(`Awarded ${prize} GLORY to user ${user.username} (${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} place)`);
+        awardedCount++;
+      } catch (error) {
+        console.error(`Error awarding prize to user ${user.username}:`, error);
+        throw error;
       }
+    }
 
-      await tx.update(contests)
+    if (awardedCount > 0 || topSubmissionsData.length > 0) {
+      await db.update(contests)
         .set({ status: "ended" })
         .where(eq(contests.id, contestId));
-    });
+      console.log(`Contest ${contestId} ended. Awarded GLORY to ${awardedCount} winners.`);
+    }
   }
 }
 
