@@ -185,6 +185,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let updateData = { ...req.body };
       
+      // Convert date strings to Date objects for Drizzle
+      if (updateData.startAt) {
+        updateData.startAt = new Date(updateData.startAt);
+      }
+      if (updateData.endAt) {
+        updateData.endAt = new Date(updateData.endAt);
+      }
+      
       // If no cover image is provided or it's explicitly set to null/empty, use top voted submission
       if (!updateData.coverImageUrl || updateData.coverImageUrl === '') {
         const topSubmissions = await storage.getTopSubmissionsByContest(req.params.id, 1);
