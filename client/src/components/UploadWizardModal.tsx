@@ -108,7 +108,19 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     }
   }, [isOpen, preselectedContestId]);
 
-  if (!isOpen) return null;
+  const onDropFiles = useCallback((dropped: FileList | null) => {
+    if (!dropped || dropped.length === 0) return;
+    const f = dropped[0];
+    if (
+      f.type.startsWith("image/") ||
+      f.type.startsWith("video/") ||
+      /\.(jpg|jpeg|png|webp|gif|mp4|mov|webm)$/i.test(f.name)
+    ) {
+      setFile(f);
+    } else {
+      setErrors(["Unsupported file type. Use image or video formats."]);
+    }
+  }, []);
 
   const resetErrors = () => setErrors([]);
 
@@ -142,20 +154,6 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     resetErrors();
     if (step > 1) setStep((p) => (p - 1) as 1 | 2 | 3);
   };
-
-  const onDropFiles = useCallback((dropped: FileList | null) => {
-    if (!dropped || dropped.length === 0) return;
-    const f = dropped[0];
-    if (
-      f.type.startsWith("image/") ||
-      f.type.startsWith("video/") ||
-      /\.(jpg|jpeg|png|webp|gif|mp4|mov|webm)$/i.test(f.name)
-    ) {
-      setFile(f);
-    } else {
-      setErrors(["Unsupported file type. Use image or video formats."]);
-    }
-  }, []);
 
   const handleTagAdd = (value: string) => {
     const t = value.trim();
@@ -239,6 +237,10 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       setSubmitting(false);
     }
   };
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div 
