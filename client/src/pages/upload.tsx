@@ -71,10 +71,13 @@ export default function Upload() {
   const activeContests = contests.filter((c: any) => c.status === "active");
 
   // Fetch user's submissions for gallery
-  const { data: userSubmissions = [] } = useQuery({
-    queryKey: ["/api/submissions", { userId: user?.id }],
+  const { data: allSubmissions = [] } = useQuery({
+    queryKey: ["/api/submissions"],
     enabled: !!user?.id,
   });
+
+  // Filter to only show current user's approved submissions
+  const userSubmissions = allSubmissions.filter((sub: any) => sub.userId === user?.id && sub.status === "approved");
 
   // Redirect if not authenticated
   if (!user) {
