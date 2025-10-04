@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { 
   Shield, 
   Users, 
@@ -38,6 +40,9 @@ export default function AdminDashboard() {
   const [userStatusFilter, setUserStatusFilter] = useState("all");
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [isCreateContestModalOpen, setIsCreateContestModalOpen] = useState(false);
+  const [txHashDialogOpen, setTxHashDialogOpen] = useState(false);
+  const [selectedCashoutId, setSelectedCashoutId] = useState("");
+  const [txHashInput, setTxHashInput] = useState("");
 
   // Redirect if not admin
   if (!user || !isAdmin(user)) {
@@ -284,11 +289,7 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
 
   const approveCashoutMutation = useMutation({
     mutationFn: async (requestId: string) => {
-      return apiRequest("/api/admin/cashout/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId }),
-      });
+      return apiRequest("POST", "/api/admin/cashout/approve", { requestId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
@@ -308,11 +309,7 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
 
   const rejectCashoutMutation = useMutation({
     mutationFn: async (requestId: string) => {
-      return apiRequest("/api/admin/cashout/reject", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId }),
-      });
+      return apiRequest("POST", "/api/admin/cashout/reject", { requestId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
@@ -332,11 +329,7 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
 
   const markCashoutSentMutation = useMutation({
     mutationFn: async ({ requestId, txHash }: { requestId: string; txHash: string }) => {
-      return apiRequest("/api/admin/cashout/mark-sent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, txHash }),
-      });
+      return apiRequest("POST", "/api/admin/cashout/mark-sent", { requestId, txHash });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
@@ -392,11 +385,39 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
     }
   };
 
+  // Helper for transaction hash submission
+  const handleMarkAsSent = () => {
+    if (!txHashInput.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a transaction hash",
+        variant: "destructive",
+      });
+      return;
+    }
+    markCashoutSentMutation.mutate(
+      { requestId: selectedCashoutId, txHash: txHashInput },
+      {
+        onSuccess: () => {
+          setTxHashDialogOpen(false);
+          setTxHashInput("");
+          setSelectedCashoutId("");
+        },
+      }
+    );
+  };
+
+  const openTxHashDialog = (requestId: string) => {
+    setSelectedCashoutId(requestId);
+    setTxHashDialogOpen(true);
+  };
+
   // Stats calculations
   const pendingUsers = users.filter((u: any) => u.status === "pending").length;
   const pendingSubmissions = submissions.filter((s: any) => s.status === "pending").length;
   const activeContests = contests.filter((c: any) => c.status === "active").length;
   const totalGloryDistributed = users.reduce((sum: number, u: any) => sum + u.gloryBalance, 0);
+  const pendingCashouts = cashoutRequests.filter((r: any) => r.status === "pending").length;
 
   // Filtered users
   const filteredUsers = users.filter((user: any) => {
@@ -841,6 +862,151 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
             </Card>
           </TabsContent>
 
+          {/* Cashouts Tab */}
+          <TabsContent value="cashouts" className="space-y-4" data-testid="cashouts-tab">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cashout Requests Management</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full" data-testid="cashouts-table">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          User
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Amount
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Wallet
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {cashoutRequests.map((request: any) => (
+                        <tr key={request.id} className="hover:bg-muted/30 transition-colors" data-testid={`cashout-request-${request.id}`}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-3">
+                              <Avatar>
+                                <AvatarFallback>
+                                  {getInitials(request.user.username)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-semibold" data-testid={`cashout-username-${request.id}`}>
+                                  {request.user.username}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {request.user.email}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-semibold font-mono" data-testid={`cashout-amount-${request.id}`}>
+                              {request.amountGlory.toLocaleString()} GLORY
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              → {request.amountToken} {request.tokenType}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-mono text-xs max-w-[200px] truncate" data-testid={`cashout-wallet-${request.id}`}>
+                              {request.wallet.address}
+                            </div>
+                            <div className="text-xs text-muted-foreground capitalize">
+                              {request.wallet.provider}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge className={getStatusColor(request.status)} data-testid={`cashout-status-${request.id}`}>
+                              {getStatusIcon(request.status)}
+                              <span className="ml-1">{request.status.charAt(0).toUpperCase() + request.status.slice(1)}</span>
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                            {new Date(request.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end space-x-2">
+                              {request.status === "pending" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-success/20 text-success hover:bg-success/30 border-success/30"
+                                    onClick={() => approveCashoutMutation.mutate(request.id)}
+                                    disabled={approveCashoutMutation.isPending}
+                                    data-testid={`approve-cashout-${request.id}`}
+                                  >
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                                    onClick={() => rejectCashoutMutation.mutate(request.id)}
+                                    disabled={rejectCashoutMutation.isPending}
+                                    data-testid={`reject-cashout-${request.id}`}
+                                  >
+                                    <XCircle className="w-3 h-3 mr-1" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              {request.status === "approved" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-primary/20 text-primary hover:bg-primary/30 border-primary/30"
+                                  onClick={() => openTxHashDialog(request.id)}
+                                  data-testid={`mark-sent-${request.id}`}
+                                >
+                                  <DollarSign className="w-3 h-3 mr-1" />
+                                  Mark as Sent
+                                </Button>
+                              )}
+                              {request.txHash && (
+                                <a
+                                  href={`https://solscan.io/tx/${request.txHash}?cluster=devnet`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-primary hover:underline"
+                                  data-testid={`view-tx-${request.id}`}
+                                >
+                                  View TX
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {cashoutRequests.length === 0 && (
+                  <div className="text-center py-12" data-testid="no-cashouts">
+                    <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No cashout requests</h3>
+                    <p className="text-muted-foreground">Cashout requests will appear here when users request them.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Audit Logs Tab */}
           <TabsContent value="audit" className="space-y-4" data-testid="audit-tab">
             <Card>
@@ -906,6 +1072,58 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
         onClose={() => setIsCreateContestModalOpen(false)}
         onSubmit={(formData) => createContestMutation.mutate(formData)}
       />
+
+      <Dialog open={txHashDialogOpen} onOpenChange={setTxHashDialogOpen}>
+        <DialogContent data-testid="tx-hash-dialog">
+          <DialogHeader>
+            <DialogTitle>Enter Transaction Hash</DialogTitle>
+            <DialogDescription>
+              Enter the Solana transaction hash after sending tokens to the user's wallet.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="txHash">Transaction Hash</Label>
+              <Input
+                id="txHash"
+                placeholder="Enter Solana transaction hash..."
+                value={txHashInput}
+                onChange={(e) => setTxHashInput(e.target.value)}
+                data-testid="input-tx-hash"
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be recorded and displayed to the user
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTxHashDialogOpen(false);
+                setTxHashInput("");
+              }}
+              data-testid="button-cancel-tx"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMarkAsSent}
+              disabled={markCashoutSentMutation.isPending}
+              data-testid="button-confirm-tx"
+            >
+              {markCashoutSentMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Mark as Sent"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
