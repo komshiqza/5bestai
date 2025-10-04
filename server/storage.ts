@@ -433,8 +433,9 @@ export class MemStorage implements IStorage {
     // Get top 5 submissions
     const topSubmissions = await this.getTopSubmissionsByContest(contestId, 5);
     
-    // Prize distribution: 40%, 25%, 15%, 10%, 10%
-    const prizePercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+    // Use custom prize distribution from config if available, otherwise use default
+    const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+    const prizePercentages = (contest.config as any)?.prizeDistribution?.map((p: number) => p / 100) || defaultPercentages;
     
     for (let i = 0; i < Math.min(topSubmissions.length, 5); i++) {
       const submission = topSubmissions[i];
@@ -869,7 +870,9 @@ export class DbStorage implements IStorage {
       return;
     }
     
-    const prizePercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+    // Use custom prize distribution from config if available, otherwise use default
+    const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
+    const prizePercentages = (contest.config as any)?.prizeDistribution?.map((p: number) => p / 100) || defaultPercentages;
     let awardedCount = 0;
     
     for (let i = 0; i < Math.min(topSubmissionsData.length, 5); i++) {

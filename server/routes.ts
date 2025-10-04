@@ -185,8 +185,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let updateData = { ...req.body };
       
-      console.log("Update data received:", JSON.stringify(updateData, null, 2));
-      
       // Convert date strings to Date objects for Drizzle
       if (updateData.startAt) {
         updateData.startAt = new Date(updateData.startAt);
@@ -194,8 +192,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (updateData.endAt) {
         updateData.endAt = new Date(updateData.endAt);
       }
-      
-      console.log("Update data after date conversion:", updateData);
       
       // If no cover image is provided or it's explicitly set to null/empty, use top voted submission
       if (!updateData.coverImageUrl || updateData.coverImageUrl === '') {
