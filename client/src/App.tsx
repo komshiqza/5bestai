@@ -27,7 +27,7 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
           <Route path="/contests" component={Contests} />
-          <Route path="/contests/:id" component={ContestDetail} />
+          <Route path="/contest/:slug" component={ContestDetail} />
           <Route path="/upload" component={Upload} />
           <Route path="/profile" component={Profile} />
           <Route path="/leaderboard" component={Leaderboard} />

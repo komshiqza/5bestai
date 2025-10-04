@@ -1,340 +1,453 @@
-import { useQuery } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
-import { SubmissionCard } from "@/components/submission-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Trophy, Users, Image as ImageIcon, Clock, Upload, Crown, Medal, Award } from "lucide-react";
-import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
+import { useState, useEffect } from "react";
+import { useRoute, Link } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft } from "lucide-react";
+import { GlassButton } from "@/components/GlassButton";
+import { ContestLightboxModal } from "@/components/ContestLightboxModal";
+import { ContestRulesCard } from "@/components/ContestRulesCard";
+import { UploadSelectionModal } from "@/components/UploadSelectionModal";
+import { UploadCard } from "@/components/UploadCard";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
-export default function ContestDetail() {
-  const { id } = useParams();
+export default function ContestDetailPage() {
+  const [match, params] = useRoute("/contest/:slug");
+  const slug = params?.slug;
   const { data: user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: contest, isLoading } = useQuery({
-    queryKey: ["/api/contests", id],
-    queryFn: async () => {
-      const response = await fetch(`/api/contests/${id}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error("Contest not found");
-        }
-        throw new Error("Failed to fetch contest");
-      }
-      return response.json();
-    },
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [showUploadSelection, setShowUploadSelection] = useState(false);
+  const [showUploadCard, setShowUploadCard] = useState(false);
+  const [sortBy, setSortBy] = useState("votes");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch contest by slug
+  const { data: contests = [] } = useQuery({
+    queryKey: ["/api/contests"]
   });
 
-  const { data: submissions = [] } = useQuery({
-    queryKey: ["/api/submissions", { contestId: id }],
+  const contest = contests.find((c: any) => c.slug === slug);
+
+  // Fetch submissions for this contest
+  const { data: submissions = [], isLoading: submissionsLoading } = useQuery({
+    queryKey: ["/api/submissions", contest?.id],
+    enabled: !!contest?.id,
     queryFn: async () => {
-      const response = await fetch(`/api/submissions?contestId=${id}&status=approved`);
+      const response = await fetch(`/api/submissions?contestId=${contest.id}`, {
+        credentials: "include"
+      });
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
-    },
-    enabled: !!id,
+    }
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-success/20 text-success border-success/30";
-      case "draft":
-        return "bg-muted text-muted-foreground border-border";
-      case "ended":
-        return "bg-destructive/20 text-destructive border-destructive/30";
-      default:
-        return "bg-muted text-muted-foreground border-border";
+  // Fetch user's votes
+  const { data: userVotes = [] } = useQuery({
+    queryKey: ["/api/votes/user"],
+    enabled: !!user,
+    queryFn: async () => {
+      const response = await fetch("/api/votes/user", { credentials: "include" });
+      if (!response.ok) return [];
+      return response.json();
     }
-  };
+  });
 
-  const getTimeRemaining = (endDate: string) => {
-    const end = new Date(endDate);
-    const now = new Date();
-    const diff = end.getTime() - now.getTime();
-    
-    if (diff <= 0) return "Contest ended";
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m remaining`;
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m remaining`;
-    } else {
-      return `${minutes}m remaining`;
+  // Vote mutation
+  const voteMutation = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const response = await apiRequest("POST", "/api/votes", { submissionId });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/votes/user"] });
+      toast({
+        title: "Vote recorded!",
+        description: "Your vote has been counted"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Vote failed",
+        description: error.message || "Please try again",
+        variant: "destructive"
+      });
     }
-  };
+  });
 
-  const topSubmissions = submissions
-    .sort((a: any, b: any) => b.votesCount - a.votesCount)
-    .slice(0, 3);
+  // Countdown timer
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
-  const getPodiumIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Crown className="w-6 h-6 text-yellow-500" />;
-      case 2:
-        return <Medal className="w-6 h-6 text-gray-400" />;
-      case 3:
-        return <Award className="w-6 h-6 text-orange-500" />;
-      default:
-        return null;
-    }
-  };
+  useEffect(() => {
+    if (!contest?.endAt) return;
 
-  const getPodiumHeight = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return "h-32";
-      case 2:
-        return "h-24";
-      case 3:
-        return "h-20";
-      default:
-        return "h-16";
-    }
-  };
+    const calculateTimeLeft = () => {
+      const difference = new Date(contest.endAt).getTime() - Date.now();
+      if (difference <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen py-16" data-testid="contest-detail-loading">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="animate-pulse">
-            <div className="h-6 bg-muted rounded w-32 mb-4"></div>
-            <div className="h-12 bg-muted rounded w-2/3 mb-8"></div>
-            <div className="grid lg:grid-cols-2 gap-8">
-              <div className="h-64 bg-muted rounded"></div>
-              <div className="space-y-4">
-                <div className="h-4 bg-muted rounded"></div>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-                <div className="h-20 bg-muted rounded"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+      return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60)
+      };
+    };
+
+    setTimeLeft(calculateTimeLeft());
+    const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
+
+    return () => clearInterval(timer);
+  }, [contest]);
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   if (!contest) {
     return (
-      <div className="min-h-screen py-16 flex items-center justify-center" data-testid="contest-not-found">
-        <div className="text-center">
-          <Trophy className="w-24 h-24 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Contest not found</h2>
-          <p className="text-muted-foreground mb-6">
-            The contest you're looking for doesn't exist or has been removed.
-          </p>
-          <Link href="/contests" data-testid="back-to-contests">
-            <Button>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Contests
-            </Button>
-          </Link>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4">
+        <h2 className="text-2xl font-bold text-white mb-4">Contest not found</h2>
+        <Link href="/contests">
+          <GlassButton>Back to Contests</GlassButton>
+        </Link>
       </div>
     );
   }
 
+  // Process submissions with vote data
+  const submissionsWithVotes = submissions.map((sub: any) => ({
+    ...sub,
+    voteCount: sub.votes?.length || 0,
+    hasVoted: userVotes.some((v: any) => v.submissionId === sub.id)
+  }));
+
+  // Filter and sort submissions
+  let filteredSubmissions = submissionsWithVotes;
+  if (searchTerm) {
+    filteredSubmissions = filteredSubmissions.filter((sub: any) =>
+      sub.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sub.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }
+
+  // Sort submissions
+  filteredSubmissions.sort((a: any, b: any) => {
+    if (sortBy === "votes") return b.voteCount - a.voteCount;
+    if (sortBy === "recent") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return 0;
+  });
+
+  // Top 5 submissions
+  const topSubmissions = filteredSubmissions.slice(0, 5);
+  const otherSubmissions = filteredSubmissions.slice(5);
+
+  const handleVote = (submissionId: string) => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to vote",
+        variant: "destructive"
+      });
+      return;
+    }
+    voteMutation.mutate(submissionId);
+  };
+
+  const handleShowUpload = () => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to submit",
+        variant: "destructive"
+      });
+      return;
+    }
+    setShowUploadSelection(true);
+  };
+
   return (
-    <div className="min-h-screen py-16" data-testid="contest-detail-page">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back button */}
-        <Link href="/contests" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6" data-testid="back-link">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Contests
-        </Link>
+    <>
+      <div className="flex-1 px-4 py-8 sm:px-6 md:px-10 lg:px-20">
+        <div className="mx-auto max-w-screen-xl">
+          {/* Back Button */}
+          <Link href="/contests" className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Contests
+          </Link>
 
-        {/* Contest Header */}
-        <div className="grid lg:grid-cols-2 gap-8 mb-12">
-          {/* Contest Cover */}
-          <div className="relative rounded-2xl overflow-hidden aspect-video">
-            {contest.coverImageUrl ? (
-              <img 
-                src={contest.coverImageUrl} 
-                alt={contest.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-purple-600/20 flex items-center justify-center">
-                <Trophy className="w-24 h-24 text-primary" />
+          {/* Header */}
+          <div className="mb-12 flex flex-col items-center justify-between gap-8">
+            {/* Title and Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
+              <div className="w-full max-w-sm text-center">
+                <h1 className="text-2xl font-bold text-white mb-2" data-testid="text-contest-title">
+                  {contest.title}
+                </h1>
               </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-          </div>
-
-          {/* Contest Info */}
-          <div className="flex flex-col justify-center">
-            <div className="flex items-center gap-3 mb-4">
-              <Badge className={getStatusColor(contest.status)} data-testid="contest-status">
-                {contest.status === "active" && <div className="w-2 h-2 bg-current rounded-full mr-2 animate-pulse" />}
-                {contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}
-              </Badge>
-              <Badge variant="outline" className="text-primary border-primary">
-                <Trophy className="w-3 h-3 mr-1" />
-                {contest.prizeGlory.toLocaleString()} GLORY
-              </Badge>
-            </div>
-
-            <h1 className="text-4xl font-black tracking-tight mb-4" data-testid="contest-title">
-              {contest.title}
-            </h1>
-            
-            <p className="text-muted-foreground text-lg mb-6" data-testid="contest-description">
-              {contest.description}
-            </p>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-card rounded-lg border border-border p-4">
-                <div className="text-muted-foreground text-sm mb-1">Prize Pool</div>
-                <div className="text-2xl font-bold text-primary" data-testid="prize-pool">
-                  {contest.prizeGlory.toLocaleString()} GLORY
-                </div>
-              </div>
-              <div className="bg-card rounded-lg border border-border p-4">
-                <div className="text-muted-foreground text-sm mb-1">Time Status</div>
-                <div className="text-2xl font-bold" data-testid="time-remaining">
-                  {contest.status === "active" ? getTimeRemaining(contest.endAt) : 
-                   contest.status === "ended" ? "Ended" : "Not started"}
-                </div>
-              </div>
-              <div className="bg-card rounded-lg border border-border p-4">
-                <div className="text-muted-foreground text-sm mb-1">Submissions</div>
-                <div className="text-2xl font-bold" data-testid="submission-count">
-                  {submissions.length}
-                </div>
-              </div>
-              <div className="bg-card rounded-lg border border-border p-4">
-                <div className="text-muted-foreground text-sm mb-1">Total Votes</div>
-                <div className="text-2xl font-bold" data-testid="total-votes">
-                  {submissions.reduce((sum: number, sub: any) => sum + sub.votesCount, 0)}
-                </div>
+              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                <GlassButton
+                  onClick={handleShowUpload}
+                  className="flex flex-shrink-0 items-center justify-center gap-2 px-6 py-3 text-base font-bold w-full sm:w-auto"
+                  data-testid="button-upload"
+                >
+                  <Upload className="h-5 w-5" />
+                  Upload
+                </GlassButton>
+                <GlassButton
+                  onClick={() => setShowRules(true)}
+                  variant="purple"
+                  className="flex flex-shrink-0 items-center justify-center gap-2 px-6 py-3 text-base font-bold w-full sm:w-auto"
+                  data-testid="button-show-rules"
+                >
+                  <FileText className="h-5 w-5" />
+                  Contest Rules
+                </GlassButton>
               </div>
             </div>
 
-            {/* Action Button */}
-            {contest.status === "active" && isAuthenticated(user) && isApproved(user) && (
-              <Link href="/upload" data-testid="submit-entry-button">
-                <Button className="w-full gradient-glory hover:opacity-90 transition-opacity text-lg py-3">
-                  <Upload className="w-5 h-5 mr-2" />
-                  Submit Your Entry
-                </Button>
-              </Link>
-            )}
-            {!isAuthenticated(user) && contest.status === "active" && (
-              <Link href="/login" data-testid="login-to-submit">
-                <Button className="w-full gradient-glory hover:opacity-90 transition-opacity text-lg py-3">
-                  Login to Submit Entry
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Contest Rules */}
-        <Card className="mb-12">
-          <CardContent className="p-6">
-            <h3 className="text-xl font-bold mb-4 flex items-center" data-testid="rules-title">
-              <Trophy className="w-5 h-5 text-primary mr-2" />
-              Contest Rules
-            </h3>
-            <div className="prose prose-sm max-w-none text-muted-foreground" data-testid="contest-rules">
-              {contest.rules.split('\n').map((rule: string, index: number) => (
-                <p key={index} className="mb-2">• {rule}</p>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top 3 Podium */}
-        {topSubmissions.length > 0 && (
-          <div className="mb-16">
-            <h2 className="text-3xl font-bold mb-8 text-center" data-testid="podium-title">
-              Current Top 3
-            </h2>
-            <div className="flex items-end justify-center gap-4 max-w-4xl mx-auto">
-              {[1, 0, 2].map((index) => {
-                const submission = topSubmissions[index];
-                const rank = index === 1 ? 1 : index === 0 ? 2 : 3;
-                if (!submission) return null;
-                
-                return (
-                  <div key={submission.id} className={`flex-1 flex flex-col items-center ${index === 1 ? 'order-2' : index === 0 ? 'order-1' : 'order-3'}`} data-testid={`podium-position-${rank}`}>
-                    <div className="relative w-full mb-4">
-                      <img 
-                        src={submission.type === "video" ? submission.thumbnailUrl || submission.mediaUrl : submission.mediaUrl} 
-                        alt={submission.title}
-                        className={`w-full aspect-square object-cover rounded-xl border-4 ${rank === 1 ? 'border-primary' : 'border-muted'} shadow-lg`}
-                      />
-                      <div className="absolute -top-3 -right-3 w-12 h-12 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 flex items-center justify-center font-bold text-white text-xl shadow-lg">
-                        {getPodiumIcon(rank) || rank}
-                      </div>
+            <div className="flex flex-col lg:flex-row w-full items-center justify-center gap-8">
+              {/* Timer */}
+              <div className="w-full max-w-lg rounded-xl bg-gradient-to-br from-violet-600/20 to-purple-600/20 p-3 sm:p-4 text-center border border-violet-500/30 backdrop-blur-sm">
+                <p className="text-sm font-medium text-violet-300 mb-3">Contest Ends In:</p>
+                <div className="flex items-center justify-center gap-2 sm:gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
+                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.days).padStart(2, '0')}</span>
                     </div>
-                    <div className={`${getPodiumHeight(rank)} w-full rounded-t-xl flex flex-col items-center justify-center p-4 text-center ${
-                      rank === 1 ? 'gradient-glory' : rank === 2 ? 'bg-gray-300' : 'bg-orange-400'
-                    }`}>
-                      <div className="text-white font-bold mb-1" data-testid={`podium-username-${rank}`}>
-                        @{submission.user.username}
-                      </div>
-                      <div className="text-white/90 text-sm mb-2" data-testid={`podium-title-${rank}`}>
-                        {submission.title}
-                      </div>
-                      <div className="flex items-center space-x-1 text-white text-lg font-bold">
-                        <Trophy className="w-4 h-4" />
-                        <span data-testid={`podium-votes-${rank}`}>{submission.votesCount}</span>
-                      </div>
-                    </div>
+                    <span className="text-xs text-slate-300 mt-1 font-medium">Days</span>
                   </div>
-                );
-              })}
+                  <span className="text-lg sm:text-xl font-bold text-violet-400 animate-pulse">:</span>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
+                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.hours).padStart(2, '0')}</span>
+                    </div>
+                    <span className="text-xs text-slate-300 mt-1 font-medium">Hours</span>
+                  </div>
+                  <span className="text-lg sm:text-xl font-bold text-violet-400 animate-pulse">:</span>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
+                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                    </div>
+                    <span className="text-xs text-slate-300 mt-1 font-medium">Minutes</span>
+                  </div>
+                  <span className="text-lg sm:text-xl font-bold text-violet-400 animate-pulse">:</span>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
+                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                    </div>
+                    <span className="text-xs text-slate-300 mt-1 font-medium">Seconds</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Prize Pool */}
+              <div className="w-full max-w-sm rounded-xl bg-gradient-to-br from-yellow-600/20 to-orange-600/20 p-4 text-center border border-yellow-500/30 backdrop-blur-sm">
+                <p className="text-sm font-medium text-yellow-300 mb-2">Prize Pool</p>
+                <div className="flex items-center justify-center gap-2">
+                  <Trophy className="h-6 w-6 text-yellow-400" />
+                  <span className="text-2xl font-bold text-white" data-testid="text-prize-pool">
+                    {contest.prizeGlory.toLocaleString()} GLORY
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* All Submissions */}
-        <div>
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold" data-testid="all-submissions-title">
-              All Submissions ({submissions.length})
-            </h2>
+          {/* Search and Sort */}
+          <div className="mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full sm:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search submissions..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:outline-none focus:border-violet-500/50"
+                data-testid="input-search"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-400">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-500/50"
+                data-testid="select-sort"
+              >
+                <option value="votes">Most Voted</option>
+                <option value="recent">Most Recent</option>
+              </select>
+            </div>
           </div>
-          
-          {submissions.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="submissions-grid">
-              {submissions.map((submission: any, index: number) => (
-                <SubmissionCard 
-                  key={submission.id}
-                  submission={submission}
-                  showVoting={contest.status === "active"}
-                  rank={index + 1}
-                />
-              ))}
+
+          {submissionsLoading ? (
+            <div className="text-center text-white py-12">Loading submissions...</div>
+          ) : filteredSubmissions.length === 0 ? (
+            <div className="text-center text-slate-400 py-12">
+              <p>No submissions yet. Be the first to enter!</p>
             </div>
           ) : (
-            <div className="text-center py-12" data-testid="no-submissions">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
-                <ImageIcon className="w-12 h-12 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">No submissions yet</h3>
-              <p className="text-muted-foreground mb-6">
-                Be the first to submit your creative work to this contest!
-              </p>
-              {contest.status === "active" && isAuthenticated(user) && isApproved(user) && (
-                <Link href="/upload" data-testid="first-submission-button">
-                  <Button className="gradient-glory">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Submit First Entry
-                  </Button>
-                </Link>
+            <>
+              {/* Top 5 Submissions */}
+              {topSubmissions.length > 0 && (
+                <div className="mb-12">
+                  <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                    <Trophy className="h-7 w-7 text-yellow-400" />
+                    Top Submissions
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {topSubmissions.map((submission: any, index: number) => (
+                      <div
+                        key={submission.id}
+                        className="relative group cursor-pointer"
+                        onClick={() => {
+                          setSelectedSubmission(submission);
+                          setIsLightboxOpen(true);
+                        }}
+                        data-testid={`card-top-submission-${submission.id}`}
+                      >
+                        {/* Rank Badge */}
+                        <div className="absolute -top-3 -left-3 z-10 h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-slate-900 flex items-center justify-center text-lg font-bold text-slate-900">
+                          {index + 1}
+                        </div>
+
+                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-violet-500/50 transition-all group-hover:scale-[1.02]">
+                          <div className="aspect-square relative">
+                            <img
+                              src={submission.mediaUrl}
+                              alt={submission.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="p-4">
+                            <h3 className="text-lg font-bold text-white mb-1 truncate">
+                              {submission.title}
+                            </h3>
+                            <p className="text-sm text-slate-400 mb-3">
+                              by {submission.user?.username || 'Unknown'}
+                            </p>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleVote(submission.id);
+                              }}
+                              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors"
+                              data-testid={`button-vote-${submission.id}`}
+                            >
+                              <Heart className={`h-5 w-5 ${submission.hasVoted ? 'fill-violet-400' : ''}`} />
+                              <span className="font-semibold">{submission.voteCount}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-            </div>
+
+              {/* All Other Submissions */}
+              {otherSubmissions.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-6">All Submissions</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {otherSubmissions.map((submission: any) => (
+                      <div
+                        key={submission.id}
+                        className="group cursor-pointer"
+                        onClick={() => {
+                          setSelectedSubmission(submission);
+                          setIsLightboxOpen(true);
+                        }}
+                        data-testid={`card-submission-${submission.id}`}
+                      >
+                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-violet-500/50 transition-all group-hover:scale-[1.02]">
+                          <div className="aspect-square relative">
+                            <img
+                              src={submission.mediaUrl}
+                              alt={submission.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="p-4">
+                            <h3 className="text-base font-semibold text-white mb-1 truncate">
+                              {submission.title}
+                            </h3>
+                            <p className="text-sm text-slate-400 mb-3 truncate">
+                              by {submission.user?.username || 'Unknown'}
+                            </p>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleVote(submission.id);
+                              }}
+                              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors"
+                              data-testid={`button-vote-${submission.id}`}
+                            >
+                              <Heart className={`h-4 w-4 ${submission.hasVoted ? 'fill-violet-400' : ''}`} />
+                              <span className="font-semibold">{submission.voteCount}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
-    </div>
+
+      {/* Modals */}
+      <ContestLightboxModal
+        isOpen={isLightboxOpen}
+        submission={selectedSubmission}
+        onClose={() => {
+          setIsLightboxOpen(false);
+          setSelectedSubmission(null);
+        }}
+        onVote={handleVote}
+      />
+
+      <ContestRulesCard
+        isOpen={showRules}
+        contest={contest}
+        onClose={() => setShowRules(false)}
+      />
+
+      <UploadSelectionModal
+        isOpen={showUploadSelection}
+        onClose={() => setShowUploadSelection(false)}
+        onSelectExisting={() => {
+          setShowUploadSelection(false);
+          toast({
+            title: "Coming soon",
+            description: "Gallery selection will be available soon"
+          });
+        }}
+        onUploadNew={() => {
+          setShowUploadSelection(false);
+          setShowUploadCard(true);
+        }}
+      />
+
+      <UploadCard
+        isOpen={showUploadCard}
+        contestId={contest.id}
+        onClose={() => setShowUploadCard(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+        }}
+      />
+    </>
   );
 }
