@@ -174,7 +174,7 @@ export default function ContestDetailPage() {
       });
       return;
     }
-    setShowUploadSelection(true);
+    setShowUploadCard(true);
   };
 
   return (
