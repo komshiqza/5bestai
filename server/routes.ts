@@ -228,17 +228,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Submission routes - optional auth (public can see approved, admins can see all)
+  // Submission routes - optional auth (public can see approved, users can see approved + their own pending)
   app.get("/api/submissions", async (req: AuthRequest, res) => {
     try {
       // Try to authenticate but don't require it
       const authToken = req.cookies.authToken;
       let isUserAdmin = false;
+      let currentUserId: string | undefined;
       
       if (authToken) {
         try {
           const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
           isUserAdmin = decoded.role === "admin";
+          currentUserId = decoded.userId;
         } catch (error) {
           // Token invalid, treat as unauthenticated
         }
@@ -246,16 +248,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { contestId, userId, status } = req.query;
       
-      // Admins can see all submissions with any status filter, others only see approved
-      const effectiveStatus = isUserAdmin ? (status as string | undefined) : "approved";
+      // Admins can see all submissions with any status filter
+      if (isUserAdmin) {
+        const submissions = await storage.getSubmissions({
+          contestId: contestId as string | undefined,
+          userId: userId as string | undefined,
+          status: status as string | undefined
+        });
+        return res.json(submissions);
+      }
       
-      const submissions = await storage.getSubmissions({
+      // Regular users see approved submissions + their own submissions (any status)
+      const approvedSubmissions = await storage.getSubmissions({
         contestId: contestId as string | undefined,
         userId: userId as string | undefined,
-        status: effectiveStatus
+        status: "approved"
       });
-
-      res.json(submissions);
+      
+      // If user is authenticated, also get their own pending/rejected submissions
+      if (currentUserId) {
+        const ownSubmissions = await storage.getSubmissions({
+          contestId: contestId as string | undefined,
+          userId: currentUserId,
+          status: undefined // Get all statuses for own submissions
+        });
+        
+        // Merge and deduplicate (approved submissions might already be in the list)
+        const submissionMap = new Map();
+        [...approvedSubmissions, ...ownSubmissions].forEach(sub => {
+          submissionMap.set(sub.id, sub);
+        });
+        
+        return res.json(Array.from(submissionMap.values()));
+      }
+      
+      // Unauthenticated users only see approved
+      res.json(approvedSubmissions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch submissions" });
     }
