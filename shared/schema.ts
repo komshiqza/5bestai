@@ -96,6 +96,57 @@ export const auditLog = pgTable("audit_log", {
   createdAtIdx: index("audit_log_created_at_idx").on(table.createdAt)
 }));
 
+// User Wallets table (Solana wallet addresses)
+export const userWallets = pgTable("user_wallets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  address: varchar("address", { length: 255 }).notNull().unique(), // Solana wallet address
+  provider: varchar("provider", { length: 50 }).notNull(), // phantom, solflare, etc
+  signatureNonce: varchar("signature_nonce", { length: 255 }), // For verification
+  status: varchar("status", { length: 50 }).notNull().default("active"), // active, inactive
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+}, (table) => ({
+  userIdx: index("user_wallets_user_idx").on(table.userId),
+  addressIdx: index("user_wallets_address_idx").on(table.address)
+}));
+
+// Cashout Requests table
+export const cashoutRequests = pgTable("cashout_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  walletId: varchar("wallet_id").notNull().references(() => userWallets.id, { onDelete: "restrict" }),
+  amountGlory: integer("amount_glory").notNull(), // GLORY points to cash out
+  amountToken: text("amount_token").notNull(), // Token amount (as string for precision)
+  tokenType: varchar("token_type", { length: 50 }).notNull().default("USDC"), // USDC, SOL, GLORY
+  status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, rejected, processing, sent, confirmed, failed
+  adminId: varchar("admin_id").references(() => users.id, { onDelete: "set null" }), // Admin who processed
+  txHash: varchar("tx_hash", { length: 255 }), // Solana transaction hash
+  txMeta: jsonb("tx_meta"), // Additional transaction metadata
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+}, (table) => ({
+  userIdx: index("cashout_requests_user_idx").on(table.userId),
+  statusIdx: index("cashout_requests_status_idx").on(table.status),
+  createdAtIdx: index("cashout_requests_created_at_idx").on(table.createdAt)
+}));
+
+// Cashout Events table (audit trail)
+export const cashoutEvents = pgTable("cashout_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cashoutRequestId: varchar("cashout_request_id").notNull().references(() => cashoutRequests.id, { onDelete: "cascade" }),
+  fromStatus: varchar("from_status", { length: 50 }).notNull(),
+  toStatus: varchar("to_status", { length: 50 }).notNull(),
+  actorUserId: varchar("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow()
+}, (table) => ({
+  cashoutRequestIdx: index("cashout_events_cashout_request_idx").on(table.cashoutRequestId),
+  createdAtIdx: index("cashout_events_created_at_idx").on(table.createdAt)
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -137,6 +188,23 @@ export const insertAuditLogSchema = createInsertSchema(auditLog).omit({
   createdAt: true
 });
 
+export const insertUserWalletSchema = createInsertSchema(userWallets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertCashoutRequestSchema = createInsertSchema(cashoutRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertCashoutEventSchema = createInsertSchema(cashoutEvents).omit({
+  id: true,
+  createdAt: true
+});
+
 // Auth schemas
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -162,6 +230,26 @@ export const updateSubmissionStatusSchema = z.object({
   status: z.enum(["pending", "approved", "rejected"])
 });
 
+// Wallet and Cashout schemas
+export const connectWalletSchema = z.object({
+  address: z.string().min(32).max(44), // Solana addresses are 32-44 chars
+  provider: z.string(), // phantom, solflare, etc
+  signature: z.string(), // Signature for verification
+  message: z.string() // Message that was signed
+});
+
+export const createCashoutRequestSchema = z.object({
+  walletId: z.string(),
+  amountGlory: z.number().int().min(1000), // Minimum 1000 GLORY
+  tokenType: z.enum(["USDC", "SOL", "GLORY"]).default("USDC")
+});
+
+export const updateCashoutStatusSchema = z.object({
+  status: z.enum(["approved", "rejected", "processing", "sent", "confirmed", "failed"]),
+  rejectionReason: z.string().optional(),
+  txHash: z.string().optional()
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -175,6 +263,12 @@ export type InsertGloryLedger = z.infer<typeof insertGloryLedgerSchema>;
 export type GloryLedger = typeof gloryLedger.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLog.$inferSelect;
+export type InsertUserWallet = z.infer<typeof insertUserWalletSchema>;
+export type UserWallet = typeof userWallets.$inferSelect;
+export type InsertCashoutRequest = z.infer<typeof insertCashoutRequestSchema>;
+export type CashoutRequest = typeof cashoutRequests.$inferSelect;
+export type InsertCashoutEvent = z.infer<typeof insertCashoutEventSchema>;
+export type CashoutEvent = typeof cashoutEvents.$inferSelect;
 
 // Extended types with relations
 export type SubmissionWithUser = Submission & {
