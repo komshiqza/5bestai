@@ -430,9 +430,6 @@ export class MemStorage implements IStorage {
       return;
     }
 
-    // Get top 5 submissions
-    const topSubmissions = await this.getTopSubmissionsByContest(contestId, 5);
-    
     // Get prize distribution from config (fixed amounts) or use default percentages
     const config = contest.config as any;
     let prizes: number[] = [];
@@ -447,7 +444,9 @@ export class MemStorage implements IStorage {
       const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
       prizes = defaultPercentages.map(p => Math.floor(contest.prizeGlory * p));
     }
-    
+
+    // Get top N submissions based on number of prizes
+    const topSubmissions = await this.getTopSubmissionsByContest(contestId, prizes.length);
     const numPrizes = Math.min(topSubmissions.length, prizes.length);
     
     for (let i = 0; i < numPrizes; i++) {
@@ -866,23 +865,6 @@ export class DbStorage implements IStorage {
       throw new Error("Contest is not active");
     }
 
-    const topSubmissionsData = await db.query.submissions.findMany({
-      where: and(
-        eq(submissions.contestId, contestId),
-        eq(submissions.status, "approved")
-      ),
-      orderBy: [desc(submissions.votesCount)],
-      limit: 5
-    });
-    
-    if (topSubmissionsData.length === 0) {
-      console.log("No approved submissions found for contest", contestId);
-      await db.update(contests)
-        .set({ status: "ended" })
-        .where(eq(contests.id, contestId));
-      return;
-    }
-    
     // Get prize distribution from config (fixed amounts) or use default percentages
     const config = contest.config as any;
     let prizes: number[] = [];
@@ -896,6 +878,24 @@ export class DbStorage implements IStorage {
       // Fallback to percentage-based distribution
       const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
       prizes = defaultPercentages.map(p => Math.floor(contest.prizeGlory * p));
+    }
+
+    // Get top N submissions based on number of prizes
+    const topSubmissionsData = await db.query.submissions.findMany({
+      where: and(
+        eq(submissions.contestId, contestId),
+        eq(submissions.status, "approved")
+      ),
+      orderBy: [desc(submissions.votesCount)],
+      limit: prizes.length
+    });
+    
+    if (topSubmissionsData.length === 0) {
+      console.log("No approved submissions found for contest", contestId);
+      await db.update(contests)
+        .set({ status: "ended" })
+        .where(eq(contests.id, contestId));
+      return;
     }
     
     const numPrizes = Math.min(topSubmissionsData.length, prizes.length);
