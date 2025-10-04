@@ -422,6 +422,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Voting routes
+  app.get("/api/votes/user", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const submissionIds = await storage.getUserVotes(userId);
+      res.json(submissionIds);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user votes" });
+    }
+  });
+
   app.post("/api/votes", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
       const { submissionId } = voteSubmissionSchema.parse(req.body);
@@ -466,6 +476,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
+  app.delete("/api/votes/:submissionId", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { submissionId } = req.params;
+      const userId = req.user!.id;
+
+      const deleted = await storage.deleteVote(userId, submissionId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Vote not found" });
+      }
+
+      res.json({ message: "Vote removed successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove vote" });
     }
   });
 

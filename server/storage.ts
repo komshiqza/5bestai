@@ -52,6 +52,8 @@ export interface IStorage {
   // Votes
   getVote(userId: string, submissionId: string): Promise<Vote | undefined>;
   createVote(vote: InsertVote): Promise<Vote>;
+  deleteVote(userId: string, submissionId: string): Promise<boolean>;
+  getUserVotes(userId: string): Promise<string[]>;
   getVoteCountByUser(userId: string, since: Date): Promise<number>;
   
   // Glory Ledger
@@ -337,6 +339,28 @@ export class MemStorage implements IStorage {
     }
 
     return vote;
+  }
+
+  async deleteVote(userId: string, submissionId: string): Promise<boolean> {
+    const vote = await this.getVote(userId, submissionId);
+    if (!vote) return false;
+
+    this.votes.delete(vote.id);
+
+    // Update submission vote count
+    const submission = this.submissions.get(submissionId);
+    if (submission && submission.votesCount > 0) {
+      submission.votesCount -= 1;
+      this.submissions.set(submission.id, submission);
+    }
+
+    return true;
+  }
+
+  async getUserVotes(userId: string): Promise<string[]> {
+    return Array.from(this.votes.values())
+      .filter(vote => vote.userId === userId)
+      .map(vote => vote.submissionId);
   }
 
   async getVoteCountByUser(userId: string, since: Date): Promise<number> {
@@ -734,6 +758,31 @@ export class DbStorage implements IStorage {
       }
       throw error;
     }
+  }
+
+  async deleteVote(userId: string, submissionId: string): Promise<boolean> {
+    const vote = await this.getVote(userId, submissionId);
+    if (!vote) return false;
+
+    await db.delete(votes)
+      .where(and(
+        eq(votes.userId, userId),
+        eq(votes.submissionId, submissionId)
+      ));
+
+    await db.update(submissions)
+      .set({ votesCount: sql`GREATEST(${submissions.votesCount} - 1, 0)` })
+      .where(eq(submissions.id, submissionId));
+
+    return true;
+  }
+
+  async getUserVotes(userId: string): Promise<string[]> {
+    const result = await db.select({ submissionId: votes.submissionId })
+      .from(votes)
+      .where(eq(votes.userId, userId));
+    
+    return result.map(v => v.submissionId);
   }
 
   async getVoteCountByUser(userId: string, since: Date): Promise<number> {
