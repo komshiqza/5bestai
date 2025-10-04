@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft } from "lucide-react";
 import { GlassButton } from "@/components/GlassButton";
@@ -17,6 +17,7 @@ export default function ContestDetailPage() {
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -174,7 +175,7 @@ export default function ContestDetailPage() {
       });
       return;
     }
-    setShowUploadCard(true);
+    setLocation(`/upload?contestId=${contest.id}`);
   };
 
   return (

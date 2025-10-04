@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -84,6 +84,15 @@ export default function Upload() {
     setLocation("/login");
     return null;
   }
+
+  // Pre-select contest from URL if provided
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const contestId = urlParams.get('contestId');
+    if (contestId && activeContests.some((c: any) => c.id === contestId)) {
+      setSelectedContest(contestId);
+    }
+  }, [activeContests]);
 
   const resetErrors = () => setErrors([]);
 
