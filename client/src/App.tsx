@@ -36,6 +36,7 @@ function Router() {
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/my-submissions" component={MySubmissions} />
           <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/dashboard" component={AdminDashboard} />
           <Route path="/admin/contest/:id" component={AdminContestDetail} />
           <Route component={NotFound} />
         </Switch>

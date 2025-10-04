@@ -92,7 +92,8 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const response = await fetch("/api/admin/cashout/requests", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch cashout requests");
-      return response.json();
+      const data = await response.json();
+      return data.requests;
     },
   });
 
