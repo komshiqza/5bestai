@@ -11,6 +11,12 @@ import {
   type InsertGloryLedger,
   type AuditLog,
   type InsertAuditLog,
+  type UserWallet,
+  type InsertUserWallet,
+  type CashoutRequest,
+  type InsertCashoutRequest,
+  type CashoutEvent,
+  type InsertCashoutEvent,
   type SubmissionWithUser,
   type ContestWithStats,
   type UserWithStats,
@@ -19,7 +25,10 @@ import {
   submissions,
   votes,
   gloryLedger,
-  auditLog
+  auditLog,
+  userWallets,
+  cashoutRequests,
+  cashoutEvents
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -70,6 +79,22 @@ export interface IStorage {
   
   // Contest distribution
   distributeContestRewards(contestId: string): Promise<void>;
+  
+  // User Wallets
+  getUserWallet(userId: string): Promise<UserWallet | undefined>;
+  getUserWalletByAddress(address: string): Promise<UserWallet | undefined>;
+  createUserWallet(wallet: InsertUserWallet): Promise<UserWallet>;
+  updateUserWallet(id: string, updates: Partial<UserWallet>): Promise<UserWallet | undefined>;
+  
+  // Cashout Requests
+  getCashoutRequest(id: string): Promise<CashoutRequest | undefined>;
+  getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequest[]>;
+  createCashoutRequest(request: InsertCashoutRequest): Promise<CashoutRequest>;
+  updateCashoutRequest(id: string, updates: Partial<CashoutRequest>): Promise<CashoutRequest | undefined>;
+  
+  // Cashout Events
+  createCashoutEvent(event: InsertCashoutEvent): Promise<CashoutEvent>;
+  getCashoutEvents(cashoutRequestId: string): Promise<CashoutEvent[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -468,6 +493,49 @@ export class MemStorage implements IStorage {
     // Update contest status to ended
     contest.status = "ended";
     this.contests.set(contestId, contest);
+  }
+
+  // User Wallets (MemStorage - not used in production)
+  async getUserWallet(userId: string): Promise<UserWallet | undefined> {
+    throw new Error("MemStorage wallet methods not implemented");
+  }
+
+  async getUserWalletByAddress(address: string): Promise<UserWallet | undefined> {
+    throw new Error("MemStorage wallet methods not implemented");
+  }
+
+  async createUserWallet(wallet: InsertUserWallet): Promise<UserWallet> {
+    throw new Error("MemStorage wallet methods not implemented");
+  }
+
+  async updateUserWallet(id: string, updates: Partial<UserWallet>): Promise<UserWallet | undefined> {
+    throw new Error("MemStorage wallet methods not implemented");
+  }
+
+  // Cashout Requests (MemStorage - not used in production)
+  async getCashoutRequest(id: string): Promise<CashoutRequest | undefined> {
+    throw new Error("MemStorage cashout methods not implemented");
+  }
+
+  async getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequest[]> {
+    throw new Error("MemStorage cashout methods not implemented");
+  }
+
+  async createCashoutRequest(request: InsertCashoutRequest): Promise<CashoutRequest> {
+    throw new Error("MemStorage cashout methods not implemented");
+  }
+
+  async updateCashoutRequest(id: string, updates: Partial<CashoutRequest>): Promise<CashoutRequest | undefined> {
+    throw new Error("MemStorage cashout methods not implemented");
+  }
+
+  // Cashout Events (MemStorage - not used in production)
+  async createCashoutEvent(event: InsertCashoutEvent): Promise<CashoutEvent> {
+    throw new Error("MemStorage cashout methods not implemented");
+  }
+
+  async getCashoutEvents(cashoutRequestId: string): Promise<CashoutEvent[]> {
+    throw new Error("MemStorage cashout methods not implemented");
   }
 }
 
@@ -964,6 +1032,81 @@ export class DbStorage implements IStorage {
         .where(eq(contests.id, contestId));
       console.log(`Contest ${contestId} ended. Awarded GLORY to ${awardedCount} winners.`);
     }
+  }
+
+  // User Wallets
+  async getUserWallet(userId: string): Promise<UserWallet | undefined> {
+    const result = await db.query.userWallets.findFirst({
+      where: eq(userWallets.userId, userId)
+    });
+    return result;
+  }
+
+  async getUserWalletByAddress(address: string): Promise<UserWallet | undefined> {
+    const result = await db.query.userWallets.findFirst({
+      where: eq(userWallets.address, address)
+    });
+    return result;
+  }
+
+  async createUserWallet(wallet: InsertUserWallet): Promise<UserWallet> {
+    const [newWallet] = await db.insert(userWallets).values(wallet).returning();
+    return newWallet as UserWallet;
+  }
+
+  async updateUserWallet(id: string, updates: Partial<UserWallet>): Promise<UserWallet | undefined> {
+    const [wallet] = await db.update(userWallets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userWallets.id, id))
+      .returning();
+    return wallet;
+  }
+
+  // Cashout Requests
+  async getCashoutRequest(id: string): Promise<CashoutRequest | undefined> {
+    const result = await db.query.cashoutRequests.findFirst({
+      where: eq(cashoutRequests.id, id)
+    });
+    return result;
+  }
+
+  async getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequest[]> {
+    const conditions = [];
+    if (filters?.userId) conditions.push(eq(cashoutRequests.userId, filters.userId));
+    if (filters?.status) conditions.push(eq(cashoutRequests.status, filters.status));
+
+    const result = await db.query.cashoutRequests.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      orderBy: [desc(cashoutRequests.createdAt)]
+    });
+    return result;
+  }
+
+  async createCashoutRequest(request: InsertCashoutRequest): Promise<CashoutRequest> {
+    const [newRequest] = await db.insert(cashoutRequests).values(request).returning();
+    return newRequest as CashoutRequest;
+  }
+
+  async updateCashoutRequest(id: string, updates: Partial<CashoutRequest>): Promise<CashoutRequest | undefined> {
+    const [request] = await db.update(cashoutRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(cashoutRequests.id, id))
+      .returning();
+    return request;
+  }
+
+  // Cashout Events
+  async createCashoutEvent(event: InsertCashoutEvent): Promise<CashoutEvent> {
+    const [newEvent] = await db.insert(cashoutEvents).values(event).returning();
+    return newEvent as CashoutEvent;
+  }
+
+  async getCashoutEvents(cashoutRequestId: string): Promise<CashoutEvent[]> {
+    const result = await db.query.cashoutEvents.findMany({
+      where: eq(cashoutEvents.cashoutRequestId, cashoutRequestId),
+      orderBy: [desc(cashoutEvents.createdAt)]
+    });
+    return result;
   }
 }
 
