@@ -224,7 +224,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ message: "Contest ended and rewards distributed successfully" });
     } catch (error) {
-      res.status(500).json({ error: "Failed to end contest and distribute rewards" });
+      console.error("Error ending contest:", error);
+      res.status(500).json({ 
+        error: "Failed to end contest and distribute rewards",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

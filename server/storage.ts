@@ -800,7 +800,7 @@ export class DbStorage implements IStorage {
       });
       
       if (!contest || contest.status !== "active") {
-        return;
+        throw new Error("Contest not found or not active");
       }
 
       const topSubmissionsData = await tx.query.submissions.findMany({
@@ -812,12 +812,25 @@ export class DbStorage implements IStorage {
         limit: 5
       });
       
+      if (topSubmissionsData.length === 0) {
+        console.log("No approved submissions found for contest", contestId);
+      }
+      
       const prizePercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
       
       for (let i = 0; i < Math.min(topSubmissionsData.length, 5); i++) {
         const submission = topSubmissionsData[i];
         const prize = Math.floor(contest.prizeGlory * prizePercentages[i]);
         
+        const user = await tx.query.users.findFirst({
+          where: eq(users.id, submission.userId)
+        });
+
+        if (!user) {
+          console.error("User not found for submission:", submission.id);
+          continue;
+        }
+
         await tx.insert(gloryLedger).values({
           userId: submission.userId,
           delta: prize,
@@ -826,12 +839,15 @@ export class DbStorage implements IStorage {
           submissionId: submission.id
         });
 
+        const newBalance = user.gloryBalance + prize;
         await tx.update(users)
           .set({ 
-            gloryBalance: sql`${users.gloryBalance} + ${prize}`,
+            gloryBalance: newBalance,
             updatedAt: new Date()
           })
           .where(eq(users.id, submission.userId));
+
+        console.log(`Awarded ${prize} GLORY to user ${user.username} (${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} place)`);
       }
 
       await tx.update(contests)
