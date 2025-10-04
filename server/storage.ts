@@ -215,13 +215,22 @@ export class MemStorage implements IStorage {
 
     return contests.map(contest => {
       const submissions = Array.from(this.submissions.values()).filter(s => s.contestId === contest.id);
+      const approvedSubmissions = submissions.filter(s => s.status === 'approved');
       const uniqueUsers = new Set(submissions.map(s => s.userId));
+      
+      // Find top submission by votes (for cover image)
+      const topSubmission = approvedSubmissions.length > 0
+        ? approvedSubmissions.reduce((top, current) => 
+            current.votesCount > top.votesCount ? current : top
+          )
+        : null;
       
       return {
         ...contest,
         submissionCount: submissions.length,
         participantCount: uniqueUsers.size,
-        totalVotes: submissions.reduce((sum, s) => sum + s.votesCount, 0)
+        totalVotes: submissions.reduce((sum, s) => sum + s.votesCount, 0),
+        topSubmissionImageUrl: topSubmission?.mediaUrl || null
       };
     });
   }

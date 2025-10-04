@@ -10,6 +10,7 @@ interface Contest {
   description: string;
   rules: string;
   coverImageUrl?: string;
+  topSubmissionImageUrl?: string;
   status: string;
   prizeGlory: number;
   startAt: string;
@@ -61,12 +62,13 @@ export function ContestCard({ contest }: ContestCardProps) {
   };
 
   const defaultImage = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80";
+  const coverImage = contest.topSubmissionImageUrl || contest.coverImageUrl || defaultImage;
   
   return (
     <div className="relative min-h-[600px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group">
       {/* Background image with smooth zoom on hover */}
       <img
-        src={contest.coverImageUrl || defaultImage}
+        src={coverImage}
         alt={contest.title}
         className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
       />
