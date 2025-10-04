@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
+import * as ed25519 from "@noble/ed25519";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
@@ -15,7 +16,10 @@ import {
   updateUserStatusSchema,
   updateSubmissionStatusSchema,
   insertContestSchema,
-  insertSubmissionSchema
+  insertSubmissionSchema,
+  connectWalletSchema,
+  createCashoutRequestSchema,
+  updateCashoutStatusSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -146,6 +150,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submissions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch submissions" });
+    }
+  });
+
+  // Wallet routes
+  app.post("/api/wallet/connect", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { address, provider, signature, message } = connectWalletSchema.parse(req.body);
+      const userId = req.user!.id;
+
+      // Check if wallet is already connected to another user
+      const existingWallet = await storage.getUserWalletByAddress(address);
+      if (existingWallet && existingWallet.userId !== userId) {
+        return res.status(400).json({ error: "This wallet is already connected to another account" });
+      }
+
+      // Check if user already has a wallet
+      const userWallet = await storage.getUserWallet(userId);
+      if (userWallet) {
+        return res.status(400).json({ error: "User already has a connected wallet" });
+      }
+
+      // Verify signature
+      try {
+        const messageBytes = new TextEncoder().encode(message);
+        const signatureBytes = Buffer.from(signature, 'base64');
+        const publicKeyBytes = Buffer.from(address, 'base64');
+        
+        const isValid = await ed25519.verify(signatureBytes, messageBytes, publicKeyBytes);
+        
+        if (!isValid) {
+          return res.status(400).json({ error: "Invalid signature" });
+        }
+      } catch (error) {
+        return res.status(400).json({ error: "Signature verification failed" });
+      }
+
+      // Create wallet
+      const wallet = await storage.createUserWallet({
+        userId,
+        address,
+        provider,
+        status: "active",
+        verifiedAt: new Date()
+      });
+
+      res.json({ wallet });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to connect wallet" });
+    }
+  });
+
+  app.get("/api/wallet/me", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const wallet = await storage.getUserWallet(req.user!.id);
+      res.json({ wallet });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch wallet" });
+    }
+  });
+
+  // Cashout routes
+  app.post("/api/cashout/request", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { walletId, amountGlory, tokenType } = createCashoutRequestSchema.parse(req.body);
+      const userId = req.user!.id;
+
+      // Verify wallet belongs to user
+      const wallet = await storage.getUserWallet(userId);
+      if (!wallet || wallet.id !== walletId) {
+        return res.status(400).json({ error: "Invalid wallet" });
+      }
+
+      // Check user balance
+      const user = await storage.getUser(userId);
+      if (!user || user.gloryBalance < amountGlory) {
+        return res.status(400).json({ error: "Insufficient GLORY balance" });
+      }
+
+      // Calculate token amount (for MVP, use 1:1 ratio or configure exchange rate)
+      const exchangeRate = 1; // 1 GLORY = 1 USDC (adjust as needed)
+      const amountToken = (amountGlory * exchangeRate).toString();
+
+      // Create cashout request
+      const request = await storage.createCashoutRequest({
+        userId,
+        walletId,
+        amountGlory,
+        amountToken,
+        tokenType: tokenType || "USDC",
+        status: "pending"
+      });
+
+      // Create event log
+      await storage.createCashoutEvent({
+        cashoutRequestId: request.id,
+        fromStatus: "created",
+        toStatus: "pending",
+        actorUserId: userId,
+        notes: "Cashout request created"
+      });
+
+      res.json({ request });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to create cashout request" });
+    }
+  });
+
+  app.get("/api/cashout/requests", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const requests = await storage.getCashoutRequests({ userId: req.user!.id });
+      res.json({ requests });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cashout requests" });
+    }
+  });
+
+  app.get("/api/cashout/requests/:id", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const request = await storage.getCashoutRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: "Cashout request not found" });
+      }
+
+      // Check if user owns the request or is admin
+      if (request.userId !== req.user!.id && req.user!.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const events = await storage.getCashoutEvents(request.id);
+      res.json({ request, events });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cashout request" });
     }
   });
 
