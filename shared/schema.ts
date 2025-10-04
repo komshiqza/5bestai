@@ -42,7 +42,7 @@ export const contests = pgTable("contests", {
 export const submissions = pgTable("submissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  contestId: varchar("contest_id").notNull().references(() => contests.id, { onDelete: "cascade" }),
+  contestId: varchar("contest_id").references(() => contests.id, { onDelete: "set null" }),
   type: varchar("type", { length: 50 }).notNull(), // image, video
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
