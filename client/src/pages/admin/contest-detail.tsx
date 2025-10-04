@@ -4,16 +4,12 @@ import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Trash2, Ban, Image as ImageIcon, Video, Crown, Calendar, Trophy, Users, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, isAdmin } from "@/lib/auth";
+import { EditContestModal } from "@/components/EditContestModal";
 
 export default function AdminContestDetail() {
   const { id } = useParams();
@@ -26,17 +22,6 @@ export default function AdminContestDetail() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'contest' | 'submission'; id: string } | null>(null);
   const [userToSuspend, setUserToSuspend] = useState<string | null>(null);
-  
-  const [editForm, setEditForm] = useState({
-    title: "",
-    slug: "",
-    description: "",
-    rules: "",
-    coverImageUrl: "",
-    prizeGlory: 0,
-    startAt: "",
-    endAt: ""
-  });
 
   if (authLoading) {
     return (
@@ -73,8 +58,39 @@ export default function AdminContestDetail() {
   });
 
   const updateContestMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest("PATCH", `/api/admin/contests/${id}`, data);
+    mutationFn: async (formData: any) => {
+      const startDateTime = new Date(`${formData.startDate}T${formData.startTime || '00:00'}`);
+      const endDateTime = new Date(`${formData.endDate}T${formData.endTime || '23:59'}`);
+      
+      const updateData = {
+        title: formData.title,
+        description: formData.description,
+        coverImageUrl: typeof formData.coverImage === 'string' ? formData.coverImage : null,
+        prizeGlory: parseInt(formData.prizePool) || 0,
+        startAt: startDateTime.toISOString(),
+        endAt: endDateTime.toISOString(),
+        status: formData.status,
+        config: {
+          contestType: formData.contestType,
+          category: formData.category,
+          entryFee: formData.entryFee,
+          entryFeeAmount: formData.entryFeeAmount,
+          prizeDistribution: formData.prizeDistribution,
+          currency: formData.currency,
+          eligibility: formData.eligibility,
+          maxSubmissions: formData.maxSubmissions,
+          allowedMediaTypes: formData.allowedMediaTypes,
+          fileSizeLimit: formData.fileSizeLimit,
+          nsfwAllowed: formData.nsfwAllowed,
+          votingMethods: formData.votingMethods,
+          voteLimitPerPeriod: formData.voteLimitPerPeriod,
+          votePeriodHours: formData.votePeriodHours,
+          totalVoteLimit: formData.totalVoteLimit,
+          featured: formData.featured,
+        }
+      };
+
+      const response = await apiRequest("PATCH", `/api/admin/contests/${id}`, updateData);
       return response.json();
     },
     onSuccess: () => {
@@ -171,26 +187,11 @@ export default function AdminContestDetail() {
   });
 
   const handleEditContest = () => {
-    if (!contest) return;
-    setEditForm({
-      title: contest.title,
-      slug: contest.slug,
-      description: contest.description,
-      rules: contest.rules,
-      coverImageUrl: contest.coverImageUrl || "",
-      prizeGlory: contest.prizeGlory,
-      startAt: new Date(contest.startAt).toISOString().slice(0, 16),
-      endAt: new Date(contest.endAt).toISOString().slice(0, 16)
-    });
     setIsEditModalOpen(true);
   };
 
-  const handleSaveContest = () => {
-    updateContestMutation.mutate({
-      ...editForm,
-      startAt: new Date(editForm.startAt).toISOString(),
-      endAt: new Date(editForm.endAt).toISOString()
-    });
+  const handleSaveContest = (formData: any) => {
+    updateContestMutation.mutate(formData);
   };
 
   const handleDeleteItem = () => {
@@ -442,122 +443,12 @@ export default function AdminContestDetail() {
         </CardContent>
       </Card>
 
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glassmorphism border-white/10">
-          <DialogHeader>
-            <DialogTitle className="text-white">Edit Contest</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Update contest details
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="title" className="text-white">Title</Label>
-              <Input
-                id="title"
-                value={editForm.title}
-                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                className="bg-background-light/50 border-white/10"
-                data-testid="input-edit-title"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="slug" className="text-white">Slug</Label>
-              <Input
-                id="slug"
-                value={editForm.slug}
-                onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
-                className="bg-background-light/50 border-white/10"
-                data-testid="input-edit-slug"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="description" className="text-white">Description</Label>
-              <Textarea
-                id="description"
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                className="bg-background-light/50 border-white/10"
-                rows={3}
-                data-testid="textarea-edit-description"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="rules" className="text-white">Rules</Label>
-              <Textarea
-                id="rules"
-                value={editForm.rules}
-                onChange={(e) => setEditForm({ ...editForm, rules: e.target.value })}
-                className="bg-background-light/50 border-white/10"
-                rows={4}
-                data-testid="textarea-edit-rules"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="coverImageUrl" className="text-white">Cover Image URL</Label>
-              <Input
-                id="coverImageUrl"
-                value={editForm.coverImageUrl}
-                onChange={(e) => setEditForm({ ...editForm, coverImageUrl: e.target.value })}
-                className="bg-background-light/50 border-white/10"
-                data-testid="input-edit-cover-image"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="prizeGlory" className="text-white">Prize GLORY</Label>
-              <Input
-                id="prizeGlory"
-                type="number"
-                value={editForm.prizeGlory}
-                onChange={(e) => setEditForm({ ...editForm, prizeGlory: parseInt(e.target.value) || 0 })}
-                className="bg-background-light/50 border-white/10"
-                data-testid="input-edit-prize"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startAt" className="text-white">Start Date</Label>
-                <Input
-                  id="startAt"
-                  type="datetime-local"
-                  value={editForm.startAt}
-                  onChange={(e) => setEditForm({ ...editForm, startAt: e.target.value })}
-                  className="bg-background-light/50 border-white/10"
-                  data-testid="input-edit-start-date"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="endAt" className="text-white">End Date</Label>
-                <Input
-                  id="endAt"
-                  type="datetime-local"
-                  value={editForm.endAt}
-                  onChange={(e) => setEditForm({ ...editForm, endAt: e.target.value })}
-                  className="bg-background-light/50 border-white/10"
-                  data-testid="input-edit-end-date"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditModalOpen(false)} data-testid="button-cancel-edit">
-              Cancel
-            </Button>
-            <Button onClick={handleSaveContest} disabled={updateContestMutation.isPending} data-testid="button-save-contest">
-              {updateContestMutation.isPending ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditContestModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSubmit={handleSaveContest}
+        contest={contest}
+      />
 
       <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
         <AlertDialogContent className="glassmorphism border-white/10">
