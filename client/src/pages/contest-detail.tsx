@@ -87,6 +87,10 @@ export default function ContestDetailPage() {
     if (!contest?.endAt) return;
 
     const calculateTimeLeft = () => {
+      if (contest.status === "ended") {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
       const difference = new Date(contest.endAt).getTime() - Date.now();
       if (difference <= 0) {
         return { days: 0, hours: 0, minutes: 0, seconds: 0 };

@@ -28,6 +28,11 @@ export function ContestCard({ contest }: ContestCardProps) {
 
   useEffect(() => {
     const calculateTimeLeft = () => {
+      if (contest.status === "ended") {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
       const endTime = new Date(contest.endAt).getTime();
       const now = new Date().getTime();
       const difference = endTime - now;
@@ -46,7 +51,7 @@ export function ContestCard({ contest }: ContestCardProps) {
     calculateTimeLeft();
     const timer = setInterval(calculateTimeLeft, 1000);
     return () => clearInterval(timer);
-  }, [contest.endAt]);
+  }, [contest.endAt, contest.status]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
