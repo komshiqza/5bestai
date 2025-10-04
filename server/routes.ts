@@ -729,6 +729,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin cashout management routes
+  app.get("/api/admin/cashout/requests", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { status } = req.query;
+      const requests = await storage.getCashoutRequests(
+        status ? { status: status as string } : undefined
+      );
+      res.json({ requests });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cashout requests" });
+    }
+  });
+
+  app.patch("/api/admin/cashout/requests/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { status, rejectionReason, txHash } = updateCashoutStatusSchema.parse(req.body);
+      const requestId = req.params.id;
+      const adminId = req.user!.id;
+
+      // Get the current request
+      const request = await storage.getCashoutRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ error: "Cashout request not found" });
+      }
+
+      const oldStatus = request.status;
+
+      // Validate txHash is required for "sent" and "confirmed" statuses
+      if ((status === "sent" || status === "confirmed") && !txHash) {
+        return res.status(400).json({ error: `Transaction hash is required for status: ${status}` });
+      }
+
+      // Update the request
+      const updatedRequest = await storage.updateCashoutRequest(requestId, {
+        status,
+        adminId,
+        rejectionReason: status === "rejected" ? rejectionReason : undefined,
+        txHash: status === "sent" || status === "confirmed" ? txHash : undefined
+      });
+
+      if (!updatedRequest) {
+        return res.status(404).json({ error: "Cashout request not found" });
+      }
+
+      // Create event log
+      await storage.createCashoutEvent({
+        cashoutRequestId: requestId,
+        fromStatus: oldStatus,
+        toStatus: status,
+        actorUserId: adminId,
+        notes: rejectionReason || txHash || `Status updated to ${status}`
+      });
+
+      // Handle GLORY balance changes
+      if (status === "approved" && oldStatus === "pending") {
+        // Deduct GLORY when approving pending request
+        await storage.updateUserGloryBalance(request.userId, -request.amountGlory);
+        
+        await storage.createGloryTransaction({
+          userId: request.userId,
+          delta: -request.amountGlory,
+          reason: `Cashout request approved (${request.tokenType})`,
+          contestId: null,
+          submissionId: null
+        });
+      } else if ((status === "rejected" || status === "failed") && (oldStatus === "approved" || oldStatus === "processing" || oldStatus === "sent")) {
+        // Refund GLORY if an approved/processing/sent request is rejected or failed
+        await storage.updateUserGloryBalance(request.userId, request.amountGlory);
+        
+        await storage.createGloryTransaction({
+          userId: request.userId,
+          delta: request.amountGlory,
+          reason: `Cashout request ${status} - GLORY refunded`,
+          contestId: null,
+          submissionId: null
+        });
+      }
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: adminId,
+        action: "UPDATE_CASHOUT_STATUS",
+        meta: { 
+          cashoutRequestId: requestId, 
+          oldStatus, 
+          newStatus: status,
+          userId: request.userId,
+          amountGlory: request.amountGlory,
+          txHash: txHash || null
+        }
+      });
+
+      res.json({ request: updatedRequest });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update cashout request" });
+    }
+  });
+
   // Leaderboard route
   app.get("/api/leaderboard", async (req, res) => {
     try {
