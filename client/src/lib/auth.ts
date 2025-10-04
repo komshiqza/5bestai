@@ -62,8 +62,7 @@ export function useLogout() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/me"], null);
-      queryClient.invalidateQueries();
+      queryClient.clear();
     },
   });
 }
