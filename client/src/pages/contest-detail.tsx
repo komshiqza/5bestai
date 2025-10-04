@@ -64,7 +64,7 @@ export default function ContestDetailPage() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/votes/user"] });
       toast({
         title: "Vote recorded!",
@@ -125,11 +125,11 @@ export default function ContestDetailPage() {
   // Process submissions with vote data
   const submissionsWithVotes = submissions.map((sub: any) => ({
     ...sub,
-    voteCount: sub.votes?.length || 0,
+    voteCount: sub.votesCount || 0,
     hasVoted: userVotes.some((v: any) => v.submissionId === sub.id)
   }));
 
-  // Filter and sort submissions
+  // Filter submissions
   let filteredSubmissions = submissionsWithVotes;
   if (searchTerm) {
     filteredSubmissions = filteredSubmissions.filter((sub: any) =>
@@ -138,16 +138,16 @@ export default function ContestDetailPage() {
     );
   }
 
-  // Sort submissions
-  filteredSubmissions.sort((a: any, b: any) => {
+  // Sort submissions based on selected sort option
+  const sortedSubmissions = [...filteredSubmissions].sort((a: any, b: any) => {
     if (sortBy === "votes") return b.voteCount - a.voteCount;
     if (sortBy === "recent") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     return 0;
   });
 
-  // Top 5 submissions
-  const topSubmissions = filteredSubmissions.slice(0, 5);
-  const otherSubmissions = filteredSubmissions.slice(5);
+  // Top 5 submissions from sorted list
+  const topSubmissions = sortedSubmissions.slice(0, 5);
+  const otherSubmissions = sortedSubmissions.slice(5);
 
   const handleVote = (submissionId: string) => {
     if (!user) {
@@ -178,7 +178,7 @@ export default function ContestDetailPage() {
       <div className="flex-1 px-4 py-8 sm:px-6 md:px-10 lg:px-20">
         <div className="mx-auto max-w-screen-xl">
           {/* Back Button */}
-          <Link href="/contests" className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors">
+          <Link href="/contests" className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors" data-testid="link-back-contests">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Contests
           </Link>
@@ -445,7 +445,7 @@ export default function ContestDetailPage() {
         contestId={contest.id}
         onClose={() => setShowUploadCard(false)}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest.id] });
         }}
       />
     </>
