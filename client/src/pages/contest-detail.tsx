@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useRoute, Link, useLocation } from "wouter";
+import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft } from "lucide-react";
 import { GlassButton } from "@/components/GlassButton";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
-import { UploadSelectionModal } from "@/components/UploadSelectionModal";
-import { UploadCard } from "@/components/UploadCard";
+import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -17,13 +16,11 @@ export default function ContestDetailPage() {
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
 
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [showRules, setShowRules] = useState(false);
-  const [showUploadSelection, setShowUploadSelection] = useState(false);
-  const [showUploadCard, setShowUploadCard] = useState(false);
+  const [showUploadWizard, setShowUploadWizard] = useState(false);
   const [sortBy, setSortBy] = useState("votes");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -175,7 +172,7 @@ export default function ContestDetailPage() {
       });
       return;
     }
-    setLocation(`/upload?contestId=${contest.id}`);
+    setShowUploadWizard(true);
   };
 
   return (
@@ -429,29 +426,13 @@ export default function ContestDetailPage() {
         onClose={() => setShowRules(false)}
       />
 
-      <UploadSelectionModal
-        isOpen={showUploadSelection}
-        onClose={() => setShowUploadSelection(false)}
-        onSelectExisting={() => {
-          setShowUploadSelection(false);
-          toast({
-            title: "Coming soon",
-            description: "Gallery selection will be available soon"
-          });
-        }}
-        onUploadNew={() => {
-          setShowUploadSelection(false);
-          setShowUploadCard(true);
-        }}
-      />
-
-      <UploadCard
-        isOpen={showUploadCard}
-        contestId={contest.id}
-        onClose={() => setShowUploadCard(false)}
-        onSuccess={() => {
+      <UploadWizardModal
+        isOpen={showUploadWizard}
+        onClose={() => {
+          setShowUploadWizard(false);
           queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest.id] });
         }}
+        preselectedContestId={contest.id}
       />
     </>
   );
