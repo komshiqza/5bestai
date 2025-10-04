@@ -345,12 +345,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", authenticateToken, requireApproved, upload.single("file"), async (req: AuthRequest, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "File is required" });
+      const { contestId, title, description, type, mediaUrl, thumbnailUrl } = req.body;
+      
+      // Check if either file or mediaUrl is provided (gallery selection)
+      if (!req.file && !mediaUrl) {
+        return res.status(400).json({ error: "File or mediaUrl is required" });
       }
 
-      const { contestId, title, description, type } = req.body;
-      
       if (!contestId || !title || !type) {
         return res.status(400).json({ error: "Contest ID, title, and type are required" });
       }
@@ -365,8 +366,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Contest is not accepting submissions" });
       }
 
-      // Upload file
-      const uploadResult = await uploadFile(req.file);
+      let finalMediaUrl: string;
+      let finalThumbnailUrl: string | null = null;
+
+      // Upload new file or use existing mediaUrl from gallery
+      if (req.file) {
+        const uploadResult = await uploadFile(req.file);
+        finalMediaUrl = uploadResult.url;
+        finalThumbnailUrl = uploadResult.thumbnailUrl || null;
+      } else {
+        // Using existing image from gallery
+        finalMediaUrl = mediaUrl;
+        finalThumbnailUrl = thumbnailUrl || null;
+      }
 
       // Create submission
       const submission = await storage.createSubmission({
@@ -375,8 +387,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type,
         title,
         description: description || "",
-        mediaUrl: uploadResult.url,
-        thumbnailUrl: uploadResult.thumbnailUrl || null,
+        mediaUrl: finalMediaUrl,
+        thumbnailUrl: finalThumbnailUrl,
         status: "pending" // Requires admin approval
       });
 

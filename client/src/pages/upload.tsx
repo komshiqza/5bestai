@@ -37,6 +37,8 @@ export default function Upload() {
 
   // Form state
   const [file, setFile] = useState<File | null>(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<{url: string, type: string, thumbnailUrl?: string} | null>(null);
+  const [uploadMode, setUploadMode] = useState<'new' | 'gallery'>('new');
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -68,6 +70,12 @@ export default function Upload() {
 
   const activeContests = contests.filter((c: any) => c.status === "active");
 
+  // Fetch user's submissions for gallery
+  const { data: userSubmissions = [] } = useQuery({
+    queryKey: ["/api/submissions", { userId: user?.id }],
+    enabled: !!user?.id,
+  });
+
   // Redirect if not authenticated
   if (!user) {
     setLocation("/login");
@@ -79,7 +87,8 @@ export default function Upload() {
   const validateStep = (s: 1 | 2 | 3) => {
     const newErrors: string[] = [];
     if (s === 1) {
-      if (!file) newErrors.push("Please select a file to upload.");
+      if (uploadMode === 'new' && !file) newErrors.push("Please select a file to upload.");
+      if (uploadMode === 'gallery' && !selectedGalleryImage) newErrors.push("Please select an image from your gallery.");
     }
     if (s === 2) {
       if (!title.trim()) newErrors.push("Title is required.");
@@ -138,26 +147,53 @@ export default function Upload() {
     const allGood = validateStep(1) && validateStep(2) && validateStep(3);
     if (!allGood) return;
 
-    if (!file) return;
+    if (uploadMode === 'new' && !file) return;
+    if (uploadMode === 'gallery' && !selectedGalleryImage) return;
 
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("contestId", selectedContest);
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("type", file.type.startsWith("video/") ? "video" : "image");
+      if (uploadMode === 'new' && file) {
+        // Upload new file
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("contestId", selectedContest);
+        formData.append("title", title);
+        formData.append("description", description);
+        formData.append("type", file.type.startsWith("video/") ? "video" : "image");
 
-      const response = await fetch("/api/submissions", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+        const response = await fetch("/api/submissions", {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to submit");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to submit");
+        }
+      } else if (uploadMode === 'gallery' && selectedGalleryImage) {
+        // Use existing image from gallery
+        const response = await fetch("/api/submissions", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contestId: selectedContest,
+            title,
+            description,
+            type: selectedGalleryImage.type,
+            mediaUrl: selectedGalleryImage.url,
+            thumbnailUrl: selectedGalleryImage.thumbnailUrl,
+            status: "pending",
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to submit");
+        }
       }
 
       toast({
@@ -167,6 +203,8 @@ export default function Upload() {
 
       // Reset form
       setFile(null);
+      setSelectedGalleryImage(null);
+      setUploadMode('new');
       setTitle("");
       setDescription("");
       setCategory(CATEGORIES[0]);
@@ -227,15 +265,59 @@ export default function Upload() {
             )}
 
             {step === 1 && (
-              <StepUpload
-                file={file}
-                isVideo={isVideo}
-                previewURL={previewURL}
-                onPickFile={() => fileInputRef.current?.click()}
-                onDropFiles={onDropFiles}
-                fileInputRef={fileInputRef}
-                setFile={setFile}
-              />
+              <div>
+                {/* Mode Toggle */}
+                <div className="flex gap-2 mb-6">
+                  <button
+                    onClick={() => {
+                      setUploadMode('new');
+                      setSelectedGalleryImage(null);
+                    }}
+                    className={`flex-1 px-4 py-3 rounded-xl font-medium transition-colors ${
+                      uploadMode === 'new'
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                    data-testid="button-upload-new"
+                  >
+                    <UploadCloud className="h-4 w-4 inline mr-2" />
+                    Upload New
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUploadMode('gallery');
+                      setFile(null);
+                    }}
+                    className={`flex-1 px-4 py-3 rounded-xl font-medium transition-colors ${
+                      uploadMode === 'gallery'
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                    data-testid="button-from-gallery"
+                  >
+                    <ImageIcon className="h-4 w-4 inline mr-2" />
+                    From Gallery
+                  </button>
+                </div>
+
+                {uploadMode === 'new' ? (
+                  <StepUpload
+                    file={file}
+                    isVideo={isVideo}
+                    previewURL={previewURL}
+                    onPickFile={() => fileInputRef.current?.click()}
+                    onDropFiles={onDropFiles}
+                    fileInputRef={fileInputRef}
+                    setFile={setFile}
+                  />
+                ) : (
+                  <GallerySelector
+                    userSubmissions={userSubmissions}
+                    selectedImage={selectedGalleryImage}
+                    onSelectImage={setSelectedGalleryImage}
+                  />
+                )}
+              </div>
             )}
 
             {step === 2 && (
@@ -682,6 +764,87 @@ function StepContest({
         <p>
           Submissions require admin approval before appearing in the contest. Make sure your asset meets the contest theme and community guidelines.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function GallerySelector({
+  userSubmissions,
+  selectedImage,
+  onSelectImage,
+}: {
+  userSubmissions: any[];
+  selectedImage: { url: string; type: string; thumbnailUrl?: string } | null;
+  onSelectImage: (image: { url: string; type: string; thumbnailUrl?: string } | null) => void;
+}) {
+  if (userSubmissions.length === 0) {
+    return (
+      <div className="text-center py-12 rounded-xl border-2 border-dashed border-slate-300/60 dark:border-slate-700/60 bg-white/60 dark:bg-slate-900/60">
+        <ImageIcon className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+        <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">
+          No images in your gallery
+        </h3>
+        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+          Upload your first image to start building your gallery
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+        <ImageIcon className="h-4 w-4" />
+        <span>Select an image from your gallery ({userSubmissions.length} images)</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto p-2">
+        {userSubmissions.map((submission: any) => (
+          <div
+            key={submission.id}
+            onClick={() => {
+              if (selectedImage?.url === submission.mediaUrl) {
+                onSelectImage(null);
+              } else {
+                onSelectImage({
+                  url: submission.mediaUrl,
+                  type: submission.type,
+                  thumbnailUrl: submission.thumbnailUrl,
+                });
+              }
+            }}
+            className={`relative aspect-square cursor-pointer rounded-xl overflow-hidden border-2 transition-all ${
+              selectedImage?.url === submission.mediaUrl
+                ? 'border-violet-500 ring-4 ring-violet-500/30'
+                : 'border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-600'
+            }`}
+            data-testid={`gallery-image-${submission.id}`}
+          >
+            <img
+              src={submission.type === 'video' ? submission.thumbnailUrl || submission.mediaUrl : submission.mediaUrl}
+              alt={submission.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23334155" width="400" height="400"/%3E%3Ctext fill="%239ca3af" font-family="system-ui" font-size="48" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3E' + (submission.type === 'video' ? '🎬' : '🖼️') + '%3C/tspan%3E%3C/text%3E%3C/svg%3E';
+                target.onerror = null;
+              }}
+            />
+            {submission.type === 'video' && (
+              <div className="absolute top-2 right-2 bg-black/70 rounded-lg px-2 py-1">
+                <Film className="h-3 w-3 text-white" />
+              </div>
+            )}
+            {selectedImage?.url === submission.mediaUrl && (
+              <div className="absolute inset-0 bg-violet-500/20 flex items-center justify-center">
+                <CheckCircle2 className="h-8 w-8 text-violet-500 drop-shadow-lg" />
+              </div>
+            )}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+              <p className="text-xs text-white font-medium truncate">{submission.title}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
