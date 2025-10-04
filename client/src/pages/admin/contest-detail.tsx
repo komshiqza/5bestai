@@ -67,8 +67,8 @@ export default function AdminContestDetail() {
         title: formData.title,
         description: formData.description,
         prizeGlory: parseInt(formData.prizePool) || 0,
-        startAt: startDateTime.toISOString(),
-        endAt: endDateTime.toISOString(),
+        startAt: startDateTime,
+        endAt: endDateTime,
         status: formData.status,
         config: {
           contestType: formData.contestType,
