@@ -4,7 +4,6 @@ import { Request, Response, NextFunction } from "express";
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "fallback_secret_key";
 
 export interface AuthRequest extends Request {
-  file?: Express.Multer.File;
   user?: {
     id: string;
     email: string;
