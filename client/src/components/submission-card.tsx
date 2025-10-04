@@ -2,10 +2,11 @@ import { Heart, User, Trophy, Play, Eye } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { useAuth, isAuthenticated, isApproved } from "../lib/auth";
 import { useToast } from "../hooks/use-toast";
+import { useState } from "react";
 
 interface SubmissionCardProps {
   submission: {
@@ -38,39 +39,27 @@ export function SubmissionCard({
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Fetch user's votes
-  const { data: userVotes = [] } = useQuery<string[]>({
-    queryKey: ["/api/votes/user"],
-    enabled: !!user,
-  });
-
-  const hasVoted = userVotes.includes(submission.id);
+  const [hasVoted, setHasVoted] = useState(false);
 
   const voteMutation = useMutation({
     mutationFn: async () => {
-      if (hasVoted) {
-        const response = await apiRequest("DELETE", `/api/votes/${submission.id}`);
-        return response.json();
-      } else {
-        const response = await apiRequest("POST", "/api/votes", {
-          submissionId: submission.id,
-        });
-        return response.json();
-      }
+      const response = await apiRequest("POST", "/api/votes", {
+        submissionId: submission.id,
+      });
+      return response.json();
     },
     onSuccess: () => {
+      setHasVoted(true);
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/votes/user"] });
       toast({
-        title: hasVoted ? "Vote removed!" : "Vote recorded!",
-        description: hasVoted ? "Your vote has been removed." : "Your vote has been counted successfully.",
+        title: "Vote recorded!",
+        description: "Your vote has been counted successfully.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update vote. Please try again.",
+        description: error.message || "Failed to vote. Please try again.",
         variant: "destructive",
       });
     },
@@ -95,7 +84,7 @@ export function SubmissionCard({
       return;
     }
 
-    if (!hasVoted && user.id === submission.user.id) {
+    if (user.id === submission.user.id) {
       toast({
         title: "Cannot vote",
         description: "You cannot vote on your own submission.",
@@ -191,7 +180,7 @@ export function SubmissionCard({
               variant={hasVoted ? "default" : "outline"}
               size="sm"
               onClick={handleVote}
-              disabled={voteMutation.isPending}
+              disabled={voteMutation.isPending || hasVoted}
               className={`flex items-center space-x-2 transition-all ${hasVoted ? "gradient-glory text-white" : ""}`}
               data-testid={`vote-button-${submission.id}`}
             >
