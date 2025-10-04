@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, Users, Menu, LogOut, User, Shield, Sun, Moon } from "lucide-react";
+import { Trophy, Upload, Users, Menu, LogOut, User, Shield, Sun, Moon, Image } from "lucide-react";
 import { useState } from "react";
 
 export function Navbar() {
@@ -111,6 +111,12 @@ export function Navbar() {
                     <DropdownMenuItem>
                       <User className="w-4 h-4 mr-2" />
                       Profile
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/my-submissions" data-testid="link-my-submissions">
+                    <DropdownMenuItem>
+                      <Image className="w-4 h-4 mr-2" />
+                      My Gallery
                     </DropdownMenuItem>
                   </Link>
                   {isAdmin(user) && (

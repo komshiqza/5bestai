@@ -133,6 +133,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  app.get("/api/me/submissions", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { status } = req.query;
+      const filters: any = { userId: req.user!.id };
+      
+      if (status && status !== 'all') {
+        filters.status = status as string;
+      }
+      
+      const submissions = await storage.getSubmissions(filters);
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch submissions" });
+    }
+  });
+
   // Contest routes
   app.get("/api/contests", async (req, res) => {
     try {

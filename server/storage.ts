@@ -279,16 +279,18 @@ export class MemStorage implements IStorage {
       submissions = submissions.filter(s => s.status === filters.status);
     }
 
-    return submissions.map(submission => {
-      const user = this.users.get(submission.userId)!;
-      const contest = this.contests.get(submission.contestId)!;
-      
-      return {
-        ...submission,
-        user: { id: user.id, username: user.username },
-        contest: { id: contest.id, title: contest.title }
-      };
-    });
+    return submissions
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map(submission => {
+        const user = this.users.get(submission.userId)!;
+        const contest = submission.contestId ? this.contests.get(submission.contestId) : null;
+        
+        return {
+          ...submission,
+          user: { id: user.id, username: user.username },
+          contest: contest ? { id: contest.id, title: contest.title } : { id: '', title: 'Deleted Contest' }
+        };
+      });
   }
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
@@ -666,7 +668,8 @@ export class DbStorage implements IStorage {
     if (filters.status) conditions.push(eq(submissions.status, filters.status));
 
     const submissionsData = await db.query.submissions.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      orderBy: [desc(submissions.createdAt)]
     });
 
     const result: SubmissionWithUser[] = [];
@@ -675,16 +678,20 @@ export class DbStorage implements IStorage {
         where: eq(users.id, submission.userId),
         columns: { id: true, username: true }
       });
-      const contest = await db.query.contests.findFirst({
-        where: eq(contests.id, submission.contestId),
-        columns: { id: true, title: true }
-      });
       
-      if (user && contest) {
+      let contest = null;
+      if (submission.contestId) {
+        contest = await db.query.contests.findFirst({
+          where: eq(contests.id, submission.contestId),
+          columns: { id: true, title: true }
+        });
+      }
+      
+      if (user) {
         result.push({
           ...submission,
           user,
-          contest
+          contest: contest || { id: '', title: 'Deleted Contest' }
         });
       }
     }

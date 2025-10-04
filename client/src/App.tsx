@@ -14,6 +14,7 @@ import ContestDetail from "@/pages/contest-detail";
 import Upload from "@/pages/upload";
 import Profile from "@/pages/profile";
 import Leaderboard from "@/pages/leaderboard";
+import MySubmissions from "@/pages/my-submissions";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContestDetail from "@/pages/admin/contest-detail";
 import NotFound from "@/pages/not-found";
@@ -32,6 +33,7 @@ function Router() {
           <Route path="/upload" component={Upload} />
           <Route path="/profile" component={Profile} />
           <Route path="/leaderboard" component={Leaderboard} />
+          <Route path="/my-submissions" component={MySubmissions} />
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin/contest/:id" component={AdminContestDetail} />
           <Route component={NotFound} />
