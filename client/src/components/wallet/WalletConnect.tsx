@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useWallet } from "@/lib/wallet-provider";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,24 @@ import { Wallet, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+interface WalletData {
+  wallet?: {
+    id: string;
+    userId: string;
+    address: string;
+    provider: string;
+    status: string;
+    createdAt: string;
+  };
+}
+
 export function WalletConnect() {
   const { connected, connecting, publicKey, connect, disconnect, signMessage } = useWallet();
   const { toast } = useToast();
   const [isConnecting, setIsConnecting] = useState(false);
+  const shouldVerify = useRef(false);
 
-  const { data: walletData } = useQuery({
+  const { data: walletData, isFetched } = useQuery<WalletData>({
     queryKey: ["/api/wallet/me"],
     enabled: !!publicKey,
   });
@@ -27,16 +39,13 @@ export function WalletConnect() {
       const message = `Sign this message to verify your wallet ownership.\nWallet: ${publicKey}\nTimestamp: ${Date.now()}`;
       const signature = await signMessage(message);
 
-      return apiRequest("/api/wallet/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: publicKey,
-          provider: "phantom",
-          signature,
-          message,
-        }),
+      const response = await apiRequest("POST", "/api/wallet/connect", {
+        address: publicKey,
+        provider: "phantom",
+        signature,
+        message,
       });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/me"] });
@@ -44,6 +53,7 @@ export function WalletConnect() {
         title: "Wallet Connected",
         description: "Your Solana wallet has been successfully verified and connected.",
       });
+      shouldVerify.current = false;
     },
     onError: (error: Error) => {
       toast({
@@ -51,16 +61,24 @@ export function WalletConnect() {
         description: error.message,
         variant: "destructive",
       });
+      shouldVerify.current = false;
     },
   });
+
+  useEffect(() => {
+    if (connected && publicKey && shouldVerify.current && isFetched && !walletData?.wallet) {
+      connectWalletMutation.mutate();
+    }
+  }, [connected, publicKey, walletData, isFetched, connectWalletMutation]);
 
   const handleConnect = async () => {
     try {
       setIsConnecting(true);
+      shouldVerify.current = true;
       await connect();
-      await connectWalletMutation.mutateAsync();
     } catch (error) {
       console.error("Error connecting wallet:", error);
+      shouldVerify.current = false;
     } finally {
       setIsConnecting(false);
     }

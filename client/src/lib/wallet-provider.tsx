@@ -31,18 +31,35 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
     };
     checkWallet();
 
-    // Listen for account changes
-    window.solana?.on("accountChanged", (publicKey: any) => {
+    // Define event handlers
+    const handleConnect = (publicKey: any) => {
+      setPublicKey(publicKey.toString());
+      setConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      setPublicKey(null);
+      setConnected(false);
+    };
+
+    const handleAccountChanged = (publicKey: any) => {
       if (publicKey) {
         setPublicKey(publicKey.toString());
       } else {
         setPublicKey(null);
         setConnected(false);
       }
-    });
+    };
+
+    // Listen for events
+    window.solana?.on("connect", handleConnect);
+    window.solana?.on("disconnect", handleDisconnect);
+    window.solana?.on("accountChanged", handleAccountChanged);
 
     return () => {
-      window.solana?.removeListener("accountChanged", () => {});
+      window.solana?.removeListener("connect", handleConnect);
+      window.solana?.removeListener("disconnect", handleDisconnect);
+      window.solana?.removeListener("accountChanged", handleAccountChanged);
     };
   }, []);
 
