@@ -1,14 +1,19 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Image, Video, Calendar, Award } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Image, Video, Calendar, Award, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { SubmissionWithUser } from "@shared/schema";
 
 export default function MySubmissions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: submissions, isLoading } = useQuery<SubmissionWithUser[]>({
     queryKey: ["/api/me/submissions", statusFilter],
@@ -23,6 +28,28 @@ export default function MySubmissions() {
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     }
+  });
+
+  const deleteSubmissionMutation = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const response = await apiRequest("DELETE", `/api/submissions/${submissionId}`);
+      if (!response.ok) throw new Error("Failed to delete submission");
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
+      toast({
+        title: "Submission deleted",
+        description: "Your submission has been permanently deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete submission.",
+        variant: "destructive",
+      });
+    },
   });
 
   const statusCounts = {
@@ -142,14 +169,31 @@ export default function MySubmissions() {
                         {submission.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Calendar className="w-3 h-3" />
-                      <span data-testid={`text-date-${submission.id}`}>
-                        {new Date(submission.createdAt).toLocaleDateString()}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 text-xs text-gray-500 mb-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3 h-3" />
+                        <span data-testid={`text-date-${submission.id}`}>
+                          {new Date(submission.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this submission? This action cannot be undone.')) {
+                            deleteSubmissionMutation.mutate(submission.id);
+                          }
+                        }}
+                        disabled={deleteSubmissionMutation.isPending}
+                        data-testid={`button-delete-${submission.id}`}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
                     </div>
                     {submission.contest && (
-                      <div className="mt-2 pt-2 border-t border-white/10">
+                      <div className="pt-2 border-t border-white/10">
                         <p className="text-xs text-gray-400" data-testid={`text-contest-${submission.id}`}>
                           Contest: <span className="text-purple-400">{submission.contest.title}</span>
                         </p>

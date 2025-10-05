@@ -33,14 +33,11 @@ export function CashoutRequest() {
         throw new Error("Minimum cashout amount is 1000 GLORY");
       }
 
-      return apiRequest("/api/cashout/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletId: walletData.wallet.id,
-          amountGlory,
-          tokenType,
-        }),
+      // apiRequest expects (method, url, data)
+      return apiRequest("POST", "/api/cashout/request", {
+        walletId: walletData.wallet.id,
+        amountGlory,
+        tokenType,
       });
     },
     onSuccess: () => {
@@ -143,19 +140,7 @@ export function CashoutRequest() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tokenType">Receive As</Label>
-                <Select value={tokenType} onValueChange={setTokenType}>
-                  <SelectTrigger id="tokenType" data-testid="select-token-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USDC">USDC (1:1)</SelectItem>
-                    <SelectItem value="SOL">SOL</SelectItem>
-                    <SelectItem value="GLORY">GLORY Token</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Receive As section removed */}
 
               <Button
                 type="submit"

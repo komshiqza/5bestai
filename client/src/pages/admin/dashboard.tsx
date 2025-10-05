@@ -24,7 +24,8 @@ import {
   Eye,
   BarChart3,
   DollarSign,
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 import { useAuth, isAdmin } from "@/lib/auth";
 import { useLocation } from "wouter";
@@ -39,6 +40,8 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [userStatusFilter, setUserStatusFilter] = useState("all");
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState("all");
+  const [submissionSearchQuery, setSubmissionSearchQuery] = useState("");
   const [isCreateContestModalOpen, setIsCreateContestModalOpen] = useState(false);
   const [txHashDialogOpen, setTxHashDialogOpen] = useState(false);
   const [selectedCashoutId, setSelectedCashoutId] = useState("");
@@ -135,6 +138,28 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to update submission status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSubmissionMutation = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/submissions/${submissionId}`);
+      if (!response.ok) throw new Error("Failed to delete submission");
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      toast({
+        title: "Submission deleted",
+        description: "The submission has been permanently deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete submission.",
         variant: "destructive",
       });
     },
@@ -428,6 +453,16 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
     return matchesStatus && matchesSearch;
   });
 
+  // Filtered submissions
+  const filteredSubmissions = submissions.filter((submission: any) => {
+    const matchesStatus = submissionStatusFilter === "all" || submission.status === submissionStatusFilter;
+    const matchesSearch = 
+      submission.title.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+      (submission.description?.toLowerCase() || "").includes(submissionSearchQuery.toLowerCase()) ||
+      submission.user.username.toLowerCase().includes(submissionSearchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
   return (
     <div className="min-h-screen py-16" data-testid="admin-dashboard">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -667,11 +702,36 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
           <TabsContent value="submissions" className="space-y-4" data-testid="submissions-tab">
             <Card>
               <CardHeader>
-                <CardTitle>Submission Review</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Submission Management</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Select value={submissionStatusFilter} onValueChange={setSubmissionStatusFilter} data-testid="submission-status-filter">
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search submissions..."
+                        value={submissionSearchQuery}
+                        onChange={(e) => setSubmissionSearchQuery(e.target.value)}
+                        className="pl-10 w-64"
+                        data-testid="submission-search"
+                      />
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {submissions.filter((s: any) => s.status === "pending").map((submission: any) => (
+                  {filteredSubmissions.map((submission: any) => (
                     <Card key={submission.id} className="overflow-hidden" data-testid={`pending-submission-${submission.id}`}>
                       <div className="relative aspect-square">
                         <img
@@ -703,48 +763,99 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                             {submission.description}
                           </p>
                         )}
-                        <div className="flex items-center justify-between text-sm mb-4">
+                        <div className="flex items-center justify-between text-sm mb-3">
                           <div className="flex items-center space-x-2 text-muted-foreground">
                             <span data-testid={`submission-author-${submission.id}`}>
                               @{submission.user.username}
                             </span>
                           </div>
-                          <div className="text-muted-foreground" data-testid={`submission-contest-${submission.id}`}>
-                            {submission.contest.title}
-                          </div>
+                          <Badge className={getStatusColor(submission.status)} data-testid={`submission-status-${submission.id}`}>
+                            {getStatusIcon(submission.status)}
+                            <span className="ml-1">{submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}</span>
+                          </Badge>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            className="flex-1 bg-success/20 text-success hover:bg-success/30 border border-success/30"
-                            onClick={() => updateSubmissionStatusMutation.mutate({ submissionId: submission.id, status: "approved" })}
-                            disabled={updateSubmissionStatusMutation.isPending}
-                            data-testid={`approve-submission-${submission.id}`}
-                          >
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Approve
-                          </Button>
+                        <div className="text-xs text-muted-foreground mb-4" data-testid={`submission-contest-${submission.id}`}>
+                          {submission.contest.title} • {submission.voteCount || 0} votes
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {submission.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="flex-1 bg-success/20 text-success hover:bg-success/30 border border-success/30"
+                                onClick={() => updateSubmissionStatusMutation.mutate({ submissionId: submission.id, status: "approved" })}
+                                disabled={updateSubmissionStatusMutation.isPending}
+                                data-testid={`approve-submission-${submission.id}`}
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                                onClick={() => updateSubmissionStatusMutation.mutate({ submissionId: submission.id, status: "rejected" })}
+                                disabled={updateSubmissionStatusMutation.isPending}
+                                data-testid={`reject-submission-${submission.id}`}
+                              >
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {submission.status === "approved" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                              onClick={() => updateSubmissionStatusMutation.mutate({ submissionId: submission.id, status: "rejected" })}
+                              disabled={updateSubmissionStatusMutation.isPending}
+                              data-testid={`reject-submission-${submission.id}`}
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Reject
+                            </Button>
+                          )}
+                          {submission.status === "rejected" && (
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-success/20 text-success hover:bg-success/30 border border-success/30"
+                              onClick={() => updateSubmissionStatusMutation.mutate({ submissionId: submission.id, status: "approved" })}
+                              disabled={updateSubmissionStatusMutation.isPending}
+                              data-testid={`approve-submission-${submission.id}`}
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Approve
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
-                            className="flex-1 bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
-                            onClick={() => updateSubmissionStatusMutation.mutate({ submissionId: submission.id, status: "rejected" })}
-                            disabled={updateSubmissionStatusMutation.isPending}
-                            data-testid={`reject-submission-${submission.id}`}
+                            className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/30"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to permanently delete this submission? This action cannot be undone.')) {
+                                deleteSubmissionMutation.mutate(submission.id);
+                              }
+                            }}
+                            disabled={deleteSubmissionMutation.isPending}
+                            data-testid={`delete-submission-${submission.id}`}
                           >
-                            <XCircle className="w-3 h-3 mr-1" />
-                            Reject
+                            <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-                {submissions.filter((s: any) => s.status === "pending").length === 0 && (
-                  <div className="text-center py-12" data-testid="no-pending-submissions">
+                {filteredSubmissions.length === 0 && (
+                  <div className="text-center py-12" data-testid="no-submissions-found">
                     <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No pending submissions</h3>
-                    <p className="text-muted-foreground">All submissions have been reviewed.</p>
+                    <h3 className="text-lg font-semibold mb-2">No submissions found</h3>
+                    <p className="text-muted-foreground">
+                      {submissionSearchQuery || submissionStatusFilter !== "all" 
+                        ? "Try adjusting your filters or search query."
+                        : "No submissions have been uploaded yet."}
+                    </p>
                   </div>
                 )}
               </CardContent>

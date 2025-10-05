@@ -7,7 +7,7 @@ import * as ed25519 from "@noble/ed25519";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
-import { upload, uploadFile } from "./services/file-upload";
+import { upload, uploadFile, deleteFile } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
 import { 
   loginSchema, 
@@ -625,6 +625,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Submission not found" });
       }
 
+      // Delete the file from storage (Supabase or local)
+      await deleteFile(submission.mediaUrl);
+      if (submission.thumbnailUrl) {
+        await deleteFile(submission.thumbnailUrl);
+      }
+
+      // Delete from database
       await storage.deleteSubmission(req.params.id);
 
       // Log admin action
@@ -633,6 +640,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "DELETE_SUBMISSION",
         meta: { submissionId: submission.id, userId: submission.userId }
       });
+
+      res.json({ message: "Submission deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting submission:", error);
+      res.status(500).json({ 
+        error: "Failed to delete submission",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // User delete their own submission
+  app.delete("/api/submissions/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const submission = await storage.getSubmission(req.params.id);
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Check if user owns this submission
+      if (submission.userId !== req.user!.id) {
+        return res.status(403).json({ error: "You can only delete your own submissions" });
+      }
+
+      // Delete the file from storage (Supabase or local)
+      await deleteFile(submission.mediaUrl);
+      if (submission.thumbnailUrl) {
+        await deleteFile(submission.thumbnailUrl);
+      }
+
+      // Delete from database
+      await storage.deleteSubmission(req.params.id);
 
       res.json({ message: "Submission deleted successfully" });
     } catch (error) {

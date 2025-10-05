@@ -2,6 +2,7 @@ import { Calendar, Trophy, Share2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import ShareModal from "@/components/ui/ShareModal";
 
 interface Contest {
   id: string;
@@ -25,6 +26,7 @@ interface ContestCardProps {
 export function ContestCard({ contest }: ContestCardProps) {
   const [, setLocation] = useLocation();
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -95,17 +97,7 @@ export function ContestCard({ contest }: ContestCardProps) {
           </div>
         </div>
 
-        {/* Prize */}
-        <div className="absolute top-4 right-4">
-          <div className="glassmorphism px-3 py-1 rounded-lg">
-            <div className="flex items-center gap-1 text-yellow-400">
-              <Trophy size={14} />
-              <span className="text-xs sm:text-sm font-bold text-white">
-                {contest.prizeGlory.toLocaleString()} GLORY
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* (Prize badge removed) */}
 
         {/* Title + Desc */}
         <div className="mb-6">
@@ -144,7 +136,7 @@ export function ContestCard({ contest }: ContestCardProps) {
           ))}
         </div>
 
-        {/* Info */}
+        {/* Info: Status | Prize | Participants */}
         <div className="mb-6 flex flex-wrap justify-center gap-2">
           <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
             <p className="text-xs font-medium text-white/80">Status</p>
@@ -152,10 +144,15 @@ export function ContestCard({ contest }: ContestCardProps) {
               {contest.status}
             </p>
           </div>
+
+          {/* Prize tile removed */}
+
           <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
-            <p className="text-xs font-medium text-white/80">Prize</p>
-            <p className="text-xs sm:text-sm lg:text-lg font-bold text-yellow-400 mt-1">
-              {contest.prizeGlory.toLocaleString()}
+            <p className="text-xs font-medium text-white/80">Participants</p>
+            <p className="text-xs sm:text-sm lg:text-lg font-bold text-white mt-1">
+              {typeof (contest as any).submissionCount === 'number'
+                ? (contest as any).submissionCount.toLocaleString()
+                : ((contest as any).submissions ? (contest as any).submissions.length : 0)}
             </p>
           </div>
         </div>
@@ -176,11 +173,23 @@ export function ContestCard({ contest }: ContestCardProps) {
         <div className="mt-4 flex justify-center items-center gap-3">
           <p className="text-xs font-medium text-white/75">Share:</p>
           <div className="flex items-center gap-2">
-            <button className="group flex items-center justify-center rounded-full size-8 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors">
+            <button
+              onClick={() => setShareOpen(true)}
+              className="group flex items-center justify-center rounded-full size-8 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors"
+              aria-label="Share contest"
+            >
               <Share2 className="text-white" size={14} />
             </button>
           </div>
         </div>
+
+        {/* Share modal */}
+        <ShareModal
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          title={contest.title}
+          url={typeof window !== "undefined" ? `${window.location.origin}/contest/${contest.slug}` : `/contest/${contest.slug}`}
+        />
       </div>
     </div>
   );

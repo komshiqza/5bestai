@@ -1,22 +1,21 @@
-import { v2 as cloudinary } from "cloudinary";
+import { createClient } from "@supabase/supabase-js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Configure Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
-// Check if Cloudinary is configured
-const isCloudinaryConfigured = () => {
-  return !!(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
-  );
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+if (supabaseUrl && supabaseServiceKey) {
+  supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+}
+
+// Check if Supabase Storage is configured
+const isSupabaseConfigured = () => {
+  return !!(supabaseUrl && supabaseServiceKey && supabaseClient);
 };
 
 // Local upload configuration
@@ -52,45 +51,53 @@ export const upload = multer({
   },
 });
 
-export async function uploadToCloudinary(filePath: string, type: "image" | "video"): Promise<{
+export async function uploadToSupabase(file: Express.Multer.File): Promise<{
   url: string;
   publicId: string;
   thumbnailUrl?: string;
 }> {
-  try {
-    const options: any = {
-      resource_type: type,
-      folder: "5best-submissions",
-    };
+  if (!supabaseClient) {
+    throw new Error("Supabase client not initialized");
+  }
 
-    if (type === "video") {
-      options.transformation = [
-        { quality: "auto", fetch_format: "auto" }
-      ];
+  try {
+    const fileBuffer = fs.readFileSync(file.path);
+    const ext = path.extname(file.originalname);
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    
+    // Upload to Supabase Storage bucket
+    const { data, error } = await supabaseClient.storage
+      .from("5best-uploads")
+      .upload(fileName, fileBuffer, {
+        contentType: file.mimetype,
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(`Supabase upload error: ${error.message}`);
     }
 
-    const result = await cloudinary.uploader.upload(filePath, options);
-    
+    // Get public URL
+    const { data: { publicUrl } } = supabaseClient.storage
+      .from("5best-uploads")
+      .getPublicUrl(fileName);
+
     let thumbnailUrl: string | undefined;
     
-    if (type === "video") {
-      // Generate video thumbnail
-      thumbnailUrl = cloudinary.url(result.public_id, {
-        resource_type: "video",
-        transformation: [
-          { width: 400, height: 400, crop: "fill" },
-          { format: "jpg", quality: "auto" }
-        ]
-      });
+    if (file.mimetype.startsWith("video/")) {
+      // For videos, we'll use a placeholder for now
+      // Supabase doesn't auto-generate video thumbnails like Cloudinary
+      thumbnailUrl = undefined;
     }
 
     return {
-      url: result.secure_url,
-      publicId: result.public_id,
+      url: publicUrl,
+      publicId: fileName,
       thumbnailUrl,
     };
   } catch (error) {
-    throw new Error(`Cloudinary upload failed: ${error}`);
+    throw new Error(`Supabase upload failed: ${error}`);
   }
 }
 
@@ -98,10 +105,9 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
   url: string;
   thumbnailUrl?: string;
 }> {
-  if (isCloudinaryConfigured()) {
+  if (isSupabaseConfigured()) {
     try {
-      const type = file.mimetype.startsWith("image/") ? "image" : "video";
-      const result = await uploadToCloudinary(file.path, type);
+      const result = await uploadToSupabase(file);
       
       // Clean up local file
       fs.unlinkSync(file.path);
@@ -111,7 +117,7 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
         thumbnailUrl: result.thumbnailUrl,
       };
     } catch (error) {
-      console.error("Cloudinary upload failed, falling back to local:", error);
+      console.error("Supabase upload failed, falling back to local:", error);
     }
   }
 
@@ -125,4 +131,37 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
   }
 
   return { url, thumbnailUrl };
+}
+
+export async function deleteFile(mediaUrl: string): Promise<void> {
+  try {
+    // Check if it's a Supabase Storage URL
+    if (supabaseClient && mediaUrl.includes('supabase.co/storage')) {
+      // Extract filename from Supabase URL
+      // URL format: https://[project].supabase.co/storage/v1/object/public/5best-uploads/[filename]
+      const urlParts = mediaUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      if (fileName) {
+        const { error } = await supabaseClient.storage
+          .from("5best-uploads")
+          .remove([fileName]);
+        
+        if (error) {
+          console.error(`Supabase file deletion error: ${error.message}`);
+        }
+      }
+    } else if (mediaUrl.startsWith('/uploads/')) {
+      // Local file - extract filename and delete
+      const fileName = mediaUrl.replace('/uploads/', '');
+      const filePath = path.join(process.cwd(), "public", "uploads", fileName);
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  } catch (error) {
+    console.error(`File deletion failed: ${error}`);
+    // Don't throw error - we still want to delete the database record even if file deletion fails
+  }
 }
