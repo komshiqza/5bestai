@@ -97,7 +97,11 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
 
     const encodedMessage = new TextEncoder().encode(message);
     const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
-    return Buffer.from(signedMessage.signature).toString("base64");
+    
+    // Convert Uint8Array to base64 using browser APIs
+    const bytes = new Uint8Array(signedMessage.signature);
+    const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+    return btoa(binary);
   };
 
   return (
