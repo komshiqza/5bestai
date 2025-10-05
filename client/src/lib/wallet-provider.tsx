@@ -58,9 +58,25 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
       const walletPublicKey = response.publicKey.toString();
       setPublicKey(walletPublicKey);
       setConnected(true);
+      
+      // Wait a moment to ensure wallet is fully ready for signing
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verify connection is still active
+      if (!window.solana.isConnected) {
+        throw new Error("Wallet connection was lost. Please try again.");
+      }
+      
       return walletPublicKey;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error connecting to wallet:", error);
+      setConnected(false);
+      setPublicKey(null);
+      
+      if (error?.code === 4001) {
+        throw new Error("Connection request was rejected. Please approve the connection in your Phantom wallet.");
+      }
+      
       throw error;
     } finally {
       setConnecting(false);
