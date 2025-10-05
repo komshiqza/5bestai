@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import bs58 from "bs58";
 
 interface WalletContextType {
   connected: boolean;
@@ -23,8 +24,8 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
         try {
           const response = await window.solana.connect({ onlyIfTrusted: true });
           const publicKeyBytes = response.publicKey.toBytes();
-          const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
-          setPublicKey(publicKeyBase64);
+          const publicKeyBase58 = bs58.encode(publicKeyBytes);
+          setPublicKey(publicKeyBase58);
           setConnected(true);
         } catch (err) {
           console.log("Not connected");
@@ -37,8 +38,8 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
     window.solana?.on("accountChanged", (publicKey: any) => {
       if (publicKey) {
         const publicKeyBytes = publicKey.toBytes();
-        const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
-        setPublicKey(publicKeyBase64);
+        const publicKeyBase58 = bs58.encode(publicKeyBytes);
+        setPublicKey(publicKeyBase58);
       } else {
         setPublicKey(null);
         setConnected(false);
@@ -60,11 +61,11 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
       setConnecting(true);
       const response = await window.solana.connect();
       
-      // Get the public key as base64 for backend verification
+      // Get the public key as base58 for backend verification (Solana standard)
       const publicKeyBytes = response.publicKey.toBytes();
-      const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
+      const publicKeyBase58 = bs58.encode(publicKeyBytes);
       
-      setPublicKey(publicKeyBase64);
+      setPublicKey(publicKeyBase58);
       setConnected(true);
       
       // Wait a moment to ensure wallet is fully ready for signing
@@ -75,7 +76,7 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
         throw new Error("Wallet connection was lost. Please try again.");
       }
       
-      return publicKeyBase64;
+      return publicKeyBase58;
     } catch (error: any) {
       console.error("Error connecting to wallet:", error);
       setConnected(false);
@@ -112,9 +113,9 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
       const encodedMessage = new TextEncoder().encode(message);
       const response = await window.solana.signMessage(encodedMessage);
       
-      // Convert Uint8Array signature to base64 using browser APIs
-      const base64 = btoa(String.fromCharCode(...response.signature));
-      return base64;
+      // Convert Uint8Array signature to base58 (Solana standard)
+      const signatureBase58 = bs58.encode(response.signature);
+      return signatureBase58;
     } catch (error: any) {
       console.error("Error signing message:", error);
       
