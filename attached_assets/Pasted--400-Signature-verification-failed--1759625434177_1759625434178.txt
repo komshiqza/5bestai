@@ -1,0 +1,170 @@
+Ок — вече стигате до бекенда, но той връща 400: "Signature verification failed". Това почти винаги е несъвпадение между това, което сте подписали във фронтенда и това, което проверявате в бекенда (байтове ≠ низ, base58 ≠ hex, различен message, различен nonce и т.н.).
+
+Ето “златната двойка” (клиент + сървър), която работи 1:1 на Solana (ed25519):
+
+Клиент (React, @solana/wallet-adapter)
+// client/WalletSignIn.ts
+import { useWallet } from '@solana/wallet-adapter-react';
+import bs58 from 'bs58';
+
+export async function signIn({ endpoint = '/api/wallet/connect' } = {}) {
+  const { publicKey, signMessage } = useWallet();
+
+  if (!publicKey) throw new Error('Connect wallet first.');
+  if (typeof signMessage !== 'function') throw new Error('Wallet cannot signMessage');
+
+  // 1) Съобщение, което СЪЩОТО ще изпратим на сървъра за верификация
+  const payload = {
+    domain: window.location.origin,
+    address: publicKey.toBase58(),
+    nonce: crypto.randomUUID(),
+    ts: Date.now(),
+    statement: 'Sign in to PromptGlory / 5best',
+  };
+
+  // 2) Сериaлизираме **точно** това съобщение (UTF-8), без да го променяме после
+  const message = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(message);
+
+  // 3) Подпис
+  const signatureBytes = await signMessage!(bytes);
+
+  // 4) Изпращаме на бекенда: message (като текст), signature (base58) и address (base58)
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      message,                     // ТОЧНО същия string, който подписахме
+      signature: bs58.encode(signatureBytes), // base58 е стандартно за Solana
+      publicKey: publicKey.toBase58(),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status}: ${text}`);
+  }
+  return await res.json();
+}
+
+
+Важно:
+
+Подписвате string → Uint8Array (UTF-8) и изпращате същия string на бекенда.
+
+Изпращайте подписа като base58, не като number[] или hex (по-лесно и без грешки).
+
+Бекенд (Node/Express)
+// server/routes/wallet.ts
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
+import { Router } from 'express';
+
+const router = Router();
+
+router.post('/connect', (req, res) => {
+  try {
+    const { message, signature, publicKey } = req.body as {
+      message: string;             // ТОЧНО string-а от клиента
+      signature: string;           // base58
+      publicKey: string;           // base58
+    };
+
+    if (!message || !signature || !publicKey) {
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+
+    // 1) Верифицираме подписа върху ТОЗИ message (utf-8), не сглобяваме нов
+    const msgBytes = new TextEncoder().encode(message);
+    const sigBytes = bs58.decode(signature);
+    const pubKeyBytes = bs58.decode(publicKey);
+
+    const ok = nacl.sign.detached.verify(msgBytes, sigBytes, pubKeyBytes);
+    if (!ok) {
+      return res.status(400).json({ error: 'Signature verification failed' });
+    }
+
+    // 2) Доп. проверки срещу replay:
+    //    - parse на message за nonce/ts/domain/address и ги валидирай
+    const payload = JSON.parse(message);
+    if (payload.address !== publicKey) {
+      return res.status(400).json({ error: 'Address mismatch' });
+    }
+    if (payload.domain !== process.env.ALLOWED_ORIGIN) {
+      return res.status(400).json({ error: 'Bad domain' });
+    }
+    const now = Date.now();
+    if (Math.abs(now - payload.ts) > 5 * 60 * 1000) { // 5 мин.
+      return res.status(400).json({ error: 'Timestamp too old' });
+    }
+    // TODO: store+invalidate payload.nonce (Redis/DB) за да предотвратиш повторна употреба
+
+    // 3) Създай сесия / JWT и върни успех
+    return res.json({ success: true, user: { publicKey } });
+  } catch (e: any) {
+    return res.status(400).json({ error: e?.message ?? 'Bad Request' });
+  }
+});
+
+export default router;
+
+
+Критично:
+
+Не правете JSON.stringify(payload) отново на сървъра със друга подредба на ключовете → ще се получи различен байтов стринг и верификацията ще падне.
+
+Верифицирате върху точно подадения message от клиента.
+
+Топ причини за вашата грешка (и бързи фиксове)
+
+Различни байтове на съобщението
+
+Подписвате едно (на клиента), а на сървъра реконструирате друго (друга подредба на ключове, допълнителни нови редове, интервали).
+✅ Изпращайте точния message string и верифицирайте върху него.
+
+Подпис в грешен формат
+
+Пращате number[], hex или base64, а сървърът очаква друго.
+✅ Използвайте base58 навсякъде за подпис и публичен ключ.
+
+Разминаване на адрес
+
+В message е един адрес, в полето publicKey пращате друг (или сървърът взема от сесия/хедър).
+✅ Сверявайте payload.address === publicKey.
+
+Невалидна/стара времева метка или nonce
+
+При повторен опит с вече изразходван nonce/стар ts.
+✅ Проверка на ts в допустим прозорец и one-time nonce store.
+
+Грешна крива/библиотека
+
+Ползвате секp256k1 верификатор (EVM) вместо ed25519 (Solana).
+✅ За Solana: tweetnacl.sign.detached.verify(...).
+
+Бърз диагностичен лог (временно)
+
+Клиент:
+
+console.log(
+  'DBG client',
+  { first16: Array.from(new TextEncoder().encode(message).slice(0,16)) }
+);
+
+
+Сървър:
+
+const msgBytes = new TextEncoder().encode(message);
+console.log('DBG server', { first16: Array.from(msgBytes.slice(0,16)) });
+
+
+Двете first16 трябва да съвпадат 1:1. Ако не — проблемът е сериализацията.
+
+Ако искате да запазите сегашния си shape
+
+Уверете се, че в тялото пращате:
+
+{
+  "message": "<exact same string you signed>",
+  "signature": "<base58>",
+  "publicKey": "<base58>"
