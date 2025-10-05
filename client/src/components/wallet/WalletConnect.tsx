@@ -76,9 +76,18 @@ export function WalletConnect() {
       setIsConnecting(true);
       shouldVerify.current = true;
       await connect();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error connecting wallet:", error);
       shouldVerify.current = false;
+      
+      // Don't show error toast if user rejected the connection
+      if (error?.code !== 4001) {
+        toast({
+          title: "Connection Error",
+          description: error?.message || "Failed to connect wallet. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsConnecting(false);
     }
