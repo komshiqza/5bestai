@@ -56,7 +56,19 @@ export function WalletConnect() {
   const handleConnect = async () => {
     try {
       setIsConnecting(true);
+      
+      toast({
+        title: "Connecting...",
+        description: "Please approve the connection in your Phantom wallet.",
+      });
+      
       const walletPublicKey = await connect();
+      
+      toast({
+        title: "Verifying Ownership",
+        description: "Please sign the message in your Phantom wallet to verify ownership.",
+      });
+      
       await connectWalletMutation.mutateAsync(walletPublicKey);
     } catch (error) {
       console.error("Error connecting wallet:", error);
