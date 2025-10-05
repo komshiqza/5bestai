@@ -55,8 +55,12 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
     try {
       setConnecting(true);
       const response = await window.solana.connect();
-      const walletPublicKey = response.publicKey.toString();
-      setPublicKey(walletPublicKey);
+      
+      // Get the public key as base64 for backend verification
+      const publicKeyBytes = response.publicKey.toBytes();
+      const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
+      
+      setPublicKey(publicKeyBase64);
       setConnected(true);
       
       // Wait a moment to ensure wallet is fully ready for signing
@@ -67,7 +71,7 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
         throw new Error("Wallet connection was lost. Please try again.");
       }
       
-      return walletPublicKey;
+      return publicKeyBase64;
     } catch (error: any) {
       console.error("Error connecting to wallet:", error);
       setConnected(false);
