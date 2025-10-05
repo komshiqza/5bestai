@@ -22,7 +22,9 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
       if (window.solana?.isConnected) {
         try {
           const response = await window.solana.connect({ onlyIfTrusted: true });
-          setPublicKey(response.publicKey.toString());
+          const publicKeyBytes = response.publicKey.toBytes();
+          const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
+          setPublicKey(publicKeyBase64);
           setConnected(true);
         } catch (err) {
           console.log("Not connected");
@@ -34,7 +36,9 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
     // Listen for account changes
     window.solana?.on("accountChanged", (publicKey: any) => {
       if (publicKey) {
-        setPublicKey(publicKey.toString());
+        const publicKeyBytes = publicKey.toBytes();
+        const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBytes));
+        setPublicKey(publicKeyBase64);
       } else {
         setPublicKey(null);
         setConnected(false);
