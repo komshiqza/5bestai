@@ -76,13 +76,17 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
   };
 
   const signMessage = async (message: string): Promise<string> => {
-    if (!window.solana || !connected) {
-      throw new Error("Wallet not connected");
+    if (!window.solana) {
+      throw new Error("Phantom wallet not found");
     }
 
-    const encodedMessage = new TextEncoder().encode(message);
-    const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
-    return Buffer.from(signedMessage.signature).toString("base64");
+    try {
+      const encodedMessage = new TextEncoder().encode(message);
+      const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
+      return Buffer.from(signedMessage.signature).toString("base64");
+    } catch (error) {
+      throw new Error("Failed to sign message. Please ensure your wallet is connected.");
+    }
   };
 
   return (
