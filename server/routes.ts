@@ -4,7 +4,6 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import * as ed25519 from "@noble/ed25519";
-import bs58 from "bs58";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
@@ -175,26 +174,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify signature
       try {
         const messageBytes = new TextEncoder().encode(message);
-        const signatureBytes = bs58.decode(signature);
-        const publicKeyBytes = bs58.decode(address);
-        
-        console.log('[Wallet Connect] Verification Debug:', {
-          messageLength: messageBytes.length,
-          signatureLength: signatureBytes.length,
-          publicKeyLength: publicKeyBytes.length,
-          message: message.substring(0, 100) + '...'
-        });
+        const signatureBytes = Buffer.from(signature, 'base64');
+        const publicKeyBytes = Buffer.from(address, 'base64');
         
         const isValid = await ed25519.verify(signatureBytes, messageBytes, publicKeyBytes);
         
         if (!isValid) {
-          console.log('[Wallet Connect] Signature verification failed - invalid signature');
           return res.status(400).json({ error: "Invalid signature" });
         }
-        
-        console.log('[Wallet Connect] Signature verified successfully');
       } catch (error) {
-        console.error('[Wallet Connect] Signature verification error:', error);
         return res.status(400).json({ error: "Signature verification failed" });
       }
 
