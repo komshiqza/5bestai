@@ -1,0 +1,143 @@
+I'll be honest. I had some preconceived notions about how hard it would be to connect a crypto wallet to my web app, but after having done it, I can really say how surprisingly simple it is.
+
+First off, I'll be using NextJS but you can very easily use this tutorial to add Phantom to any web app, be it a front-end or an MVC framework.
+
+Let's create our application with npx create-next-app --typescript -e with-tailwindcss phantom-wallet-example. For my particular app, I'll be using TypeScript and TailwindCSS, so I'll add those dependencies right when I create the app.
+
+I'll rename my pages/index.js and pages/_app.js files to pages/index.tsx and pages._app.tsx respectively.
+
+Now, if I run npm run dev from the console, NextJS will be helpful and tell you to install some dev dependencies. Let's go do that now with npm i -D typescript @types/react. After installing these dependencies, run npm run dev again and NextJS will create a tsconfig.json file for us and start the dev server.
+
+Now, let's first think of what we want to show on the screen. If the browser doesn't have a Phantom wallet extension, we want to display a link to the Phantom website so user can add the extension. If the user has an extension, we either want to ask if they want to connect their wallet if they aren't already connected or disconnect if they are already connected.
+
+Let's start with the first state (the link to the Phantom website). First, create the file components/ConnectToPhantom.tsx:
+
+const ConnectToPhantom = () => {
+  return (
+    <a
+      href="https://phantom.app/"
+      target="_blank"
+      className="bg-purple-500 px-4 py-2 border border-transparent rounded-md text-base font-medium text-white"
+    >
+      Get Phantom
+    </a>
+  );
+};
+
+export default ConnectToPhantom;
+
+Taking a look at the documentation, looks like we can access the Phantom on the window object. This makes things much simpler than having to use the wallet adapter from Solana Labs. Obviously, if you need to integrate all these wallets, it's probably good to use it, but if you're only supporting Phantom, you don't need it.
+
+Now let's first set the state of whether we detect the solana object on window:
+
+import {useEffect, useState} from "react"
+
+interface Phantom {}
+
+const ConnectToPhantom = () => {
+  const [phantom, setPhantom] = useState<Phantom | null>(null);
+
+  useEffect(() => {
+    if (window["solana"]?.isPhantom) {
+      setPhantom(window["solana"]);
+    }
+  }, []);
+  ...
+
+Here we are initializing phantom to null, but upon mounting of the component, we want to see if window has a property named solana. If it does, then we check if its isPhantom property is truthy. If it is, we'll set the state of phantom with setPhantom dispatch function. This all happens in the useEffect React hook. The second parameter here is an empty array, so this callback only runs when the component is first mounted.
+
+Once we have the Phantom provider, we want to display a button to either connect to the user wallet.
+
+  ...
+  if (phantom) {
+    return (
+      <button
+        onClick={connectHandler}
+        className="bg-purple-500 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white whitespace-nowrap hover:bg-opacity-75"
+      >
+        Connect to Phantom
+      </button>
+    );
+  }
+  ...
+
+In order to connect to the wallet, we'll use the connect method on phantom and we'll wrap it all in a click event handler for the Connect to Phantom button.
+
+interface Phantom {
+  connect: () => Promise<void>;
+}
+
+const ConnectToPhantom = () => {
+  ...
+  const connectHandler = () => {
+    phantom?.connect();
+  };
+  ...
+
+Now that we can connect, let's handle the state for when we're already connected. We'll want the user to be able to disconnect. We'll also want it to be visually distinct from the disconnected state.
+
+type Event = "connect" | "disconnect";
+
+interface Phantom {
+  ...
+  on: (event: Event, callback: () => void) => void;
+}
+
+const ConnectToPhantom = () => {
+  ...
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    phantom?.on("connect", () => {
+      setConnected(true);
+    });
+
+    phantom?.on("disconnect", () => {
+      setConnected(false);
+    });
+  }, [phantom])
+  ...
+
+The state of connected will determine what the button looks like and what it says. We can take advantage event emitter provided by Phantom for this. If a "connect" event is emitted, we'll set connected to true. If a "disconnect" event is emitted, we'll set connected to false. Here, we are using another useEffect that will trigger once the phantom variable is set. Then we tell the event handlers what to do in either case ("connect" or "disconnect").
+
+Now let's add the button to disconnect the wallet (shown only in a connected state):
+
+  if (phantom) {
+    if (connected) {
+      return (
+        <button
+          onClick={disconnectHandler}
+          className="py-2 px-4 border border-purple-700 rounded-md text-sm font-medium text-purple-700 whitespace-nowrap hover:bg-purple-200"
+        >
+          Disconnect from Phantom
+        </button>
+      );
+    }
+    ...
+
+We will employ the disconnect method on phantom to disconnect the wallet. Since we already have the event handlers set for both "connect" and "disconnect", the UI state should change once those events fire.
+
+interface Phantom {
+  ...
+  disconnect: () => Promise<void>;
+}
+...
+const ConnectToPhantom = () => {
+  ...
+  const disconnectHandler = () => {
+    phantom?.disconnect();
+  }
+
+Now let's stick this component on the index page:
+
+import ConnectToPhantom from "../components/ConnectToPhantom";
+
+export default function Home() {
+  return (
+    <div className="h-screen flex items-center justify-center">
+      <ConnectToPhantom />
+    </div>
+  );
+}
+
+Now that we have a functional component, I'll leave it to you to do some cleanup to refactor some of the code it you'd like.
