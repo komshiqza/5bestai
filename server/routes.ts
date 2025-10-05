@@ -177,12 +177,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const signatureBytes = Buffer.from(signature, 'base64');
         const publicKeyBytes = Buffer.from(address, 'base64');
         
+        console.log('[Wallet Connect] Verification Debug:', {
+          messageLength: messageBytes.length,
+          signatureLength: signatureBytes.length,
+          publicKeyLength: publicKeyBytes.length,
+          message: message.substring(0, 100) + '...'
+        });
+        
         const isValid = await ed25519.verify(signatureBytes, messageBytes, publicKeyBytes);
         
         if (!isValid) {
+          console.log('[Wallet Connect] Signature verification failed - invalid signature');
           return res.status(400).json({ error: "Invalid signature" });
         }
+        
+        console.log('[Wallet Connect] Signature verified successfully');
       } catch (error) {
+        console.error('[Wallet Connect] Signature verification error:', error);
         return res.status(400).json({ error: "Signature verification failed" });
       }
 

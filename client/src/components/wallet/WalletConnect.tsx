@@ -28,7 +28,10 @@ export function WalletConnect() {
   const connectWalletMutation = useMutation({
     mutationFn: async (walletPublicKey: string) => {
       const message = `Sign this message to verify your wallet ownership.\nWallet: ${walletPublicKey}\nTimestamp: ${Date.now()}`;
+      
+      console.log('[Wallet Connect] Requesting signature for message:', message);
       const signature = await signMessage(message);
+      console.log('[Wallet Connect] Signature obtained, sending to backend');
 
       return apiRequest("POST", "/api/wallet/connect", {
         address: walletPublicKey,
