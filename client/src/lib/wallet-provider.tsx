@@ -80,6 +80,10 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
       throw new Error("Phantom wallet not found");
     }
 
+    if (!window.solana.isConnected) {
+      throw new Error("Wallet is not connected. Please connect your wallet first.");
+    }
+
     try {
       const encodedMessage = new TextEncoder().encode(message);
       const response = await window.solana.signMessage(encodedMessage);
@@ -87,8 +91,18 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
       // Convert Uint8Array signature to base64 using browser APIs
       const base64 = btoa(String.fromCharCode(...response.signature));
       return base64;
-    } catch (error) {
-      throw new Error("Failed to sign message. Please ensure your wallet is connected.");
+    } catch (error: any) {
+      console.error("Error signing message:", error);
+      
+      if (error?.code === 4001) {
+        throw new Error("Signature request was rejected. Please approve the signature in your Phantom wallet.");
+      }
+      
+      if (error?.message) {
+        throw new Error(`Failed to sign message: ${error.message}`);
+      }
+      
+      throw new Error("Failed to sign message. Please ensure your wallet is unlocked and try again.");
     }
   };
 
