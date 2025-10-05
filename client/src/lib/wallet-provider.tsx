@@ -4,7 +4,7 @@ interface WalletContextType {
   connected: boolean;
   connecting: boolean;
   publicKey: string | null;
-  connect: () => Promise<void>;
+  connect: () => Promise<string>;
   disconnect: () => void;
   signMessage: (message: string) => Promise<string>;
 }
@@ -55,8 +55,10 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
     try {
       setConnecting(true);
       const response = await window.solana.connect();
-      setPublicKey(response.publicKey.toString());
+      const walletPublicKey = response.publicKey.toString();
+      setPublicKey(walletPublicKey);
       setConnected(true);
+      return walletPublicKey;
     } catch (error) {
       console.error("Error connecting to wallet:", error);
       throw error;

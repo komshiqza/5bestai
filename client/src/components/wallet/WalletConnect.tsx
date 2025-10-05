@@ -8,34 +8,33 @@ import { Wallet, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+interface WalletData {
+  wallet?: {
+    address: string;
+    status: string;
+  };
+}
+
 export function WalletConnect() {
   const { connected, connecting, publicKey, connect, disconnect, signMessage } = useWallet();
   const { toast } = useToast();
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const { data: walletData } = useQuery({
+  const { data: walletData } = useQuery<WalletData>({
     queryKey: ["/api/wallet/me"],
     enabled: !!publicKey,
   });
 
   const connectWalletMutation = useMutation({
-    mutationFn: async () => {
-      if (!connected || !publicKey) {
-        throw new Error("Wallet not connected");
-      }
-
-      const message = `Sign this message to verify your wallet ownership.\nWallet: ${publicKey}\nTimestamp: ${Date.now()}`;
+    mutationFn: async (walletPublicKey: string) => {
+      const message = `Sign this message to verify your wallet ownership.\nWallet: ${walletPublicKey}\nTimestamp: ${Date.now()}`;
       const signature = await signMessage(message);
 
-      return apiRequest("/api/wallet/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: publicKey,
-          provider: "phantom",
-          signature,
-          message,
-        }),
+      return apiRequest("POST", "/api/wallet/connect", {
+        address: walletPublicKey,
+        provider: "phantom",
+        signature,
+        message,
       });
     },
     onSuccess: () => {
@@ -57,10 +56,15 @@ export function WalletConnect() {
   const handleConnect = async () => {
     try {
       setIsConnecting(true);
-      await connect();
-      await connectWalletMutation.mutateAsync();
+      const walletPublicKey = await connect();
+      await connectWalletMutation.mutateAsync(walletPublicKey);
     } catch (error) {
       console.error("Error connecting wallet:", error);
+      toast({
+        title: "Connection Failed",
+        description: error instanceof Error ? error.message : "Failed to connect wallet. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsConnecting(false);
     }
