@@ -15,14 +15,11 @@ export default function MySubmissions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: submissions, isLoading } = useQuery<SubmissionWithUser[]>({
-    queryKey: ["/api/me/submissions", statusFilter],
+  // Always fetch all submissions for accurate counts
+  const { data: allSubmissions, isLoading } = useQuery<SubmissionWithUser[]>({
+    queryKey: ["/api/me/submissions"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (statusFilter !== "all") {
-        params.append("status", statusFilter);
-      }
-      const response = await fetch(`/api/me/submissions?${params.toString()}`, {
+      const response = await fetch(`/api/me/submissions`, {
         credentials: "include"
       });
       if (!response.ok) throw new Error("Failed to fetch submissions");
@@ -53,10 +50,10 @@ export default function MySubmissions() {
   });
 
   const statusCounts = {
-    all: submissions?.length || 0,
-    pending: submissions?.filter(s => s.status === "pending").length || 0,
-    approved: submissions?.filter(s => s.status === "approved").length || 0,
-    rejected: submissions?.filter(s => s.status === "rejected").length || 0
+    all: allSubmissions?.length || 0,
+    pending: allSubmissions?.filter(s => s.status === "pending").length || 0,
+    approved: allSubmissions?.filter(s => s.status === "approved").length || 0,
+    rejected: allSubmissions?.filter(s => s.status === "rejected").length || 0
   };
 
   const getStatusBadge = (status: string) => {
@@ -73,8 +70,8 @@ export default function MySubmissions() {
   };
 
   const filteredSubmissions = statusFilter === "all" 
-    ? submissions 
-    : submissions?.filter(s => s.status === statusFilter);
+    ? allSubmissions 
+    : allSubmissions?.filter(s => s.status === statusFilter);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/20 to-gray-950">
