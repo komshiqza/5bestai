@@ -627,6 +627,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin get all submissions
+  app.get("/api/admin/submissions", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { contestId, userId, status, page, limit } = req.query;
+      
+      const filters: any = {};
+      if (contestId) filters.contestId = contestId as string;
+      if (userId) filters.userId = userId as string;
+      if (status && status !== 'all') filters.status = status as string;
+      if (page) filters.page = parseInt(page as string, 10);
+      if (limit) filters.limit = parseInt(limit as string, 10);
+      
+      const submissions = await storage.getSubmissions(filters);
+      res.json(submissions);
+    } catch (error) {
+      console.error("Error fetching admin submissions:", error);
+      res.status(500).json({ error: "Failed to fetch submissions" });
+    }
+  });
+
   app.patch("/api/admin/submissions/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const { status } = updateSubmissionStatusSchema.parse(req.body);
