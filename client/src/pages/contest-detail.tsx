@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand, Share2 } from "lucide-react";
+import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand, Share2, Link as LinkIcon } from "lucide-react";
+import { SiX, SiFacebook, SiWhatsapp, SiTelegram, SiLinkedin } from "react-icons/si";
 import { GlassButton } from "@/components/ui/glass-button";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -347,22 +349,97 @@ export default function ContestDetailPage() {
                                 </button>
 
                                 {/* Share Button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(window.location.href)
-                                      .then(() => {
-                                        toast({ title: "Link copied!", description: "Share link copied to clipboard" });
-                                      })
-                                      .catch(() => {
-                                        toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" });
-                                      });
-                                  }}
-                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
-                                  data-testid={`button-share-${submission.id}`}
-                                >
-                                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </button>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                      data-testid={`button-share-${submission.id}`}
+                                    >
+                                      <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent 
+                                    className="w-48 p-2 bg-black/90 backdrop-blur-xl border-white/10"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="flex flex-col gap-1">
+                                      {/* Copy Link */}
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(window.location.href)
+                                            .then(() => toast({ title: "Link copied!", description: "Share link copied to clipboard" }))
+                                            .catch(() => toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" }));
+                                        }}
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`button-share-copy-${submission.id}`}
+                                      >
+                                        <LinkIcon className="h-4 w-4" />
+                                        <span>Copy Link</span>
+                                      </button>
+                                      
+                                      {/* Twitter/X */}
+                                      <a
+                                        href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}" in this contest!`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-twitter-${submission.id}`}
+                                      >
+                                        <SiX className="h-4 w-4" />
+                                        <span>Share on X</span>
+                                      </a>
+                                      
+                                      {/* Facebook */}
+                                      <a
+                                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-facebook-${submission.id}`}
+                                      >
+                                        <SiFacebook className="h-4 w-4" />
+                                        <span>Share on Facebook</span>
+                                      </a>
+                                      
+                                      {/* WhatsApp */}
+                                      <a
+                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out "${submission.title}"! ${window.location.href}`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-whatsapp-${submission.id}`}
+                                      >
+                                        <SiWhatsapp className="h-4 w-4" />
+                                        <span>Share on WhatsApp</span>
+                                      </a>
+                                      
+                                      {/* Telegram */}
+                                      <a
+                                        href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}"!`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-telegram-${submission.id}`}
+                                      >
+                                        <SiTelegram className="h-4 w-4" />
+                                        <span>Share on Telegram</span>
+                                      </a>
+                                      
+                                      {/* LinkedIn */}
+                                      <a
+                                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-linkedin-${submission.id}`}
+                                      >
+                                        <SiLinkedin className="h-4 w-4" />
+                                        <span>Share on LinkedIn</span>
+                                      </a>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
 
                                 {/* Expand Button */}
                                 <button
@@ -441,22 +518,97 @@ export default function ContestDetailPage() {
                                 </button>
 
                                 {/* Share Button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(window.location.href)
-                                      .then(() => {
-                                        toast({ title: "Link copied!", description: "Share link copied to clipboard" });
-                                      })
-                                      .catch(() => {
-                                        toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" });
-                                      });
-                                  }}
-                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
-                                  data-testid={`button-share-${submission.id}`}
-                                >
-                                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </button>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                      data-testid={`button-share-${submission.id}`}
+                                    >
+                                      <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent 
+                                    className="w-48 p-2 bg-black/90 backdrop-blur-xl border-white/10"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="flex flex-col gap-1">
+                                      {/* Copy Link */}
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(window.location.href)
+                                            .then(() => toast({ title: "Link copied!", description: "Share link copied to clipboard" }))
+                                            .catch(() => toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" }));
+                                        }}
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`button-share-copy-${submission.id}`}
+                                      >
+                                        <LinkIcon className="h-4 w-4" />
+                                        <span>Copy Link</span>
+                                      </button>
+                                      
+                                      {/* Twitter/X */}
+                                      <a
+                                        href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}" in this contest!`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-twitter-${submission.id}`}
+                                      >
+                                        <SiX className="h-4 w-4" />
+                                        <span>Share on X</span>
+                                      </a>
+                                      
+                                      {/* Facebook */}
+                                      <a
+                                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-facebook-${submission.id}`}
+                                      >
+                                        <SiFacebook className="h-4 w-4" />
+                                        <span>Share on Facebook</span>
+                                      </a>
+                                      
+                                      {/* WhatsApp */}
+                                      <a
+                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out "${submission.title}"! ${window.location.href}`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-whatsapp-${submission.id}`}
+                                      >
+                                        <SiWhatsapp className="h-4 w-4" />
+                                        <span>Share on WhatsApp</span>
+                                      </a>
+                                      
+                                      {/* Telegram */}
+                                      <a
+                                        href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}"!`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-telegram-${submission.id}`}
+                                      >
+                                        <SiTelegram className="h-4 w-4" />
+                                        <span>Share on Telegram</span>
+                                      </a>
+                                      
+                                      {/* LinkedIn */}
+                                      <a
+                                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
+                                        data-testid={`link-share-linkedin-${submission.id}`}
+                                      >
+                                        <SiLinkedin className="h-4 w-4" />
+                                        <span>Share on LinkedIn</span>
+                                      </a>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
 
                                 {/* Expand Button */}
                                 <button
