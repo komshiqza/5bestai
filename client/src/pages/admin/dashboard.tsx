@@ -64,9 +64,9 @@ export default function AdminDashboard() {
   });
 
   const { data: submissions = [] } = useQuery({
-    queryKey: ["/api/submissions", { admin: true }],
+    queryKey: ["/api/admin/submissions"],
     queryFn: async () => {
-      const response = await fetch("/api/submissions", { credentials: "include" });
+      const response = await fetch("/api/admin/submissions", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       toast({
         title: "Submission status updated",
         description: "The submission's status has been successfully updated.",
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       toast({
         title: "Submission deleted",
         description: "The submission has been permanently deleted.",
