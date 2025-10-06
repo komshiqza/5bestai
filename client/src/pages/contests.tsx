@@ -3,7 +3,7 @@ import { ContestCard } from "@/components/contest-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Trophy, Search, Filter } from "lucide-react";
+import { Trophy, Search, Filter, Calendar, Users } from "lucide-react";
 import { useState } from "react";
 
 export default function Contests() {
@@ -60,13 +60,37 @@ export default function Contests() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-black tracking-tight mb-4 flex items-center justify-center" data-testid="contests-title">
-            <Trophy className="w-10 h-10 text-primary mr-3" />
-            Creative Contests
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Join exciting competitions, showcase your talent, and compete for GLORY rewards
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="contests-title">
+            AI Art Contests
+          </h2>
+          <p className="mt-4 text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
+            Participate in exciting AI art contests and showcase your creativity to win amazing prizes.
           </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-prizes">
+            <Trophy className="text-primary mx-auto mb-3" size={32} />
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {contests.reduce((total: number, contest: any) => total + (Number(contest.prizeGlory) || 0), 0).toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">$GLORY in Prizes</p>
+          </div>
+          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-active-contests">
+            <Calendar className="text-primary mx-auto mb-3" size={32} />
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {statusCounts.active}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">Active Contests</p>
+          </div>
+          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-participants">
+            <Users className="text-primary mx-auto mb-3" size={32} />
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {contests.reduce((total: number, contest: any) => total + (Number((contest as any).submissionCount) || 0), 0).toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">Total Participants</p>
+          </div>
         </div>
 
         {/* Filters and Search */}
