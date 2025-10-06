@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Upload, Plus, Minus, Calendar, Trophy, Users, Settings, Eye, FileText, Image as ImageIcon } from 'lucide-react';
 
@@ -80,6 +80,55 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     },
     enabled: showImageSelector
   });
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: '',
+        description: '',
+        contestType: 'Image',
+        category: '',
+        coverImage: null,
+        entryFee: false,
+        entryFeeAmount: undefined,
+        startDateOption: 'later',
+        startDate: '',
+        startTime: '',
+        endDate: '',
+        endTime: '',
+        submissionDeadline: '',
+        submissionDeadlineTime: '',
+        enableSubmissionDeadline: false,
+        votingStartOption: 'later',
+        votingStartDate: '',
+        votingEndDate: '',
+        votingEndTime: '',
+        prizePool: '',
+        currency: 'GLORY',
+        prizeDistribution: [
+          { place: 1, value: 0 },
+          { place: 2, value: 0 },
+          { place: 3, value: 0 }
+        ],
+        additionalRewards: [],
+        eligibility: 'all_users',
+        maxSubmissions: 3,
+        allowedMediaTypes: ['Images'],
+        fileSizeLimit: 50,
+        nsfwAllowed: false,
+        agreeToRules: true,
+        votingMethods: ['public'],
+        votesPerUserPerPeriod: 1,
+        periodDurationHours: 24,
+        totalVotesPerUser: 0,
+        status: 'active',
+        featured: false
+      });
+      setCoverImagePreview('');
+      setErrors([]);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -707,7 +756,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                   </div>
 
                   <div className="space-y-2">
-                    {formData.prizeDistribution.map((prize, index) => (
+                    {(formData.prizeDistribution || []).map((prize, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-16">
                           {prize.place}. place
@@ -722,7 +771,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                         <span className="text-sm text-slate-500">
                           {formData.currency}
                         </span>
-                        {formData.prizeDistribution.length > 1 && (
+                        {(formData.prizeDistribution || []).length > 1 && (
                           <button
                             type="button"
                             onClick={() => removePrizePlace(index)}
@@ -736,7 +785,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                   </div>
 
                   <div className="text-xs text-slate-500 mt-1">
-                    Total: {formData.prizeDistribution.reduce((sum, prize) => sum + prize.value, 0)}
+                    Total: {(formData.prizeDistribution || []).reduce((sum, prize) => sum + prize.value, 0)}
                     {` ${formData.currency}`}
                   </div>
                 </div>
