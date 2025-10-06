@@ -141,27 +141,17 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
 
 
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
-    // Create contest config object
-    let contestConfig: any = {
-      votesPerUserPerPeriod: dataToSubmit.votesPerUserPerPeriod,
-      periodDurationHours: dataToSubmit.periodDurationHours,
-      totalVotesPerUser: dataToSubmit.totalVotesPerUser
-    };
+    // Generate unique slug from title
+    const baseSlug = dataToSubmit.title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const timestamp = Date.now().toString(36);
+    const slug = `${baseSlug}-${timestamp}`;
     
-    // Process submission deadline logic
-    if (dataToSubmit.enableSubmissionDeadline && dataToSubmit.submissionDeadline) {
-      // Use custom submission deadline
-      const submissionDeadlineDateTime = new Date(
-        `${dataToSubmit.submissionDeadline}T${dataToSubmit.submissionDeadlineTime || '23:59'}`
-      ).toISOString();
-      contestConfig.submissionEndAt = submissionDeadlineDateTime;
-    } else {
-      // Use contest end date as submission deadline
-      const contestEndDateTime = new Date(
-        `${dataToSubmit.votingEndDate}T${dataToSubmit.votingEndTime || '23:59'}`
-      ).toISOString();
-      contestConfig.submissionEndAt = contestEndDateTime;
-    }
+    // Calculate total prize from distribution
+    const totalPrize = dataToSubmit.prizeDistribution.reduce((sum, prize) => sum + prize.value, 0);
     
     // Set contest start time
     let startAt: string;
@@ -173,36 +163,79 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       ).toISOString();
     }
     
-    // Set voting start time in config
-    if (dataToSubmit.votingStartOption === 'now') {
-      contestConfig.votingStartAt = new Date().toISOString();
-    } else {
-      const votingStartDateTime = new Date(
-        `${dataToSubmit.votingStartDate}T00:00`
-      ).toISOString();
-      contestConfig.votingStartAt = votingStartDateTime;
-    }
-    
     // Set contest end time (this is also voting end time)
     const endAt = new Date(
       `${dataToSubmit.votingEndDate}T${dataToSubmit.votingEndTime || '23:59'}`
     ).toISOString();
-    contestConfig.votingEndAt = endAt;
+    
+    // Process submission deadline logic
+    let submissionEndAt: string;
+    if (dataToSubmit.enableSubmissionDeadline && dataToSubmit.submissionDeadline) {
+      // Use custom submission deadline
+      submissionEndAt = new Date(
+        `${dataToSubmit.submissionDeadline}T${dataToSubmit.submissionDeadlineTime || '23:59'}`
+      ).toISOString();
+    } else {
+      // Use contest end date as submission deadline
+      submissionEndAt = endAt;
+    }
+    
+    // Set voting start time
+    let votingStartAt: string;
+    if (dataToSubmit.votingStartOption === 'now') {
+      votingStartAt = new Date().toISOString();
+    } else {
+      votingStartAt = new Date(
+        `${dataToSubmit.votingStartDate}T00:00`
+      ).toISOString();
+    }
+    
+    // Create comprehensive contest config object with ALL settings
+    const contestConfig: any = {
+      // Voting rules
+      votesPerUserPerPeriod: dataToSubmit.votesPerUserPerPeriod,
+      periodDurationHours: dataToSubmit.periodDurationHours,
+      totalVotesPerUser: dataToSubmit.totalVotesPerUser,
+      votingMethods: dataToSubmit.votingMethods,
+      
+      // Time settings
+      submissionEndAt,
+      votingStartAt,
+      votingEndAt: endAt,
+      
+      // Prize distribution
+      prizeDistribution: dataToSubmit.prizeDistribution,
+      currency: dataToSubmit.currency,
+      
+      // Participation rules
+      eligibility: dataToSubmit.eligibility,
+      maxSubmissions: dataToSubmit.maxSubmissions,
+      allowedMediaTypes: dataToSubmit.allowedMediaTypes,
+      fileSizeLimit: dataToSubmit.fileSizeLimit,
+      nsfwAllowed: dataToSubmit.nsfwAllowed,
+      
+      // Entry fee
+      entryFee: dataToSubmit.entryFee,
+      entryFeeAmount: dataToSubmit.entryFeeAmount,
+      
+      // Contest metadata
+      contestType: dataToSubmit.contestType,
+      category: dataToSubmit.category,
+      featured: dataToSubmit.featured
+    };
     
     // Create clean form data object for submission
     const finalFormData = {
       title: dataToSubmit.title,
+      slug,
       description: dataToSubmit.description,
-      contestType: dataToSubmit.contestType,
-      category: dataToSubmit.category,
-      status: 'active' as const, // Publish directly as requested
-      prizeGlory: parseInt(dataToSubmit.prizePool) || 0,
+      rules: dataToSubmit.description || 'Standard contest rules apply.',
+      status: dataToSubmit.status,
+      prizeGlory: totalPrize,
       startAt,
       endAt,
       config: contestConfig,
-      coverImageUrl: '', // Will be set after image upload if needed
-      slug: dataToSubmit.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      rules: dataToSubmit.description || 'Standard contest rules apply.'
+      coverImageUrl: '' // Will be set after image upload if needed
     };
     
     // If coverImage is a File, upload it first
