@@ -1,20 +1,18 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand, Share2, Link as LinkIcon } from "lucide-react";
-import { SiX, SiFacebook, SiWhatsapp, SiTelegram, SiLinkedin } from "react-icons/si";
-import { GlassButton } from "@/components/ui/glass-button";
+import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand, Share2 } from "lucide-react";
+import { GlassButton } from "@/components/GlassButton";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function ContestDetailPage() {
   const [match, params] = useRoute("/contest/:slug");
-  const slug = params?.slug;
+  const slug = params?.slug || "";
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -79,6 +77,39 @@ export default function ContestDetailPage() {
       });
     }
   });
+
+  // Share functionality
+  const handleShare = (submission: any) => {
+    const shareUrl = `${window.location.origin}/submission/${submission.id}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: submission.title,
+        text: `Check out this amazing submission: ${submission.title}`,
+        url: shareUrl,
+      }).catch((error) => {
+        console.log('Error sharing:', error);
+        fallbackShare(shareUrl);
+      });
+    } else {
+      fallbackShare(shareUrl);
+    }
+  };
+
+  const fallbackShare = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "Link copied!",
+        description: "Submission link has been copied to clipboard.",
+      });
+    }).catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard.",
+        variant: "destructive",
+      });
+    });
+  };
 
   // Countdown timer
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -146,12 +177,13 @@ export default function ContestDetailPage() {
   const sortedSubmissions = [...filteredSubmissions].sort((a: any, b: any) => {
     if (sortBy === "votes") return b.voteCount - a.voteCount;
     if (sortBy === "recent") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortBy === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     return 0;
   });
 
-  // Top 5 submissions from sorted list
+  // Top 5 submissions for expanded layout
   const topSubmissions = sortedSubmissions.slice(0, 5);
-  const otherSubmissions = sortedSubmissions.slice(5);
+  const allSubmissions = sortedSubmissions.slice(5);
 
   const handleVote = (submissionId: string) => {
     if (!user) {
@@ -187,9 +219,9 @@ export default function ContestDetailPage() {
             Back to Contests
           </Link>
 
-          {/* Header */}
+          {/* Header Controls - Contest Type Selector, Timer, Prize Pool */}
           <div className="mb-12 flex flex-col items-center justify-between gap-8">
-            {/* Title and Buttons */}
+            {/* Contest Type Selector and Upload Button */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
               <div className="w-full max-w-sm text-center">
                 <h1 className="text-2xl font-bold text-white mb-2" data-testid="text-contest-title">
@@ -218,7 +250,7 @@ export default function ContestDetailPage() {
             </div>
 
             <div className="flex flex-col lg:flex-row w-full items-center justify-center gap-8">
-              {/* Timer */}
+              {/* Contest Timer */}
               <div className="w-full max-w-lg rounded-xl bg-gradient-to-br from-primary/20 to-purple-600/20 p-3 sm:p-4 text-center border border-primary/30 backdrop-blur-sm">
                 <p className="text-sm font-medium text-primary text-glow mb-3">Contest Ends In:</p>
                 <div className="flex items-center justify-center gap-2 sm:gap-3">
@@ -252,44 +284,112 @@ export default function ContestDetailPage() {
                 </div>
               </div>
 
-              {/* Prize Pool */}
-              <div className="w-full max-w-sm rounded-xl bg-gradient-to-br from-yellow-600/20 to-orange-600/20 p-4 text-center border border-yellow-500/30 backdrop-blur-sm">
-                <p className="text-sm font-medium text-yellow-300 mb-2">Prize Pool</p>
-                <div className="flex items-center justify-center gap-2">
-                  <Trophy className="h-6 w-6 text-yellow-400" />
-                  <span className="text-2xl font-bold text-white" data-testid="text-prize-pool">
-                    {contest.prizeGlory.toLocaleString()} GLORY
-                  </span>
+              {/* Prize Pool Section */}
+              <div className="w-full max-w-lg rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-purple-600/10 p-3 sm:p-4 glow-border backdrop-blur-sm">
+                <h3 className="mb-4 text-center text-xl sm:text-2xl font-bold text-white text-glow">
+                  {contest.prizeGlory.toLocaleString()} GLORY
+                </h3>
+                
+                {/* Dynamic Prize Distribution */}
+                {contest.prizeDistribution && contest.prizeDistribution.length > 0 ? (
+                  <>
+                    <div className={`grid gap-2 sm:gap-3 text-center ${
+                      contest.prizeDistribution.length <= 3 ? 'grid-cols-3' :
+                      contest.prizeDistribution.length === 4 ? 'grid-cols-4' :
+                      'grid-cols-5'
+                    }`}>
+                      {/* Show first 5 places */}
+                      {contest.prizeDistribution.slice(0, 5).map((prize: any, index: number) => {
+                        const placeNumber = index + 1;
+                        const badgeColor = 
+                          placeNumber === 1 ? 'from-yellow-400 to-yellow-600' :
+                          placeNumber === 2 ? 'from-gray-300 to-gray-500' :
+                          placeNumber === 3 ? 'from-orange-400 to-orange-600' :
+                          'from-blue-400 to-blue-600';
+                        
+                        return (
+                          <div 
+                            key={index}
+                            className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-2 transition-all hover:bg-primary/20 hover:scale-105"
+                          >
+                            <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${badgeColor} flex items-center justify-center mb-1`}>
+                              <span className="text-xs font-bold text-black">
+                                {placeNumber === 1 ? '1st' :
+                                 placeNumber === 2 ? '2nd' :
+                                 placeNumber === 3 ? '3rd' :
+                                 `${placeNumber}th`}
+                              </span>
+                            </div>
+                            <p className="text-xs font-bold text-white mb-1">
+                              {typeof prize.amount === 'number' 
+                                ? prize.amount.toLocaleString()
+                                : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
+                              }
+                            </p>
+                            <p className="text-xs text-primary font-medium">GLORY</p>
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Show "+" indicator if more than 5 places */}
+                      {contest.prizeDistribution.length > 5 && (
+                        <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-2 transition-all hover:bg-primary/20 hover:scale-105">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center mb-1">
+                            <span className="text-xs font-bold text-white">+</span>
+                          </div>
+                          <p className="text-xs font-bold text-white mb-1">
+                            {contest.prizeDistribution.length - 5}
+                          </p>
+                          <p className="text-xs text-primary font-medium">More</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  /* Fallback to default 3-place distribution */
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
+                    {/* 1st Place - 50% */}
+                    <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-2 transition-all hover:bg-primary/20 hover:scale-105">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 flex items-center justify-center mb-1">
+                        <span className="text-xs font-bold text-black">1st</span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-bold text-white mb-1">
+                        {Math.floor(contest.prizeGlory * 0.5).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-primary font-medium">GLORY</p>
+                    </div>
+                    
+                    {/* 2nd Place - 30% */}
+                    <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-2 transition-all hover:bg-primary/20 hover:scale-105">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-gray-300 to-gray-500 flex items-center justify-center mb-1">
+                        <span className="text-xs font-bold text-black">2nd</span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-bold text-white mb-1">
+                        {Math.floor(contest.prizeGlory * 0.3).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-primary font-medium">GLORY</p>
+                    </div>
+                    
+                    {/* 3rd Place - 20% */}
+                    <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-2 transition-all hover:bg-primary/20 hover:scale-105">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 flex items-center justify-center mb-1">
+                        <span className="text-xs font-bold text-black">3rd</span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-bold text-white mb-1">
+                        {Math.floor(contest.prizeGlory * 0.2).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-primary font-medium">GLORY</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Prize Distribution Summary */}
+                <div className="mt-3 pt-3 border-t border-primary/20">
+                  <p className="text-xs text-center text-gray-300">
+                    {contest.prizeDistribution ? contest.prizeDistribution.length : 3} Winners • Total Pool: {contest.prizeGlory.toLocaleString()} GLORY
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Search and Sort */}
-          <div className="mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full sm:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search submissions..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
-                data-testid="input-search"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-400">Sort by:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary/50"
-                data-testid="select-sort"
-              >
-                <option value="votes">Most Voted</option>
-                <option value="recent">Most Recent</option>
-              </select>
             </div>
           </div>
 
@@ -301,189 +401,255 @@ export default function ContestDetailPage() {
             </div>
           ) : (
             <>
-              {/* Top 5 Submissions */}
+              {/* Top 5 Most Liked - Expanded Layout */}
               {topSubmissions.length > 0 && (
-                <div className="mb-12">
-                  <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                    <Trophy className="h-7 w-7 text-yellow-400" />
-                    Top Submissions
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {topSubmissions.map((submission: any, index: number) => (
-                      <div
-                        key={submission.id}
-                        className="relative group"
-                        data-testid={`card-top-submission-${submission.id}`}
-                      >
-                        {/* Rank Badge */}
-                        <div className="absolute -top-3 -left-3 z-10 h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-gray-900 flex items-center justify-center text-lg font-bold text-gray-900 glow">
-                          {index + 1}
-                        </div>
+                <div className="mt-12">
+                  <h3 className="mb-8 text-center text-3xl font-bold text-white text-glow">
+                    <Trophy className="inline-block h-8 w-8 text-yellow-400 mr-2" />
+                    Top 5 Most Liked
+                  </h3>
+                  
+                  {/* Expanded Layout */}
+                  <div className="flex flex-col items-center gap-6">
+                    {/* First Place - Top position */}
+                    {topSubmissions[0] && (
+                      <div className="w-full max-w-sm">
+                        <div className="relative group" data-testid={`card-top-submission-${topSubmissions[0].id}`}>
+                          {/* Rank Badge */}
+                          <div className="absolute -top-3 -left-3 z-10 h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-gray-900 flex items-center justify-center text-lg font-bold text-gray-900 glow">
+                            1
+                          </div>
 
-                        <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
-                          <div className="relative overflow-hidden aspect-square">
-                            <img
-                              src={submission.mediaUrl}
-                              alt={submission.title}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                            
-                            {/* Dark Overlay */}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
-                              {/* Action Buttons - Top Right */}
-                              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
-                                {/* Vote Button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleVote(submission.id);
-                                  }}
-                                  className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 ${
-                                    submission.hasVoted 
-                                      ? 'bg-primary/90 text-white' 
-                                      : 'bg-black/50 text-white hover:bg-primary/90'
-                                  }`}
-                                  data-testid={`button-vote-${submission.id}`}
-                                >
-                                  <Heart className={`h-3 w-3 sm:h-4 sm:w-4 ${submission.hasVoted ? 'fill-current' : ''}`} />
-                                </button>
-
-                                {/* Share Button */}
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <button
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
-                                      data-testid={`button-share-${submission.id}`}
-                                    >
-                                      <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent 
-                                    className="w-48 p-2 bg-black/90 backdrop-blur-xl border-white/10"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <div className="flex flex-col gap-1">
-                                      {/* Copy Link */}
-                                      <button
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(window.location.href)
-                                            .then(() => toast({ title: "Link copied!", description: "Share link copied to clipboard" }))
-                                            .catch(() => toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" }));
-                                        }}
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`button-share-copy-${submission.id}`}
-                                      >
-                                        <LinkIcon className="h-4 w-4" />
-                                        <span>Copy Link</span>
-                                      </button>
-                                      
-                                      {/* Twitter/X */}
-                                      <a
-                                        href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}" in this contest!`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-twitter-${submission.id}`}
-                                      >
-                                        <SiX className="h-4 w-4" />
-                                        <span>Share on X</span>
-                                      </a>
-                                      
-                                      {/* Facebook */}
-                                      <a
-                                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-facebook-${submission.id}`}
-                                      >
-                                        <SiFacebook className="h-4 w-4" />
-                                        <span>Share on Facebook</span>
-                                      </a>
-                                      
-                                      {/* WhatsApp */}
-                                      <a
-                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out "${submission.title}"! ${window.location.href}`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-whatsapp-${submission.id}`}
-                                      >
-                                        <SiWhatsapp className="h-4 w-4" />
-                                        <span>Share on WhatsApp</span>
-                                      </a>
-                                      
-                                      {/* Telegram */}
-                                      <a
-                                        href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}"!`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-telegram-${submission.id}`}
-                                      >
-                                        <SiTelegram className="h-4 w-4" />
-                                        <span>Share on Telegram</span>
-                                      </a>
-                                      
-                                      {/* LinkedIn */}
-                                      <a
-                                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-linkedin-${submission.id}`}
-                                      >
-                                        <SiLinkedin className="h-4 w-4" />
-                                        <span>Share on LinkedIn</span>
-                                      </a>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-
-                                {/* Expand Button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedSubmission(submission);
-                                    setIsLightboxOpen(true);
-                                  }}
-                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
-                                  data-testid={`button-expand-${submission.id}`}
-                                >
-                                  <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </button>
-                              </div>
-                            </div>
-                            
-                            {/* Bottom Info Overlay */}
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
-                              <h3 className="text-base sm:text-lg font-bold text-white mb-1">
-                                {submission.title}
-                              </h3>
-                              <p className="text-xs sm:text-sm text-white/80 mb-2">
-                                by {submission.user?.username || 'Unknown'}
-                              </p>
+                          <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
+                            <div className="relative overflow-hidden aspect-square">
+                              <img
+                                src={topSubmissions[0].mediaUrl}
+                                alt={topSubmissions[0].title}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              />
                               
-                              <div className="flex items-center gap-1 text-white/80">
-                                <Heart className={`h-3 w-3 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
-                                <span className="text-sm">{submission.voteCount} votes</span>
+                              {/* Dark Overlay */}
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
+                                {/* Action Buttons - Top Right */}
+                                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                                  {/* Vote Button */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleVote(topSubmissions[0].id);
+                                    }}
+                                    className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 ${
+                                      topSubmissions[0].hasVoted 
+                                        ? 'bg-primary/90 text-white' 
+                                        : 'bg-black/50 text-white hover:bg-primary/90'
+                                    }`}
+                                    data-testid={`button-vote-${topSubmissions[0].id}`}
+                                  >
+                                    <Heart className={`h-3 w-3 sm:h-4 sm:w-4 ${topSubmissions[0].hasVoted ? 'fill-current' : ''}`} />
+                                  </button>
+
+                                  {/* Share Button */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleShare(topSubmissions[0]);
+                                    }}
+                                    className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                    data-testid={`button-share-${topSubmissions[0].id}`}
+                                  >
+                                    <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  </button>
+
+                                  {/* Expand Button */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSubmission(topSubmissions[0]);
+                                      setIsLightboxOpen(true);
+                                    }}
+                                    className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                    data-testid={`button-expand-${topSubmissions[0].id}`}
+                                  >
+                                    <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {/* Bottom Info Overlay */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
+                                <h3 className="text-base sm:text-lg font-bold text-white mb-1">
+                                  {topSubmissions[0].title}
+                                </h3>
+                                <p className="text-xs sm:text-sm text-white/80 mb-2">
+                                  by {topSubmissions[0].user?.username || 'Unknown'}
+                                </p>
+                                
+                                <div className="flex items-center gap-1 text-white/80">
+                                  <Heart className={`h-3 w-3 ${topSubmissions[0].hasVoted ? 'fill-primary text-primary' : ''}`} />
+                                  <span className="text-sm">{topSubmissions[0].voteCount} votes</span>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    ))}
+                    )}
+                    
+                    {/* Places 2-5 - Bottom row */}
+                    {topSubmissions.length > 1 && (
+                      <div className="w-full max-w-5xl">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 justify-center">
+                          {topSubmissions.slice(1, 5).map((submission: any, index: number) => {
+                            const placeNumber = index + 2;
+                            const badgeColor = 
+                              placeNumber === 2 ? 'from-gray-300 to-gray-500' :
+                              placeNumber === 3 ? 'from-orange-400 to-orange-600' :
+                              'from-blue-400 to-blue-600';
+
+                            return (
+                              <div key={submission.id} className="w-full">
+                                <div className="relative group" data-testid={`card-top-submission-${submission.id}`}>
+                                  {/* Rank Badge */}
+                                  <div className="absolute -top-3 -left-3 z-10 h-10 w-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 border-3 border-gray-900 flex items-center justify-center text-sm font-bold text-gray-900 glow">
+                                    {placeNumber}
+                                  </div>
+
+                                  <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
+                                    <div className="relative overflow-hidden aspect-square">
+                                      <img
+                                        src={submission.mediaUrl}
+                                        alt={submission.title}
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                      />
+                                      
+                                      {/* Dark Overlay */}
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
+                                        {/* Action Buttons - Top Right */}
+                                        <div className="absolute top-2 right-2 flex flex-col items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                                          {/* Vote Button */}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleVote(submission.id);
+                                            }}
+                                            className={`p-1.5 rounded-full backdrop-blur-sm transition-all duration-300 ${
+                                              submission.hasVoted 
+                                                ? 'bg-primary/90 text-white' 
+                                                : 'bg-black/50 text-white hover:bg-primary/90'
+                                            }`}
+                                            data-testid={`button-vote-${submission.id}`}
+                                          >
+                                            <Heart className={`h-3 w-3 ${submission.hasVoted ? 'fill-current' : ''}`} />
+                                          </button>
+
+                                          {/* Share Button */}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleShare(submission);
+                                            }}
+                                            className="p-1.5 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                            data-testid={`button-share-${submission.id}`}
+                                          >
+                                            <Share2 className="h-3 w-3" />
+                                          </button>
+
+                                          {/* Expand Button */}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedSubmission(submission);
+                                              setIsLightboxOpen(true);
+                                            }}
+                                            className="p-1.5 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                            data-testid={`button-expand-${submission.id}`}
+                                          >
+                                            <Expand className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Bottom Info Overlay */}
+                                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-2 sm:p-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
+                                        <h3 className="text-sm font-bold text-white mb-1 truncate">
+                                          {submission.title}
+                                        </h3>
+                                        <p className="text-xs text-white/80 mb-1 truncate">
+                                          by {submission.user?.username || 'Unknown'}
+                                        </p>
+                                        
+                                        <div className="flex items-center gap-1 text-white/80">
+                                          <Heart className={`h-2.5 w-2.5 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
+                                          <span className="text-xs">{submission.voteCount} votes</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* All Other Submissions */}
-              {otherSubmissions.length > 0 && (
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-6">All Submissions</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {otherSubmissions.map((submission: any) => (
+              {/* Sticky Toolbar */}
+              <div className="sticky top-[100px] z-40 mt-12 rounded-lg bg-background-dark/80 px-4 py-4 backdrop-blur-sm glow-border">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-full sm:w-auto">
+                      <select 
+                        value={
+                          sortBy === "votes" ? "Most Voted" : 
+                          sortBy === "recent" ? "Newest" : 
+                          sortBy === "oldest" ? "Oldest" : "Most Voted"
+                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "Most Voted") setSortBy("votes");
+                          else if (value === "Newest") setSortBy("recent");
+                          else if (value === "Oldest") setSortBy("oldest");
+                        }}
+                        className="w-full appearance-none rounded-lg border-white/30 py-2 pl-3 pr-8 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white sm:w-auto"
+                        style={{ backgroundColor: '#171121' }}
+                      >
+                        <option style={{ backgroundColor: '#171121', color: 'white' }}>Most Voted</option>
+                        <option style={{ backgroundColor: '#171121', color: 'white' }}>Newest</option>
+                        <option style={{ backgroundColor: '#171121', color: 'white' }}>Oldest</option>
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60">
+                        <ChevronDown className="h-4 w-4" />
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex w-full items-center gap-4 sm:w-auto">
+                    <div className="relative w-full flex-1 max-w-xs sm:w-auto">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/60">
+                        <Search className="h-5 w-5" />
+                      </span>
+                      <input 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full rounded-lg border-white/30 py-2 pl-10 pr-4 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white" 
+                        placeholder="Search entries..." 
+                        type="search"
+                        data-testid="input-search"
+                        style={{ backgroundColor: '#171121' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* All Submissions */}
+              {allSubmissions.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="mb-6 text-2xl font-bold text-white">All Submissions</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {allSubmissions.map((submission: any) => (
                       <div
                         key={submission.id}
                         className="group"
@@ -497,9 +663,9 @@ export default function ContestDetailPage() {
                               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                             
-                            {/* Dark Overlay */}
+                            {/* Hover Overlay */}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
-                              {/* Action Buttons - Top Right */}
+                              {/* Action Buttons */}
                               <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
                                 {/* Vote Button */}
                                 <button
@@ -507,109 +673,28 @@ export default function ContestDetailPage() {
                                     e.stopPropagation();
                                     handleVote(submission.id);
                                   }}
-                                  className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 ${
+                                  className={`p-2 rounded-full transition-all duration-300 ${
                                     submission.hasVoted 
-                                      ? 'bg-primary/90 text-white' 
-                                      : 'bg-black/50 text-white hover:bg-primary/90'
+                                      ? 'bg-primary text-white shadow-lg' 
+                                      : 'bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm'
                                   }`}
                                   data-testid={`button-vote-${submission.id}`}
                                 >
                                   <Heart className={`h-3 w-3 sm:h-4 sm:w-4 ${submission.hasVoted ? 'fill-current' : ''}`} />
                                 </button>
-
+                                
                                 {/* Share Button */}
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <button
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
-                                      data-testid={`button-share-${submission.id}`}
-                                    >
-                                      <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent 
-                                    className="w-48 p-2 bg-black/90 backdrop-blur-xl border-white/10"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <div className="flex flex-col gap-1">
-                                      {/* Copy Link */}
-                                      <button
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(window.location.href)
-                                            .then(() => toast({ title: "Link copied!", description: "Share link copied to clipboard" }))
-                                            .catch(() => toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" }));
-                                        }}
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`button-share-copy-${submission.id}`}
-                                      >
-                                        <LinkIcon className="h-4 w-4" />
-                                        <span>Copy Link</span>
-                                      </button>
-                                      
-                                      {/* Twitter/X */}
-                                      <a
-                                        href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}" in this contest!`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-twitter-${submission.id}`}
-                                      >
-                                        <SiX className="h-4 w-4" />
-                                        <span>Share on X</span>
-                                      </a>
-                                      
-                                      {/* Facebook */}
-                                      <a
-                                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-facebook-${submission.id}`}
-                                      >
-                                        <SiFacebook className="h-4 w-4" />
-                                        <span>Share on Facebook</span>
-                                      </a>
-                                      
-                                      {/* WhatsApp */}
-                                      <a
-                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out "${submission.title}"! ${window.location.href}`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-whatsapp-${submission.id}`}
-                                      >
-                                        <SiWhatsapp className="h-4 w-4" />
-                                        <span>Share on WhatsApp</span>
-                                      </a>
-                                      
-                                      {/* Telegram */}
-                                      <a
-                                        href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out "${submission.title}"!`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-telegram-${submission.id}`}
-                                      >
-                                        <SiTelegram className="h-4 w-4" />
-                                        <span>Share on Telegram</span>
-                                      </a>
-                                      
-                                      {/* LinkedIn */}
-                                      <a
-                                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-primary/20 rounded-md transition-colors"
-                                        data-testid={`link-share-linkedin-${submission.id}`}
-                                      >
-                                        <SiLinkedin className="h-4 w-4" />
-                                        <span>Share on LinkedIn</span>
-                                      </a>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleShare(submission);
+                                  }}
+                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                  data-testid={`button-share-${submission.id}`}
+                                >
+                                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                                
                                 {/* Expand Button */}
                                 <button
                                   onClick={(e) => {
@@ -654,12 +739,10 @@ export default function ContestDetailPage() {
       {/* Modals */}
       <ContestLightboxModal
         isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
         submission={selectedSubmission}
-        onClose={() => {
-          setIsLightboxOpen(false);
-          setSelectedSubmission(null);
-        }}
-        onVote={handleVote}
+        onVote={(submissionId: string) => handleVote(submissionId)}
+        onShare={() => selectedSubmission && handleShare(selectedSubmission)}
       />
 
       <ContestRulesCard
@@ -670,12 +753,10 @@ export default function ContestDetailPage() {
 
       <UploadWizardModal
         isOpen={showUploadWizard}
-        onClose={() => {
-          setShowUploadWizard(false);
-          queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest.id] });
-        }}
+        onClose={() => setShowUploadWizard(false)}
         preselectedContestId={contest.id}
       />
     </>
   );
 }
+

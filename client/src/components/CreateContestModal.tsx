@@ -25,7 +25,12 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     startTime: '',
     endDate: '',
     endTime: '',
+    
+    // NEW: Submission deadline (optional)
     submissionDeadline: '',
+    submissionDeadlineTime: '',
+    enableSubmissionDeadline: false,
+    
     votingStartOption: 'later' as 'now' | 'later',
     votingStartDate: '',
     votingEndDate: '',
@@ -53,12 +58,12 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     votingMethods: ['public'],
 
     // Voting frequency
-    voteLimitPerPeriod: 1,
-    votePeriodHours: 12,
-    totalVoteLimit: 0,
+    votesPerUserPerPeriod: 1,
+    periodDurationHours: 24,
+    totalVotesPerUser: 0,
 
     // Admin settings
-    status: 'draft',
+    status: 'active',
     featured: false
   });
 
@@ -136,7 +141,69 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
 
 
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
-    let finalFormData = { ...dataToSubmit };
+    // Create contest config object
+    let contestConfig: any = {
+      votesPerUserPerPeriod: dataToSubmit.votesPerUserPerPeriod,
+      periodDurationHours: dataToSubmit.periodDurationHours,
+      totalVotesPerUser: dataToSubmit.totalVotesPerUser
+    };
+    
+    // Process submission deadline logic
+    if (dataToSubmit.enableSubmissionDeadline && dataToSubmit.submissionDeadline) {
+      // Use custom submission deadline
+      const submissionDeadlineDateTime = new Date(
+        `${dataToSubmit.submissionDeadline}T${dataToSubmit.submissionDeadlineTime || '23:59'}`
+      ).toISOString();
+      contestConfig.submissionEndAt = submissionDeadlineDateTime;
+    } else {
+      // Use contest end date as submission deadline
+      const contestEndDateTime = new Date(
+        `${dataToSubmit.votingEndDate}T${dataToSubmit.votingEndTime || '23:59'}`
+      ).toISOString();
+      contestConfig.submissionEndAt = contestEndDateTime;
+    }
+    
+    // Set contest start time
+    let startAt: string;
+    if (dataToSubmit.startDateOption === 'now') {
+      startAt = new Date().toISOString();
+    } else {
+      startAt = new Date(
+        `${dataToSubmit.startDate}T${dataToSubmit.startTime || '00:00'}`
+      ).toISOString();
+    }
+    
+    // Set voting start time in config
+    if (dataToSubmit.votingStartOption === 'now') {
+      contestConfig.votingStartAt = new Date().toISOString();
+    } else {
+      const votingStartDateTime = new Date(
+        `${dataToSubmit.votingStartDate}T00:00`
+      ).toISOString();
+      contestConfig.votingStartAt = votingStartDateTime;
+    }
+    
+    // Set contest end time (this is also voting end time)
+    const endAt = new Date(
+      `${dataToSubmit.votingEndDate}T${dataToSubmit.votingEndTime || '23:59'}`
+    ).toISOString();
+    contestConfig.votingEndAt = endAt;
+    
+    // Create clean form data object for submission
+    const finalFormData = {
+      title: dataToSubmit.title,
+      description: dataToSubmit.description,
+      contestType: dataToSubmit.contestType,
+      category: dataToSubmit.category,
+      status: 'active' as const, // Publish directly as requested
+      prizeGlory: parseInt(dataToSubmit.prizePool) || 0,
+      startAt,
+      endAt,
+      config: contestConfig,
+      coverImageUrl: '', // Will be set after image upload if needed
+      slug: dataToSubmit.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      rules: dataToSubmit.description || 'Standard contest rules apply.'
+    };
     
     // If coverImage is a File, upload it first
     if (dataToSubmit.coverImage && dataToSubmit.coverImage instanceof File) {
@@ -156,7 +223,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
         }
         
         const result = await response.json();
-        finalFormData.coverImage = result.url;
+        finalFormData.coverImageUrl = result.url;
       } catch (error) {
         console.error('Failed to upload cover image:', error);
         setErrors(['Failed to upload cover image. Please check your connection and try again.']);
@@ -164,11 +231,6 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       }
     }
     
-    // Ensure coverImage is a string URL or null/undefined, not a File
-    if (finalFormData.coverImage && typeof finalFormData.coverImage !== 'string') {
-      setErrors(['Invalid cover image format. Please try uploading again.']);
-      return;
-    }
     
     onSubmit(finalFormData);
     onClose();
@@ -439,26 +501,79 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
 
                 <div>
                   <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-                    Submission Deadline *
+                    Contest End Date *
                   </label>
                   <input
                     type="date"
-                    value={formData.endDate}
-                    onChange={(e) => handleInputChange('endDate', e.target.value)}
+                    value={formData.votingEndDate}
+                    onChange={(e) => handleInputChange('votingEndDate', e.target.value)}
                     className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                   />
+                  <p className="text-xs text-slate-500 mt-1">This is when both submissions and voting end</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-                    Submission Deadline Time
+                    Contest End Time
                   </label>
                   <input
                     type="time"
-                    value={formData.endTime}
-                    onChange={(e) => handleInputChange('endTime', e.target.value)}
+                    value={formData.votingEndTime}
+                    onChange={(e) => handleInputChange('votingEndTime', e.target.value)}
                     className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                   />
+                </div>
+
+                {/* NEW: Submission Deadline Section */}
+                <div className="md:col-span-2 border-t border-slate-200 dark:border-slate-800 pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.enableSubmissionDeadline}
+                        onChange={(e) => handleInputChange('enableSubmissionDeadline', e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                        Set Custom Submission Deadline
+                      </span>
+                    </label>
+                  </div>
+                  
+                  <p className="text-xs text-slate-500 mb-3">
+                    {formData.enableSubmissionDeadline 
+                      ? "Submissions will close at the custom deadline below" 
+                      : "Submissions will be accepted until the contest ends"
+                    }
+                  </p>
+
+                  {formData.enableSubmissionDeadline && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                          Submission Deadline Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.submissionDeadline}
+                          onChange={(e) => handleInputChange('submissionDeadline', e.target.value)}
+                          className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                          Submission Deadline Time
+                        </label>
+                        <input
+                          type="time"
+                          value={formData.submissionDeadlineTime}
+                          onChange={(e) => handleInputChange('submissionDeadlineTime', e.target.value)}
+                          className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -498,30 +613,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                     disabled={formData.votingStartOption === 'now'}
                     className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-                    Contest End Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.votingEndDate}
-                    onChange={(e) => handleInputChange('votingEndDate', e.target.value)}
-                    className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-                    Contest End Time
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.votingEndTime}
-                    onChange={(e) => handleInputChange('votingEndTime', e.target.value)}
-                    className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
-                  />
+                  <p className="text-xs text-slate-500 mt-1">Voting ends when the contest ends</p>
                 </div>
               </div>
             </section>
@@ -743,8 +835,8 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                       </label>
                       <input
                         type="number"
-                        value={formData.voteLimitPerPeriod}
-                        onChange={(e) => handleInputChange('voteLimitPerPeriod', parseInt(e.target.value) || 1)}
+                        value={formData.votesPerUserPerPeriod}
+                        onChange={(e) => handleInputChange('votesPerUserPerPeriod', parseInt(e.target.value) || 1)}
                         min="1"
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                       />
@@ -757,8 +849,8 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                       </label>
                       <input
                         type="number"
-                        value={formData.votePeriodHours}
-                        onChange={(e) => handleInputChange('votePeriodHours', parseInt(e.target.value) || 12)}
+                        value={formData.periodDurationHours}
+                        onChange={(e) => handleInputChange('periodDurationHours', parseInt(e.target.value) || 24)}
                         min="1"
                         max="168"
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
@@ -772,13 +864,13 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                       </label>
                       <input
                         type="number"
-                        value={formData.totalVoteLimit}
-                        onChange={(e) => handleInputChange('totalVoteLimit', parseInt(e.target.value) || 0)}
+                        value={formData.totalVotesPerUser}
+                        onChange={(e) => handleInputChange('totalVotesPerUser', parseInt(e.target.value) || 0)}
                         min="0"
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                       />
                       <p className="text-xs text-slate-500 mt-1">
-                        {formData.totalVoteLimit === 0 ? 'Unlimited votes during contest' : `Max ${formData.totalVoteLimit} votes total`}
+                        {formData.totalVotesPerUser === 0 ? 'Unlimited votes during contest' : `Max ${formData.totalVotesPerUser} votes total`}
                       </p>
                     </div>
                   </div>
@@ -786,12 +878,12 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                   <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
                       <strong>Example:</strong> With current settings, each user can vote{' '}
-                      <span className="font-semibold">{formData.voteLimitPerPeriod} time(s)</span> every{' '}
-                      <span className="font-semibold">{formData.votePeriodHours} hour(s)</span>
-                      {formData.totalVoteLimit > 0 && (
-                        <>, with a maximum of <span className="font-semibold">{formData.totalVoteLimit} total votes</span> during the entire contest</>
+                      <span className="font-semibold">{formData.votesPerUserPerPeriod} time(s)</span> every{' '}
+                      <span className="font-semibold">{formData.periodDurationHours} hour(s)</span>
+                      {formData.totalVotesPerUser > 0 && (
+                        <>, with a maximum of <span className="font-semibold">{formData.totalVotesPerUser} total votes</span> during the entire contest</>
                       )}
-                      {formData.totalVoteLimit === 0 && (
+                      {formData.totalVotesPerUser === 0 && (
                         <>, with <span className="font-semibold">unlimited total votes</span> during the contest</>
                       )}
                       .

@@ -5,12 +5,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/GlassButton";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
 import { registerSchema } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/lib/auth";
 import { Link } from "wouter";
 import { Eye, EyeOff, UserPlus, Trophy, Check } from "lucide-react";
 import type { z } from "zod";
@@ -167,10 +168,10 @@ export default function Register() {
                   </div>
                 </div>
 
-                <Button
+                <GlassButton
                   data-testid="button-submit"
                   type="submit"
-                  className="w-full gradient-glory font-semibold"
+                  className="w-full font-semibold"
                   disabled={registerMutation.isPending}
                 >
                   {registerMutation.isPending ? (
@@ -181,7 +182,7 @@ export default function Register() {
                       Create Account
                     </>
                   )}
-                </Button>
+                </GlassButton>
               </form>
             </Form>
 

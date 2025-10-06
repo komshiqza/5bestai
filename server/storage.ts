@@ -54,7 +54,7 @@ export interface IStorage {
   
   // Submissions
   getSubmission(id: string): Promise<Submission | undefined>;
-  getSubmissions(filters: { contestId?: string; userId?: string; status?: string }): Promise<SubmissionWithUser[]>;
+  getSubmissions(filters: { contestId?: string; userId?: string; status?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission | undefined>;
   deleteSubmission(id: string): Promise<boolean>;
@@ -64,6 +64,8 @@ export interface IStorage {
   getVote(userId: string, submissionId: string): Promise<Vote | undefined>;
   createVote(vote: InsertVote): Promise<Vote>;
   getVoteCountByUser(userId: string, since: Date): Promise<number>;
+  getVoteCountForSubmissionInPeriod(userId: string, submissionId: string, since: Date): Promise<number>;
+  getUserTotalVotesInContest(userId: string, contestId: string): Promise<number>;
   
   // Glory Ledger
   createGloryTransaction(transaction: InsertGloryLedger): Promise<GloryLedger>;
@@ -73,9 +75,6 @@ export interface IStorage {
   // Audit Log
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
-  
-  // Leaderboard
-  getLeaderboard(limit?: number): Promise<UserWithStats[]>;
   
   // Contest distribution
   distributeContestRewards(contestId: string): Promise<void>;
@@ -161,9 +160,14 @@ export class MemStorage implements IStorage {
       coverImageUrl: null,
       status: "active",
       prizeGlory: 1000,
-      startAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-      endAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      startAt: new Date(),
+      endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      config: {
+        votesPerUserPerPeriod: 1,
+        periodDurationHours: 24,
+        totalVotesPerUser: 0
+      },
+      createdAt: new Date()
     };
     this.contests.set(contest.id, contest);
   }
@@ -186,6 +190,8 @@ export class MemStorage implements IStorage {
     const user: User = {
       ...insertUser,
       id,
+      role: insertUser.role || "user",
+      status: insertUser.status || "pending",
       gloryBalance: 0,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -267,6 +273,10 @@ export class MemStorage implements IStorage {
     const contest: Contest = {
       ...insertContest,
       id,
+      status: insertContest.status || "draft",
+      coverImageUrl: insertContest.coverImageUrl || null,
+      prizeGlory: insertContest.prizeGlory || 0,
+      config: insertContest.config || null,
       createdAt: new Date()
     };
     this.contests.set(id, contest);
@@ -291,7 +301,7 @@ export class MemStorage implements IStorage {
     return this.submissions.get(id);
   }
 
-  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string }): Promise<SubmissionWithUser[]> {
+  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
     let submissions = Array.from(this.submissions.values());
     
     if (filters.contestId) {
@@ -304,9 +314,16 @@ export class MemStorage implements IStorage {
       submissions = submissions.filter(s => s.status === filters.status);
     }
 
-    return submissions
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .map(submission => {
+    // Sort by creation date (newest first)
+    submissions = submissions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Apply pagination
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+    const offset = (page - 1) * limit;
+    const paginatedSubmissions = submissions.slice(offset, offset + limit);
+
+    return paginatedSubmissions.map(submission => {
         const user = this.users.get(submission.userId)!;
         const contest = submission.contestId ? this.contests.get(submission.contestId) : null;
         
@@ -323,6 +340,10 @@ export class MemStorage implements IStorage {
     const submission: Submission = {
       ...insertSubmission,
       id,
+      status: insertSubmission.status || "pending",
+      description: insertSubmission.description || null,
+      contestId: insertSubmission.contestId || null,
+      thumbnailUrl: insertSubmission.thumbnailUrl || null,
       votesCount: 0,
       createdAt: new Date()
     };
@@ -382,12 +403,31 @@ export class MemStorage implements IStorage {
     ).length;
   }
 
+  async getVoteCountForSubmissionInPeriod(userId: string, submissionId: string, since: Date): Promise<number> {
+    return Array.from(this.votes.values()).filter(
+      vote => vote.userId === userId && vote.submissionId === submissionId && vote.createdAt >= since
+    ).length;
+  }
+
+  async getUserTotalVotesInContest(userId: string, contestId: string): Promise<number> {
+    const contestSubmissions = Array.from(this.submissions.values()).filter(
+      submission => submission.contestId === contestId
+    );
+    const submissionIds = contestSubmissions.map(s => s.id);
+    
+    return Array.from(this.votes.values()).filter(
+      vote => vote.userId === userId && submissionIds.includes(vote.submissionId)
+    ).length;
+  }
+
   // Glory Ledger
   async createGloryTransaction(insertTransaction: InsertGloryLedger): Promise<GloryLedger> {
     const id = randomUUID();
     const transaction: GloryLedger = {
       ...insertTransaction,
       id,
+      contestId: insertTransaction.contestId || null,
+      submissionId: insertTransaction.submissionId || null,
       createdAt: new Date()
     };
     this.gloryLedger.set(id, transaction);
@@ -419,6 +459,7 @@ export class MemStorage implements IStorage {
     const log: AuditLog = {
       ...insertLog,
       id,
+      meta: insertLog.meta || null,
       createdAt: new Date()
     };
     this.auditLogs.set(id, log);
@@ -429,24 +470,6 @@ export class MemStorage implements IStorage {
     return Array.from(this.auditLogs.values())
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit);
-  }
-
-  // Leaderboard
-  async getLeaderboard(limit = 20): Promise<UserWithStats[]> {
-    const users = Array.from(this.users.values())
-      .filter(user => user.status === "approved")
-      .map(user => ({
-        ...user,
-        submissionCount: Array.from(this.submissions.values()).filter(s => s.userId === user.id).length,
-        totalVotes: Array.from(this.submissions.values())
-          .filter(s => s.userId === user.id)
-          .reduce((sum, s) => sum + s.votesCount, 0),
-        contestWins: 0 // TODO: implement win tracking
-      }))
-      .sort((a, b) => b.gloryBalance - a.gloryBalance)
-      .slice(0, limit);
-
-    return users;
   }
 
   // Contest distribution
@@ -729,15 +752,22 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string }): Promise<SubmissionWithUser[]> {
+  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
     const conditions = [];
     if (filters.contestId) conditions.push(eq(submissions.contestId, filters.contestId));
     if (filters.userId) conditions.push(eq(submissions.userId, filters.userId));
     if (filters.status) conditions.push(eq(submissions.status, filters.status));
 
+    // Calculate pagination
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+    const offset = (page - 1) * limit;
+
     const submissionsData = await db.query.submissions.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(submissions.createdAt)]
+      orderBy: [desc(submissions.createdAt)],
+      limit: limit,
+      offset: offset
     });
 
     const result: SubmissionWithUser[] = [];
@@ -802,16 +832,20 @@ export class DbStorage implements IStorage {
         where: eq(users.id, submission.userId),
         columns: { id: true, username: true }
       });
-      const contest = await db.query.contests.findFirst({
-        where: eq(contests.id, submission.contestId),
-        columns: { id: true, title: true }
-      });
       
-      if (user && contest) {
+      let contest = null;
+      if (submission.contestId) {
+        contest = await db.query.contests.findFirst({
+          where: eq(contests.id, submission.contestId),
+          columns: { id: true, title: true }
+        });
+      }
+      
+      if (user) {
         result.push({
           ...submission,
           user,
-          contest
+          contest: contest || { id: '', title: 'No Contest' }
         });
       }
     }
@@ -857,6 +891,30 @@ export class DbStorage implements IStorage {
     return result[0]?.count || 0;
   }
 
+  async getVoteCountForSubmissionInPeriod(userId: string, submissionId: string, since: Date): Promise<number> {
+    const result = await db.select({ count: count() })
+      .from(votes)
+      .where(and(
+        eq(votes.userId, userId),
+        eq(votes.submissionId, submissionId),
+        sql`${votes.createdAt} >= ${since}`
+      ));
+    
+    return result[0]?.count || 0;
+  }
+
+  async getUserTotalVotesInContest(userId: string, contestId: string): Promise<number> {
+    const result = await db.select({ count: count() })
+      .from(votes)
+      .innerJoin(submissions, eq(votes.submissionId, submissions.id))
+      .where(and(
+        eq(votes.userId, userId),
+        eq(submissions.contestId, contestId)
+      ));
+    
+    return result[0]?.count || 0;
+  }
+
   async createGloryTransaction(insertTransaction: InsertGloryLedger): Promise<GloryLedger> {
     const [transaction] = await db.insert(gloryLedger).values(insertTransaction).returning();
     
@@ -892,34 +950,6 @@ export class DbStorage implements IStorage {
       orderBy: [desc(auditLog.createdAt)],
       limit
     });
-    return result;
-  }
-
-  async getLeaderboard(limit = 20): Promise<UserWithStats[]> {
-    const usersData = await db.query.users.findMany({
-      where: eq(users.status, "approved"),
-      orderBy: [desc(users.gloryBalance)],
-      limit
-    });
-
-    const result: UserWithStats[] = [];
-    for (const user of usersData) {
-      const submissionCount = await db.select({ count: count() })
-        .from(submissions)
-        .where(eq(submissions.userId, user.id));
-      
-      const totalVotesResult = await db.select({ total: sum(submissions.votesCount) })
-        .from(submissions)
-        .where(eq(submissions.userId, user.id));
-
-      result.push({
-        ...user,
-        submissionCount: submissionCount[0]?.count || 0,
-        totalVotes: Number(totalVotesResult[0]?.total) || 0,
-        contestWins: 0
-      });
-    }
-
     return result;
   }
 

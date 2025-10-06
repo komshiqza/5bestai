@@ -1,4 +1,4 @@
-import { X, Heart, User, Calendar } from "lucide-react";
+import { X, Heart, User, Calendar, Share2 } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 
 interface ContestLightboxModalProps {
@@ -18,13 +18,15 @@ interface ContestLightboxModalProps {
   } | null;
   onClose: () => void;
   onVote?: (submissionId: string) => void;
+  onShare?: () => void;
 }
 
 export function ContestLightboxModal({ 
   isOpen, 
   submission, 
   onClose, 
-  onVote 
+  onVote,
+  onShare
 }: ContestLightboxModalProps) {
   if (!isOpen || !submission) return null;
 
@@ -34,85 +36,117 @@ export function ContestLightboxModal({
     }
   };
 
+  const handleShare = () => {
+    if (onShare) {
+      onShare();
+    } else {
+      // Fallback share functionality if no onShare prop provided
+      const shareUrl = `${window.location.origin}/submission/${submission.id}`;
+      
+      if (navigator.share) {
+        navigator.share({
+          title: submission.title,
+          text: `Check out this amazing submission: ${submission.title}`,
+          url: shareUrl,
+        }).catch((error) => {
+          console.log('Error sharing:', error);
+          navigator.clipboard.writeText(shareUrl);
+        });
+      } else {
+        navigator.clipboard.writeText(shareUrl);
+      }
+    }
+  };
+
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 bg-black"
       onClick={onClose}
       data-testid="lightbox-overlay"
     >
-      <div 
-        className="relative max-w-6xl w-full max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Close Button */}
+      {/* Full-screen image */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <img
+          src={submission.mediaUrl}
+          alt={submission.title}
+          className="max-w-full max-h-full object-contain"
+          data-testid="lightbox-image"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+
+      {/* Top Left - Vote and Share Icons */}
+      <div className="absolute top-6 left-6 flex gap-3 z-20">
         <button
-          onClick={onClose}
-          className="absolute -top-12 right-0 p-2 text-white hover:text-violet-400 transition-colors z-10"
-          data-testid="button-close-lightbox"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVote();
+          }}
+          className="p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-primary/90 transition-all duration-300 border border-white/20"
+          data-testid="button-vote-submission"
         >
-          <X className="h-8 w-8" />
+          <Heart 
+            className={`h-6 w-6 ${submission.hasVoted ? 'fill-current text-red-500' : ''}`}
+          />
         </button>
+        
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleShare();
+          }}
+          className="p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-primary/90 transition-all duration-300 border border-white/20"
+          data-testid="button-share-submission"
+        >
+          <Share2 className="h-6 w-6" />
+        </button>
+      </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
-          {/* Image */}
-          <div className="flex-1 flex items-center justify-center bg-black/30 p-8">
-            <img
-              src={submission.mediaUrl}
-              alt={submission.title}
-              className="max-w-full max-h-[70vh] object-contain rounded-lg"
-              data-testid="lightbox-image"
-            />
-          </div>
+      {/* Top Right - Close Icon */}
+      <button
+        onClick={onClose}
+        className="absolute top-6 right-6 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-all duration-300 border border-white/20 z-20"
+        data-testid="button-close-lightbox"
+      >
+        <X className="h-6 w-6" />
+      </button>
 
-          {/* Info Panel */}
-          <div className="lg:w-96 p-6 flex flex-col gap-6">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-2" data-testid="text-submission-title">
-                {submission.title}
-              </h2>
-              {submission.description && (
-                <p className="text-slate-300 text-sm" data-testid="text-submission-description">
-                  {submission.description}
-                </p>
-              )}
-            </div>
-
-            {/* Creator */}
+      {/* Bottom Info Bar (Optional - can be toggled) */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 z-10">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-white mb-2" data-testid="text-submission-title">
+            {submission.title}
+          </h2>
+          {submission.description && (
+            <p className="text-gray-300 text-sm mb-3" data-testid="text-submission-description">
+              {submission.description}
+            </p>
+          )}
+          
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-                <User className="h-5 w-5 text-violet-400" />
+              <div className="h-8 w-8 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+                <User className="h-4 w-4 text-violet-400" />
               </div>
               <div>
-                <p className="text-xs text-slate-400">Created by</p>
-                <p className="text-white font-semibold" data-testid="text-creator-username">
-                  {submission.user?.username || 'Unknown'}
+                <p className="text-white font-semibold text-sm" data-testid="text-creator-username">
+                  @{submission.user?.username || 'Unknown'}
                 </p>
               </div>
             </div>
-
-            {/* Date */}
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date(submission.createdAt).toLocaleDateString()}</span>
+            
+            <div className="flex items-center gap-4 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date(submission.createdAt).toLocaleDateString()}</span>
+              </div>
+              {submission.voteCount !== undefined && (
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4" />
+                  <span>{submission.voteCount} votes</span>
+                </div>
+              )}
             </div>
-
-            {/* Vote Button */}
-            {onVote && (
-              <GlassButton
-                onClick={handleVote}
-                variant="purple"
-                className="w-full py-4 flex items-center justify-center gap-2"
-                data-testid="button-vote-submission"
-              >
-                <Heart 
-                  className={`h-5 w-5 ${submission.hasVoted ? 'fill-violet-400' : ''}`}
-                />
-                <span>
-                  {submission.hasVoted ? 'Voted' : 'Vote'} 
-                  {submission.voteCount ? ` (${submission.voteCount})` : ''}
-                </span>
-              </GlassButton>
-            )}
           </div>
         </div>
       </div>

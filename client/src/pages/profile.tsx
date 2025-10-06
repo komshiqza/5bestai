@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -251,10 +252,10 @@ export default function Profile() {
                       Start competing by uploading your first creative work!
                     </p>
                     <Link href="/upload" data-testid="first-upload-button">
-                      <Button className="gradient-glory">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload Your First Entry
-                      </Button>
+                      <GlassButton>
+                        Upload New Entry
+                        <Upload className="w-4 h-4 ml-2" />
+                      </GlassButton>
                     </Link>
                   </div>
                 )}

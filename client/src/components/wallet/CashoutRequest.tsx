@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/GlassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -142,7 +143,7 @@ export function CashoutRequest() {
 
               {/* Receive As section removed */}
 
-              <Button
+              <GlassButton
                 type="submit"
                 className="w-full"
                 disabled={createRequestMutation.isPending || !hasWallet}
@@ -156,7 +157,7 @@ export function CashoutRequest() {
                 ) : (
                   "Request Cashout"
                 )}
-              </Button>
+              </GlassButton>
             </form>
           )}
         </CardContent>

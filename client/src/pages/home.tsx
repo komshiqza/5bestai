@@ -4,11 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SubmissionCard } from "@/components/submission-card";
+import { ContestLightboxModal } from "@/components/ContestLightboxModal";
+import { GlassButton } from "@/components/GlassButton";
 import { Trophy, Upload, ArrowRight, Users, Image as ImageIcon, Clock, Play } from "lucide-react";
-import { useAuth, isAuthenticated } from "@/lib/auth";
+import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
+import { useState, useEffect, useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const { data: user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [allSubmissions, setAllSubmissions] = useState<any[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: contests = [] } = useQuery({
     queryKey: ["/api/contests", { status: "active" }],
@@ -19,14 +33,154 @@ export default function Home() {
     },
   });
 
-  const { data: submissions = [] } = useQuery({
-    queryKey: ["/api/submissions"],
+  const { data: submissions = [], isLoading } = useQuery({
+    queryKey: ["/api/submissions", page],
     queryFn: async () => {
-      const response = await fetch("/api/submissions?status=approved");
+      const response = await fetch(`/api/submissions?status=approved&page=${page}&limit=8`);
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
   });
+
+  // Update submissions when new data arrives
+  useEffect(() => {
+    if (submissions && submissions.length > 0) {
+      if (page === 1) {
+        setAllSubmissions(submissions);
+      } else {
+        setAllSubmissions(prev => [...prev, ...submissions]);
+      }
+      setHasMore(submissions.length === 8); // If we got less than 8, no more pages
+      setIsLoadingMore(false);
+    } else if (submissions && submissions.length === 0 && page > 1) {
+      // No more submissions available
+      setHasMore(false);
+      setIsLoadingMore(false);
+    }
+  }, [submissions, page]);
+
+  // Infinite scroll logic
+  const handleScroll = useCallback(() => {
+    if (isLoadingMore || !hasMore || allSubmissions.length < 8) return; // Don't scroll if less than 8 items
+    
+    const scrollTop = document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = document.documentElement.clientHeight;
+    
+    if (scrollTop + clientHeight >= scrollHeight - 500) { // Reduced threshold to 500px
+      setIsLoadingMore(true);
+      setPage(prev => prev + 1);
+    }
+  }, [isLoadingMore, hasMore, allSubmissions.length]);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  // Vote mutation for modal
+  const voteMutation = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const response = await apiRequest("POST", "/api/votes", {
+        submissionId,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      toast({
+        title: "Vote recorded!",
+        description: "Your vote has been counted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to vote. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle voting from modal
+  const handleVoteFromModal = (submissionId: string) => {
+    if (!isAuthenticated(user)) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to vote on submissions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isApproved(user)) {
+      toast({
+        title: "Account approval required",
+        description: "Your account must be approved to vote.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (user.id === selectedSubmission?.user?.id) {
+      toast({
+        title: "Cannot vote",
+        description: "You cannot vote on your own submission.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    voteMutation.mutate(submissionId);
+  };
+
+  // Handle sharing from modal
+  const handleShareFromModal = () => {
+    if (selectedSubmission) {
+      const shareUrl = `${window.location.origin}/submission/${selectedSubmission.id}`;
+      
+      if (navigator.share) {
+        navigator.share({
+          title: selectedSubmission.title,
+          text: `Check out this amazing submission: ${selectedSubmission.title}`,
+          url: shareUrl,
+        }).catch((error) => {
+          console.log('Error sharing:', error);
+          fallbackShare(shareUrl);
+        });
+      } else {
+        fallbackShare(shareUrl);
+      }
+    }
+  };
+
+  // Fallback share functionality
+  const fallbackShare = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "Link copied!",
+        description: "Submission link has been copied to clipboard.",
+      });
+    }).catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard.",
+        variant: "destructive",
+      });
+    });
+  };
+
+  // Handle opening submission modal
+  const handleOpenSubmissionModal = (submission: any) => {
+    setSelectedSubmission(submission);
+    setIsModalOpen(true);
+  };
+
+  // Handle closing submission modal
+  const handleCloseSubmissionModal = () => {
+    setIsModalOpen(false);
+    setSelectedSubmission(null);
+  };
 
   const featuredContest = contests[0];
 
@@ -45,21 +199,19 @@ export default function Home() {
               <span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Win GLORY</span>
             </h1>
             <p className="text-xl text-muted-foreground mb-8" data-testid="hero-description">
-              Join creative contests, showcase your talent, and climb the leaderboard. Top 5 submissions win GLORY rewards.
+              Join creative contests, showcase your talent, and win rewards. Top 5 submissions win GLORY rewards.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/contests" data-testid="hero-button-contests">
-                <Button size="lg" className="gradient-glory hover:opacity-90 transition-opacity text-lg px-8 py-3">
+                <GlassButton className="text-lg px-8 py-3">
                   Browse Contests
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+                </GlassButton>
               </Link>
               {isAuthenticated(user) ? (
                 <Link href="/upload" data-testid="hero-button-upload">
-                  <Button size="lg" variant="outline" className="text-lg px-8 py-3">
-                    <Upload className="mr-2 w-5 h-5" />
-                    Submit Your Work
-                  </Button>
+                  <GlassButton className="text-lg px-8 py-3">
+                    Submit Your Art
+                  </GlassButton>
                 </Link>
               ) : (
                 <Link href="/register" data-testid="hero-button-register">
@@ -70,71 +222,6 @@ export default function Home() {
               )}
             </div>
           </div>
-
-          {/* Featured Contest */}
-          {featuredContest && (
-            <div className="mt-16 glass-effect rounded-2xl p-8 max-w-4xl mx-auto" data-testid="featured-contest">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                  <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse">
-                    <div className="w-2 h-2 bg-red-400 rounded-full mr-2"></div>
-                    LIVE NOW
-                  </Badge>
-                  <h2 className="text-2xl font-bold" data-testid="featured-contest-title">
-                    {featuredContest.title}
-                  </h2>
-                </div>
-                <div className="flex items-center space-x-2 text-primary">
-                  <Trophy className="w-5 h-5" />
-                  <span className="font-mono text-xl font-bold" data-testid="featured-contest-prize">
-                    {featuredContest.prizeGlory.toLocaleString()}
-                  </span>
-                  <span className="text-sm">GLORY</span>
-                </div>
-              </div>
-              
-              <p className="text-muted-foreground mb-6" data-testid="featured-contest-description">
-                {featuredContest.description}
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="flex items-center space-x-3 bg-secondary/50 rounded-lg p-4">
-                  <Users className="text-primary text-xl" />
-                  <div>
-                    <div className="text-sm text-muted-foreground">Participants</div>
-                    <div className="text-xl font-bold" data-testid="featured-contest-participants">
-                      {featuredContest.participantCount}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 bg-secondary/50 rounded-lg p-4">
-                  <ImageIcon className="text-primary text-xl" />
-                  <div>
-                    <div className="text-sm text-muted-foreground">Submissions</div>
-                    <div className="text-xl font-bold" data-testid="featured-contest-submissions">
-                      {featuredContest.submissionCount}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 bg-secondary/50 rounded-lg p-4">
-                  <Clock className="text-primary text-xl" />
-                  <div>
-                    <div className="text-sm text-muted-foreground">Time Left</div>
-                    <div className="text-xl font-bold font-mono text-primary" data-testid="featured-contest-time-left">
-                      2d 14h
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <Link href={`/contests/${featuredContest.id}`} data-testid="featured-contest-link">
-                <Button className="w-full gradient-glory hover:opacity-90 transition-opacity font-semibold py-3">
-                  View Contest Details
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-            </div>
-          )}
         </div>
       </section>
 
@@ -162,15 +249,48 @@ export default function Home() {
             </div>
           </div>
 
-          {submissions.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="submissions-grid">
-              {submissions.slice(0, 8).map((submission: any) => (
-                <SubmissionCard 
-                  key={submission.id}
-                  submission={submission}
-                  showVoting={true}
-                />
-              ))}
+          {allSubmissions.length > 0 ? (
+            <>
+              <div className="masonry-grid" data-testid="submissions-grid">
+                {allSubmissions.map((submission: any) => (
+                  <SubmissionCard 
+                    key={submission.id}
+                    submission={submission}
+                    showVoting={true}
+                    onExpand={() => handleOpenSubmissionModal(submission)}
+                  />
+                ))}
+              </div>
+              
+              {/* Loading indicator for infinite scroll */}
+              {isLoadingMore && (
+                <div className="mt-8 text-center">
+                  <div className="inline-flex items-center px-4 py-2 text-sm text-muted-foreground">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Loading more submissions...
+                  </div>
+                </div>
+              )}
+              
+              {/* End of content indicator */}
+              {!hasMore && allSubmissions.length > 0 && allSubmissions.length < 8 && (
+                <div className="mt-8 text-center">
+                  <p className="text-sm text-muted-foreground">All submissions loaded 📚</p>
+                </div>
+              )}
+              
+              {!hasMore && allSubmissions.length >= 8 && (
+                <div className="mt-8 text-center">
+                  <p className="text-sm text-muted-foreground">You've reached the end! 🎉</p>
+                </div>
+              )}
+            </>
+          ) : isLoading ? (
+            <div className="text-center py-12">
+              <div className="inline-flex items-center px-4 py-2 text-sm text-muted-foreground">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Loading submissions...
+              </div>
             </div>
           ) : (
             <div className="text-center py-12">
@@ -181,27 +301,27 @@ export default function Home() {
               <p className="text-muted-foreground mb-6">Be the first to submit your creative work!</p>
               {isAuthenticated(user) && (
                 <Link href="/upload" data-testid="empty-state-upload-link">
-                  <Button className="gradient-glory">
-                    <Upload className="mr-2 w-4 h-4" />
-                    Submit Your Work
-                  </Button>
+                  <GlassButton>
+                    Submit Your Art
+                    <Upload className="ml-2 w-4 h-4" />
+                  </GlassButton>
                 </Link>
               )}
             </div>
           )}
-
-          {submissions.length > 8 && (
-            <div className="mt-12 text-center">
-              <Link href="/contests" data-testid="view-all-submissions-link">
-                <Button variant="outline" size="lg">
-                  View All Submissions
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-            </div>
-          )}
         </div>
       </section>
+
+      {/* Submission Lightbox Modal */}
+      {isModalOpen && selectedSubmission && (
+        <ContestLightboxModal
+          isOpen={isModalOpen}
+          submission={selectedSubmission}
+          onClose={handleCloseSubmissionModal}
+          onVote={handleVoteFromModal}
+          onShare={handleShareFromModal}
+        />
+      )}
     </div>
   );
 }

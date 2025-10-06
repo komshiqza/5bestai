@@ -8,6 +8,8 @@ export interface User {
   role: string;
   status: string;
   gloryBalance: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export function useAuth() {

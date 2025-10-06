@@ -1,7 +1,8 @@
-import { Heart, User, Trophy, Play, Eye } from "lucide-react";
+import { Heart, User, Trophy, Play, Eye, Share2, Expand } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { GlassButton } from "./ui/glass-button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { useAuth, isAuthenticated, isApproved } from "../lib/auth";
@@ -28,6 +29,7 @@ interface SubmissionCardProps {
   showVoting?: boolean;
   rank?: number;
   className?: string;
+  onExpand?: () => void;
 }
 
 export function SubmissionCard({
@@ -35,11 +37,19 @@ export function SubmissionCard({
   showVoting = true,
   rank,
   className = "",
+  onExpand,
 }: SubmissionCardProps) {
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [hasVoted, setHasVoted] = useState(false);
+
+  // Pinterest-style height variations based on submission ID
+  const getCardHeight = () => {
+    const variations = ['h-60', 'h-72', 'h-80', 'h-64', 'h-96', 'h-56'];
+    const index = parseInt(submission.id.slice(-1), 16) % variations.length;
+    return variations[index];
+  };
 
   const voteMutation = useMutation({
     mutationFn: async () => {
@@ -96,6 +106,38 @@ export function SubmissionCard({
     voteMutation.mutate();
   };
 
+  const handleShare = () => {
+    const shareUrl = `${window.location.origin}/submission/${submission.id}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: submission.title,
+        text: `Check out this amazing submission: ${submission.title}`,
+        url: shareUrl,
+      }).catch((error) => {
+        console.log('Error sharing:', error);
+        fallbackShare(shareUrl);
+      });
+    } else {
+      fallbackShare(shareUrl);
+    }
+  };
+
+  const fallbackShare = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "Link copied!",
+        description: "Submission link has been copied to clipboard.",
+      });
+    }).catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard.",
+        variant: "destructive",
+      });
+    });
+  };
+
   const displayUrl =
     submission.type === "video"
       ? submission.thumbnailUrl || submission.mediaUrl
@@ -103,18 +145,52 @@ export function SubmissionCard({
 
   return (
     <Card
-      className={`group relative overflow-hidden hover:border-primary/50 transition-all duration-300 ${className}`}
+      className={`group relative overflow-hidden hover:border-primary/50 transition-all duration-300 rounded-2xl shadow-lg hover:shadow-xl ${className}`}
       data-testid={`submission-card-${submission.id}`}
     >
-      <div className="relative aspect-square overflow-hidden">
+      <div className={`relative overflow-hidden rounded-t-2xl ${getCardHeight()}`}>
         <img
           src={displayUrl}
           alt={submission.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
-        {/* Type badge */}
-        <div className="absolute top-3 right-3">
+        {/* Hover Overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
+          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+            <GlassButton 
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+              onClick={handleVote}
+              disabled={voteMutation.isPending || hasVoted}
+              data-testid={`button-vote-${submission.id}`}
+            >
+              <Heart className={`h-3 w-3 sm:h-4 sm:w-4 ${hasVoted ? "fill-current" : ""}`} />
+            </GlassButton>
+            <GlassButton 
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+              onClick={handleShare}
+              data-testid={`button-share-${submission.id}`}
+            >
+              <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+            </GlassButton>
+            <GlassButton 
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+              onClick={onExpand}
+              data-testid={`button-expand-${submission.id}`}
+            >
+              <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
+            </GlassButton>
+          </div>
+        </div>
+
+        {/* Type badge - moved to top left */}
+        <div className="absolute top-3 left-3">
           <Badge variant="secondary" className="text-xs">
             {submission.type === "image" ? (
               <>
@@ -132,7 +208,7 @@ export function SubmissionCard({
 
         {/* Rank badge */}
         {rank && (
-          <div className="absolute top-3 left-3">
+          <div className="absolute top-3 left-3 z-10">
             <Badge
               className="gradient-glory text-xs font-bold text-white"
               data-testid={`rank-badge-${rank}`}
@@ -152,16 +228,16 @@ export function SubmissionCard({
         )}
       </div>
 
-      <CardContent className="p-4">
+      <CardContent className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-b-2xl">
         <h3
-          className="font-semibold text-lg mb-2 line-clamp-1"
+          className="font-semibold text-lg mb-2 line-clamp-1 text-white drop-shadow-lg"
           data-testid={`submission-title-${submission.id}`}
         >
           {submission.title}
         </h3>
 
         <div className="flex items-center justify-between text-sm mb-3">
-          <div className="flex items-center space-x-2 text-muted-foreground">
+          <div className="flex items-center space-x-2 text-gray-200">
             <User className="w-3 h-3" />
             <span data-testid={`submission-author-${submission.id}`}>
               @{submission.user.username}
@@ -171,27 +247,20 @@ export function SubmissionCard({
 
         {showVoting && (
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-muted-foreground text-xs">
+            <div className="flex items-center space-x-2 text-gray-200 text-xs">
               <Trophy className="w-3 h-3" />
-              <span>{submission.contest.title}</span>
+              <span className="truncate max-w-24">{submission.contest.title}</span>
             </div>
 
-            <Button
-              variant={hasVoted ? "default" : "outline"}
-              size="sm"
-              onClick={handleVote}
-              disabled={voteMutation.isPending || hasVoted}
-              className={`flex items-center space-x-2 transition-all ${hasVoted ? "gradient-glory text-white" : ""}`}
-              data-testid={`vote-button-${submission.id}`}
-            >
-              <Heart className={`w-4 h-4 ${hasVoted ? "fill-current" : ""}`} />
+            <div className="flex items-center space-x-2 text-gray-200 text-xs bg-black/30 rounded-full px-2 py-1">
+              <Heart className="w-3 h-3" />
               <span
                 className="font-semibold"
                 data-testid={`votes-count-${submission.id}`}
               >
                 {submission.votesCount}
               </span>
-            </Button>
+            </div>
           </div>
         )}
       </CardContent>

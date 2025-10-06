@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth, useLogout, isAuthenticated, isAdmin } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
@@ -30,10 +31,12 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3" data-testid="link-logo">
-            <div className="w-10 h-10 rounded-lg gradient-glory flex items-center justify-center">
-              <Trophy className="text-white text-xl" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight">5best</span>
+            <img 
+              src="/logo.png" 
+              alt="5BEST.ai Logo" 
+              className="w-10 h-10 object-contain"
+            />
+            <span className="text-2xl font-bold tracking-tight gradient-text">5BEST.ai</span>
           </Link>
 
           {/* Main Navigation - Desktop */}
@@ -41,12 +44,9 @@ export function Navbar() {
             <Link href="/contests" data-testid="link-contests">
               <Button variant="ghost" className="px-4 py-2">Contests</Button>
             </Link>
-            <Link href="/leaderboard" data-testid="link-leaderboard">
-              <Button variant="ghost" className="px-4 py-2">Leaderboard</Button>
-            </Link>
             {isAuthenticated(user) && (
               <Link href="/upload" data-testid="link-upload">
-                <Button variant="ghost" className="px-4 py-2">Upload</Button>
+                <GlassButton className="px-4 py-2">Upload</GlassButton>
               </Link>
             )}
           </div>
@@ -140,7 +140,7 @@ export function Navbar() {
                   <Button variant="ghost">Login</Button>
                 </Link>
                 <Link href="/register" data-testid="link-register">
-                  <Button className="gradient-glory">Sign Up</Button>
+                  <GlassButton>Sign Up</GlassButton>
                 </Link>
               </div>
             )}
@@ -167,16 +167,11 @@ export function Navbar() {
                   Contests
                 </Button>
               </Link>
-              <Link href="/leaderboard" data-testid="mobile-link-leaderboard">
-                <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
-                  Leaderboard
-                </Button>
-              </Link>
               {isAuthenticated(user) && (
                 <Link href="/upload" data-testid="mobile-link-upload">
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
+                  <GlassButton className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
                     Upload
-                  </Button>
+                  </GlassButton>
                 </Link>
               )}
             </div>
