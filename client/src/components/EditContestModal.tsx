@@ -24,6 +24,8 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     endDate: '',
     endTime: '',
     submissionDeadline: '',
+    submissionDeadlineTime: '',
+    enableSubmissionDeadline: false,
     votingStartOption: 'later' as 'now' | 'later',
     votingStartDate: '',
     votingEndDate: '',
@@ -43,9 +45,9 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     nsfwAllowed: false,
     agreeToRules: true,
     votingMethods: ['public'],
-    voteLimitPerPeriod: 1,
-    votePeriodHours: 12,
-    totalVoteLimit: 0,
+    votesPerUserPerPeriod: 1,
+    periodDurationHours: 24,
+    totalVotesPerUser: 0,
     status: 'draft',
     featured: false
   });
@@ -71,6 +73,10 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       const startDate = new Date(contest.startAt);
       const endDate = new Date(contest.endAt);
       
+      // Parse submission deadline from config
+      const submissionEndAt = config.submissionEndAt ? new Date(config.submissionEndAt) : null;
+      const votingStartAt = config.votingStartAt ? new Date(config.votingStartAt) : null;
+      
       setFormData({
         title: contest.title || '',
         description: contest.description || '',
@@ -84,11 +90,13 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         startTime: startDate.toTimeString().slice(0, 5),
         endDate: endDate.toISOString().split('T')[0],
         endTime: endDate.toTimeString().slice(0, 5),
-        submissionDeadline: config.submissionDeadline || '',
+        submissionDeadline: submissionEndAt ? submissionEndAt.toISOString().split('T')[0] : '',
+        submissionDeadlineTime: submissionEndAt ? submissionEndAt.toTimeString().slice(0, 5) : '',
+        enableSubmissionDeadline: !!submissionEndAt && submissionEndAt.getTime() !== endDate.getTime(),
         votingStartOption: 'later',
-        votingStartDate: config.votingStartDate || '',
-        votingEndDate: config.votingEndDate || endDate.toISOString().split('T')[0],
-        votingEndTime: config.votingEndTime || endDate.toTimeString().slice(0, 5),
+        votingStartDate: votingStartAt ? votingStartAt.toISOString().split('T')[0] : '',
+        votingEndDate: endDate.toISOString().split('T')[0],
+        votingEndTime: endDate.toTimeString().slice(0, 5),
         prizePool: String(contest.prizeGlory || 0),
         currency: config.currency || 'GLORY',
         prizeDistribution: config.prizeDistribution || [
@@ -104,9 +112,9 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         nsfwAllowed: config.nsfwAllowed || false,
         agreeToRules: config.agreeToRules !== false,
         votingMethods: config.votingMethods || ['public'],
-        voteLimitPerPeriod: config.voteLimitPerPeriod || 1,
-        votePeriodHours: config.votePeriodHours || 12,
-        totalVoteLimit: config.totalVoteLimit || 0,
+        votesPerUserPerPeriod: config.votesPerUserPerPeriod || 1,
+        periodDurationHours: config.periodDurationHours || 24,
+        totalVotesPerUser: config.totalVotesPerUser || 0,
         status: contest.status || 'draft',
         featured: config.featured || false
       });
@@ -176,8 +184,92 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
   };
 
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
-    let finalFormData = { ...dataToSubmit };
+    // Calculate total prize from distribution
+    const totalPrize = dataToSubmit.prizeDistribution.reduce((sum, prize) => sum + prize.value, 0);
     
+    // Set contest start time
+    let startAt: string;
+    if (dataToSubmit.startDateOption === 'now') {
+      startAt = new Date().toISOString();
+    } else {
+      startAt = new Date(
+        `${dataToSubmit.startDate}T${dataToSubmit.startTime || '00:00'}`
+      ).toISOString();
+    }
+    
+    // Set contest end time
+    const endAt = new Date(
+      `${dataToSubmit.votingEndDate}T${dataToSubmit.votingEndTime || '23:59'}`
+    ).toISOString();
+    
+    // Process submission deadline logic
+    let submissionEndAt: string;
+    if (dataToSubmit.enableSubmissionDeadline && dataToSubmit.submissionDeadline) {
+      submissionEndAt = new Date(
+        `${dataToSubmit.submissionDeadline}T${dataToSubmit.submissionDeadlineTime || '23:59'}`
+      ).toISOString();
+    } else {
+      submissionEndAt = endAt;
+    }
+    
+    // Set voting start time
+    let votingStartAt: string;
+    if (dataToSubmit.votingStartOption === 'now') {
+      votingStartAt = new Date().toISOString();
+    } else {
+      votingStartAt = new Date(
+        `${dataToSubmit.votingStartDate}T00:00`
+      ).toISOString();
+    }
+    
+    // Create comprehensive contest config object with ALL settings
+    const contestConfig: any = {
+      // Voting rules
+      votesPerUserPerPeriod: dataToSubmit.votesPerUserPerPeriod,
+      periodDurationHours: dataToSubmit.periodDurationHours,
+      totalVotesPerUser: dataToSubmit.totalVotesPerUser,
+      votingMethods: dataToSubmit.votingMethods,
+      
+      // Time settings
+      submissionEndAt,
+      votingStartAt,
+      votingEndAt: endAt,
+      
+      // Prize distribution
+      prizeDistribution: dataToSubmit.prizeDistribution,
+      currency: dataToSubmit.currency,
+      
+      // Participation rules
+      eligibility: dataToSubmit.eligibility,
+      maxSubmissions: dataToSubmit.maxSubmissions,
+      allowedMediaTypes: dataToSubmit.allowedMediaTypes,
+      fileSizeLimit: dataToSubmit.fileSizeLimit,
+      nsfwAllowed: dataToSubmit.nsfwAllowed,
+      
+      // Entry fee
+      entryFee: dataToSubmit.entryFee,
+      entryFeeAmount: dataToSubmit.entryFeeAmount,
+      
+      // Contest metadata
+      contestType: dataToSubmit.contestType,
+      category: dataToSubmit.category,
+      featured: dataToSubmit.featured
+    };
+    
+    // Create clean form data object for submission
+    const finalFormData: any = {
+      title: dataToSubmit.title,
+      description: dataToSubmit.description,
+      rules: dataToSubmit.description || 'Standard contest rules apply.',
+      status: dataToSubmit.status,
+      prizeGlory: totalPrize,
+      startAt,
+      endAt,
+      config: contestConfig,
+      coverImageUrl: typeof dataToSubmit.coverImage === 'string' ? dataToSubmit.coverImage : ''
+    };
+    
+    // If coverImage is a File, upload it first
     if (dataToSubmit.coverImage && dataToSubmit.coverImage instanceof File) {
       const uploadFormData = new FormData();
       uploadFormData.append('file', dataToSubmit.coverImage);
@@ -195,17 +287,12 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         }
         
         const result = await response.json();
-        finalFormData.coverImage = result.url;
+        finalFormData.coverImageUrl = result.url;
       } catch (error) {
         console.error('Failed to upload cover image:', error);
         setErrors(['Failed to upload cover image. Please check your connection and try again.']);
         return;
       }
-    }
-    
-    if (finalFormData.coverImage && typeof finalFormData.coverImage !== 'string') {
-      setErrors(['Invalid cover image format. Please try uploading again.']);
-      return;
     }
     
     onSubmit(finalFormData);
@@ -705,8 +792,8 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                       </label>
                       <input
                         type="number"
-                        value={formData.voteLimitPerPeriod}
-                        onChange={(e) => handleInputChange('voteLimitPerPeriod', parseInt(e.target.value) || 1)}
+                        value={formData.votesPerUserPerPeriod}
+                        onChange={(e) => handleInputChange('votesPerUserPerPeriod', parseInt(e.target.value) || 1)}
                         min="1"
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                         data-testid="input-vote-limit-per-period"
@@ -719,8 +806,8 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                       </label>
                       <input
                         type="number"
-                        value={formData.votePeriodHours}
-                        onChange={(e) => handleInputChange('votePeriodHours', parseInt(e.target.value) || 12)}
+                        value={formData.periodDurationHours}
+                        onChange={(e) => handleInputChange('periodDurationHours', parseInt(e.target.value) || 12)}
                         min="1"
                         max="168"
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
@@ -734,8 +821,8 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                       </label>
                       <input
                         type="number"
-                        value={formData.totalVoteLimit}
-                        onChange={(e) => handleInputChange('totalVoteLimit', parseInt(e.target.value) || 0)}
+                        value={formData.totalVotesPerUser}
+                        onChange={(e) => handleInputChange('totalVotesPerUser', parseInt(e.target.value) || 0)}
                         min="0"
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                         data-testid="input-total-vote-limit"
