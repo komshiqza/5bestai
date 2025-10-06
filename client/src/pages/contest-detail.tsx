@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft } from "lucide-react";
+import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand } from "lucide-react";
 import { GlassButton } from "@/components/ui/glass-button";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
@@ -25,7 +25,7 @@ export default function ContestDetailPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch contest by slug
-  const { data: contests = [] } = useQuery({
+  const { data: contests = [] } = useQuery<any[]>({
     queryKey: ["/api/contests"]
   });
 
@@ -310,11 +310,7 @@ export default function ContestDetailPage() {
                     {topSubmissions.map((submission: any, index: number) => (
                       <div
                         key={submission.id}
-                        className="relative group cursor-pointer"
-                        onClick={() => {
-                          setSelectedSubmission(submission);
-                          setIsLightboxOpen(true);
-                        }}
+                        className="relative group"
                         data-testid={`card-top-submission-${submission.id}`}
                       >
                         {/* Rank Badge */}
@@ -322,32 +318,52 @@ export default function ContestDetailPage() {
                           {index + 1}
                         </div>
 
-                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-primary/50 transition-all group-hover:scale-[1.02]">
-                          <div className="aspect-square relative">
+                        <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
+                          <div className="relative overflow-hidden aspect-square">
                             <img
                               src={submission.mediaUrl}
                               alt={submission.title}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                          </div>
-                          <div className="p-4">
-                            <h3 className="text-lg font-bold text-white mb-1 truncate">
-                              {submission.title}
-                            </h3>
-                            <p className="text-sm text-gray-400 mb-3">
-                              by {submission.user?.username || 'Unknown'}
-                            </p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleVote(submission.id);
-                              }}
-                              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
-                              data-testid={`button-vote-${submission.id}`}
-                            >
-                              <Heart className={`h-5 w-5 ${submission.hasVoted ? 'fill-primary' : ''}`} />
-                              <span className="font-semibold">{submission.voteCount}</span>
-                            </button>
+                            
+                            {/* Dark Overlay */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
+                            
+                            {/* Bottom Info Overlay */}
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
+                              <h3 className="text-base sm:text-lg font-bold text-white mb-1">
+                                {submission.title}
+                              </h3>
+                              <p className="text-xs sm:text-sm text-white/80 mb-3">
+                                by {submission.user?.username || 'Unknown'}
+                              </p>
+                              
+                              <div className="flex items-center justify-between">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVote(submission.id);
+                                  }}
+                                  className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
+                                  data-testid={`button-vote-${submission.id}`}
+                                >
+                                  <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
+                                  <span className="text-sm">{submission.voteCount}</span>
+                                </button>
+                                
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSubmission(submission);
+                                    setIsLightboxOpen(true);
+                                  }}
+                                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-300 text-xs sm:text-sm font-bold"
+                                >
+                                  <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <span className="hidden sm:inline">View</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -364,39 +380,55 @@ export default function ContestDetailPage() {
                     {otherSubmissions.map((submission: any) => (
                       <div
                         key={submission.id}
-                        className="group cursor-pointer"
-                        onClick={() => {
-                          setSelectedSubmission(submission);
-                          setIsLightboxOpen(true);
-                        }}
+                        className="group"
                         data-testid={`card-submission-${submission.id}`}
                       >
-                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-primary/50 transition-all group-hover:scale-[1.02]">
-                          <div className="aspect-square relative">
+                        <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
+                          <div className="relative overflow-hidden aspect-square">
                             <img
                               src={submission.mediaUrl}
                               alt={submission.title}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                          </div>
-                          <div className="p-4">
-                            <h3 className="text-base font-semibold text-white mb-1 truncate">
-                              {submission.title}
-                            </h3>
-                            <p className="text-sm text-gray-400 mb-3 truncate">
-                              by {submission.user?.username || 'Unknown'}
-                            </p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleVote(submission.id);
-                              }}
-                              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
-                              data-testid={`button-vote-${submission.id}`}
-                            >
-                              <Heart className={`h-4 w-4 ${submission.hasVoted ? 'fill-primary' : ''}`} />
-                              <span className="font-semibold">{submission.voteCount}</span>
-                            </button>
+                            
+                            {/* Dark Overlay */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
+                            
+                            {/* Bottom Info Overlay */}
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
+                              <h3 className="text-base font-semibold text-white mb-1">
+                                {submission.title}
+                              </h3>
+                              <p className="text-xs sm:text-sm text-white/80 mb-3">
+                                by {submission.user?.username || 'Unknown'}
+                              </p>
+                              
+                              <div className="flex items-center justify-between">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVote(submission.id);
+                                  }}
+                                  className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
+                                  data-testid={`button-vote-${submission.id}`}
+                                >
+                                  <Heart className={`h-4 w-4 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
+                                  <span className="text-sm">{submission.voteCount}</span>
+                                </button>
+                                
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSubmission(submission);
+                                    setIsLightboxOpen(true);
+                                  }}
+                                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-300 text-xs sm:text-sm font-bold"
+                                >
+                                  <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <span className="hidden sm:inline">View</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
