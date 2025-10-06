@@ -22,6 +22,7 @@ export default function MySubmissions() {
       if (statusFilter !== "all") {
         params.append("status", statusFilter);
       }
+      params.append("limit", "1000");
       const response = await fetch(`/api/me/submissions?${params.toString()}`, {
         credentials: "include"
       });

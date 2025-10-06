@@ -66,7 +66,9 @@ export default function AdminDashboard() {
   const { data: submissions = [] } = useQuery({
     queryKey: ["/api/submissions", { admin: true }],
     queryFn: async () => {
-      const response = await fetch("/api/submissions", { credentials: "include" });
+      const params = new URLSearchParams();
+      params.append("limit", "1000");
+      const response = await fetch(`/api/submissions?${params.toString()}`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
