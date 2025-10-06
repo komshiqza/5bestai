@@ -190,6 +190,34 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
 
 
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
+    // Validate required date fields
+    const validationErrors: string[] = [];
+    
+    // Validate start date (if not "now")
+    if (dataToSubmit.startDateOption !== 'now' && !dataToSubmit.startDate) {
+      validationErrors.push('Start date is required');
+    }
+    
+    // Validate end date (always required)
+    if (!dataToSubmit.votingEndDate) {
+      validationErrors.push('Contest end date is required');
+    }
+    
+    // Validate submission deadline (only if enabled)
+    if (dataToSubmit.enableSubmissionDeadline && !dataToSubmit.submissionDeadline) {
+      validationErrors.push('Submission deadline is required when enabled');
+    }
+    
+    // Validate voting start date (if not "now")
+    if (dataToSubmit.votingStartOption !== 'now' && !dataToSubmit.votingStartDate) {
+      validationErrors.push('Voting start date is required');
+    }
+    
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    
     // Generate unique slug from title
     const baseSlug = dataToSubmit.title
       .toLowerCase()
