@@ -237,6 +237,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       
       // Prize distribution
       prizeDistribution: dataToSubmit.prizeDistribution,
+      additionalRewards: dataToSubmit.additionalRewards,
       currency: dataToSubmit.currency,
       
       // Participation rules
@@ -259,6 +260,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     // Create clean form data object for submission
     const finalFormData: any = {
       title: dataToSubmit.title,
+      slug: contest.slug,
       description: dataToSubmit.description,
       rules: dataToSubmit.description || 'Standard contest rules apply.',
       status: dataToSubmit.status,
