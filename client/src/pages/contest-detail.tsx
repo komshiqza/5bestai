@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand } from "lucide-react";
+import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand, Share2 } from "lucide-react";
 import { GlassButton } from "@/components/ui/glass-button";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
@@ -327,41 +327,70 @@ export default function ContestDetailPage() {
                             />
                             
                             {/* Dark Overlay */}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
+                              {/* Action Buttons - Top Right */}
+                              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                                {/* Vote Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVote(submission.id);
+                                  }}
+                                  className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 ${
+                                    submission.hasVoted 
+                                      ? 'bg-primary/90 text-white' 
+                                      : 'bg-black/50 text-white hover:bg-primary/90'
+                                  }`}
+                                  data-testid={`button-vote-${submission.id}`}
+                                >
+                                  <Heart className={`h-3 w-3 sm:h-4 sm:w-4 ${submission.hasVoted ? 'fill-current' : ''}`} />
+                                </button>
+
+                                {/* Share Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(window.location.href)
+                                      .then(() => {
+                                        toast({ title: "Link copied!", description: "Share link copied to clipboard" });
+                                      })
+                                      .catch(() => {
+                                        toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" });
+                                      });
+                                  }}
+                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                  data-testid={`button-share-${submission.id}`}
+                                >
+                                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+
+                                {/* Expand Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSubmission(submission);
+                                    setIsLightboxOpen(true);
+                                  }}
+                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                  data-testid={`button-expand-${submission.id}`}
+                                >
+                                  <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                              </div>
+                            </div>
                             
                             {/* Bottom Info Overlay */}
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
                               <h3 className="text-base sm:text-lg font-bold text-white mb-1">
                                 {submission.title}
                               </h3>
-                              <p className="text-xs sm:text-sm text-white/80 mb-3">
+                              <p className="text-xs sm:text-sm text-white/80 mb-2">
                                 by {submission.user?.username || 'Unknown'}
                               </p>
                               
-                              <div className="flex items-center justify-between">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleVote(submission.id);
-                                  }}
-                                  className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
-                                  data-testid={`button-vote-${submission.id}`}
-                                >
-                                  <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
-                                  <span className="text-sm">{submission.voteCount}</span>
-                                </button>
-                                
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedSubmission(submission);
-                                    setIsLightboxOpen(true);
-                                  }}
-                                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-300 text-xs sm:text-sm font-bold"
-                                >
-                                  <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span className="hidden sm:inline">View</span>
-                                </button>
+                              <div className="flex items-center gap-1 text-white/80">
+                                <Heart className={`h-3 w-3 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
+                                <span className="text-sm">{submission.voteCount} votes</span>
                               </div>
                             </div>
                           </div>
@@ -392,41 +421,70 @@ export default function ContestDetailPage() {
                             />
                             
                             {/* Dark Overlay */}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
+                              {/* Action Buttons - Top Right */}
+                              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                                {/* Vote Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVote(submission.id);
+                                  }}
+                                  className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 ${
+                                    submission.hasVoted 
+                                      ? 'bg-primary/90 text-white' 
+                                      : 'bg-black/50 text-white hover:bg-primary/90'
+                                  }`}
+                                  data-testid={`button-vote-${submission.id}`}
+                                >
+                                  <Heart className={`h-3 w-3 sm:h-4 sm:w-4 ${submission.hasVoted ? 'fill-current' : ''}`} />
+                                </button>
+
+                                {/* Share Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(window.location.href)
+                                      .then(() => {
+                                        toast({ title: "Link copied!", description: "Share link copied to clipboard" });
+                                      })
+                                      .catch(() => {
+                                        toast({ title: "Failed to copy", description: "Unable to copy link to clipboard", variant: "destructive" });
+                                      });
+                                  }}
+                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                  data-testid={`button-share-${submission.id}`}
+                                >
+                                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+
+                                {/* Expand Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSubmission(submission);
+                                    setIsLightboxOpen(true);
+                                  }}
+                                  className="p-2 rounded-full bg-black/50 text-white hover:bg-primary/90 backdrop-blur-sm transition-all duration-300"
+                                  data-testid={`button-expand-${submission.id}`}
+                                >
+                                  <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                              </div>
+                            </div>
                             
                             {/* Bottom Info Overlay */}
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
                               <h3 className="text-base font-semibold text-white mb-1">
                                 {submission.title}
                               </h3>
-                              <p className="text-xs sm:text-sm text-white/80 mb-3">
+                              <p className="text-xs sm:text-sm text-white/80 mb-2">
                                 by {submission.user?.username || 'Unknown'}
                               </p>
                               
-                              <div className="flex items-center justify-between">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleVote(submission.id);
-                                  }}
-                                  className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
-                                  data-testid={`button-vote-${submission.id}`}
-                                >
-                                  <Heart className={`h-4 w-4 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
-                                  <span className="text-sm">{submission.voteCount}</span>
-                                </button>
-                                
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedSubmission(submission);
-                                    setIsLightboxOpen(true);
-                                  }}
-                                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-300 text-xs sm:text-sm font-bold"
-                                >
-                                  <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span className="hidden sm:inline">View</span>
-                                </button>
+                              <div className="flex items-center gap-1 text-white/80">
+                                <Heart className={`h-3 w-3 ${submission.hasVoted ? 'fill-primary text-primary' : ''}`} />
+                                <span className="text-sm">{submission.voteCount} votes</span>
                               </div>
                             </div>
                           </div>
