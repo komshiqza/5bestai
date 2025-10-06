@@ -172,8 +172,17 @@ export function ContestCard({ contest }: ContestCardProps) {
             className="rounded-lg bg-background-dark/80 backdrop-blur-sm border border-primary/30 text-white font-bold transition-all duration-300 focus-ring hover:border-primary/50 glow-border px-6 py-3 text-base hover:bg-primary/20 w-full sm:w-auto min-w-[140px] sm:min-w-[160px] h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm tracking-wide hover:scale-105 flex items-center justify-center"
             data-testid={`button-join-contest-${contest.id}`}
           >
-            <Calendar size={16} className="mr-2" />
-            <span className="truncate">Join Contest</span>
+            {contest.status === "ended" ? (
+              <>
+                <Trophy size={16} className="mr-2" />
+                <span className="truncate">View Results</span>
+              </>
+            ) : (
+              <>
+                <Calendar size={16} className="mr-2" />
+                <span className="truncate">Join Contest</span>
+              </>
+            )}
           </GlassButton>
         </div>
 
