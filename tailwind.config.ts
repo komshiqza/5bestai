@@ -6,9 +6,10 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        DEFAULT: "0.25rem",
+        lg: "0.5rem",
+        xl: "0.75rem",
+        full: "9999px",
       },
       colors: {
         background: "var(--background)",
@@ -67,6 +68,7 @@ export default {
         },
       },
       fontFamily: {
+        display: ['Inter', 'sans-serif'],
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
