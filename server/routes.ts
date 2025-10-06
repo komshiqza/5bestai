@@ -303,7 +303,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      res.json(updatedContests);
+      // Filter out contests that were auto-ended if user requested a specific status
+      const filteredContests = status 
+        ? updatedContests.filter(contest => contest.status === status)
+        : updatedContests;
+      
+      res.json(filteredContests);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contests" });
     }
