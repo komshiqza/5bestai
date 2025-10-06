@@ -64,14 +64,20 @@ export default function AdminDashboard() {
   });
 
   const { data: submissions = [] } = useQuery({
-    queryKey: ["/api/submissions", { admin: true }],
+    queryKey: ["/api/submissions", { admin: true, limit: 1000 }],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("limit", "1000");
-      const response = await fetch(`/api/submissions?${params.toString()}`, { credentials: "include" });
+      const response = await fetch(`/api/submissions?${params.toString()}`, { 
+        credentials: "include",
+        cache: "no-store"
+      });
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const { data: contests = [] } = useQuery({
