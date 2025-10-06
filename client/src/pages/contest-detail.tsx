@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft } from "lucide-react";
-import { GlassButton } from "@/components/GlassButton";
+import { GlassButton } from "@/components/ui/glass-button";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
@@ -180,7 +180,7 @@ export default function ContestDetailPage() {
       <div className="flex-1 px-4 py-8 sm:px-6 md:px-10 lg:px-20">
         <div className="mx-auto max-w-screen-xl">
           {/* Back Button */}
-          <Link href="/contests" className="inline-flex items-center text-slate-400 hover:text-white mb-8 transition-colors" data-testid="link-back-contests">
+          <Link href="/contests" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors" data-testid="link-back-contests">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Contests
           </Link>
@@ -205,7 +205,7 @@ export default function ContestDetailPage() {
                 </GlassButton>
                 <GlassButton
                   onClick={() => setShowRules(true)}
-                  variant="purple"
+                  variant="primary"
                   className="flex flex-shrink-0 items-center justify-center gap-2 px-6 py-3 text-base font-bold w-full sm:w-auto"
                   data-testid="button-show-rules"
                 >
@@ -217,35 +217,35 @@ export default function ContestDetailPage() {
 
             <div className="flex flex-col lg:flex-row w-full items-center justify-center gap-8">
               {/* Timer */}
-              <div className="w-full max-w-lg rounded-xl bg-gradient-to-br from-violet-600/20 to-purple-600/20 p-3 sm:p-4 text-center border border-violet-500/30 backdrop-blur-sm">
-                <p className="text-sm font-medium text-violet-300 mb-3">Contest Ends In:</p>
+              <div className="w-full max-w-lg rounded-xl bg-gradient-to-br from-primary/20 to-purple-600/20 p-3 sm:p-4 text-center border border-primary/30 backdrop-blur-sm">
+                <p className="text-sm font-medium text-primary text-glow mb-3">Contest Ends In:</p>
                 <div className="flex items-center justify-center gap-2 sm:gap-3">
                   <div className="flex flex-col items-center">
-                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
-                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.days).padStart(2, '0')}</span>
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-primary/20">
+                      <span className="text-lg sm:text-xl font-bold text-white text-glow">{String(timeLeft.days).padStart(2, '0')}</span>
                     </div>
-                    <span className="text-xs text-slate-300 mt-1 font-medium">Days</span>
+                    <span className="text-xs text-gray-300 mt-1 font-medium">Days</span>
                   </div>
-                  <span className="text-lg sm:text-xl font-bold text-violet-400 animate-pulse">:</span>
+                  <span className="text-lg sm:text-xl font-bold text-primary text-glow animate-pulse">:</span>
                   <div className="flex flex-col items-center">
-                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
-                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.hours).padStart(2, '0')}</span>
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-primary/20">
+                      <span className="text-lg sm:text-xl font-bold text-white text-glow">{String(timeLeft.hours).padStart(2, '0')}</span>
                     </div>
-                    <span className="text-xs text-slate-300 mt-1 font-medium">Hours</span>
+                    <span className="text-xs text-gray-300 mt-1 font-medium">Hours</span>
                   </div>
-                  <span className="text-lg sm:text-xl font-bold text-violet-400 animate-pulse">:</span>
+                  <span className="text-lg sm:text-xl font-bold text-primary text-glow animate-pulse">:</span>
                   <div className="flex flex-col items-center">
-                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
-                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-primary/20">
+                      <span className="text-lg sm:text-xl font-bold text-white text-glow">{String(timeLeft.minutes).padStart(2, '0')}</span>
                     </div>
-                    <span className="text-xs text-slate-300 mt-1 font-medium">Minutes</span>
+                    <span className="text-xs text-gray-300 mt-1 font-medium">Minutes</span>
                   </div>
-                  <span className="text-lg sm:text-xl font-bold text-violet-400 animate-pulse">:</span>
+                  <span className="text-lg sm:text-xl font-bold text-primary text-glow animate-pulse">:</span>
                   <div className="flex flex-col items-center">
-                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-violet-500/20">
-                      <span className="text-lg sm:text-xl font-bold text-white">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                    <div className="bg-black/30 rounded-lg px-2 py-1 min-w-[40px] backdrop-blur-sm border border-primary/20">
+                      <span className="text-lg sm:text-xl font-bold text-white text-glow">{String(timeLeft.seconds).padStart(2, '0')}</span>
                     </div>
-                    <span className="text-xs text-slate-300 mt-1 font-medium">Seconds</span>
+                    <span className="text-xs text-gray-300 mt-1 font-medium">Seconds</span>
                   </div>
                 </div>
               </div>
@@ -266,23 +266,23 @@ export default function ContestDetailPage() {
           {/* Search and Sort */}
           <div className="mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="relative w-full sm:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search submissions..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:outline-none focus:border-violet-500/50"
+                className="w-full pl-10 pr-4 py-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
                 data-testid="input-search"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-400">Sort by:</span>
+              <span className="text-sm text-gray-400">Sort by:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:outline-none focus:border-violet-500/50"
+                className="px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:outline-none focus:border-primary/50"
                 data-testid="select-sort"
               >
                 <option value="votes">Most Voted</option>
@@ -294,7 +294,7 @@ export default function ContestDetailPage() {
           {submissionsLoading ? (
             <div className="text-center text-white py-12">Loading submissions...</div>
           ) : filteredSubmissions.length === 0 ? (
-            <div className="text-center text-slate-400 py-12">
+            <div className="text-center text-gray-400 py-12">
               <p>No submissions yet. Be the first to enter!</p>
             </div>
           ) : (
@@ -318,11 +318,11 @@ export default function ContestDetailPage() {
                         data-testid={`card-top-submission-${submission.id}`}
                       >
                         {/* Rank Badge */}
-                        <div className="absolute -top-3 -left-3 z-10 h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-slate-900 flex items-center justify-center text-lg font-bold text-slate-900">
+                        <div className="absolute -top-3 -left-3 z-10 h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 border-4 border-gray-900 flex items-center justify-center text-lg font-bold text-gray-900 glow">
                           {index + 1}
                         </div>
 
-                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-violet-500/50 transition-all group-hover:scale-[1.02]">
+                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-primary/50 transition-all group-hover:scale-[1.02]">
                           <div className="aspect-square relative">
                             <img
                               src={submission.mediaUrl}
@@ -334,7 +334,7 @@ export default function ContestDetailPage() {
                             <h3 className="text-lg font-bold text-white mb-1 truncate">
                               {submission.title}
                             </h3>
-                            <p className="text-sm text-slate-400 mb-3">
+                            <p className="text-sm text-gray-400 mb-3">
                               by {submission.user?.username || 'Unknown'}
                             </p>
                             <button
@@ -342,10 +342,10 @@ export default function ContestDetailPage() {
                                 e.stopPropagation();
                                 handleVote(submission.id);
                               }}
-                              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors"
+                              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
                               data-testid={`button-vote-${submission.id}`}
                             >
-                              <Heart className={`h-5 w-5 ${submission.hasVoted ? 'fill-violet-400' : ''}`} />
+                              <Heart className={`h-5 w-5 ${submission.hasVoted ? 'fill-primary' : ''}`} />
                               <span className="font-semibold">{submission.voteCount}</span>
                             </button>
                           </div>
@@ -371,7 +371,7 @@ export default function ContestDetailPage() {
                         }}
                         data-testid={`card-submission-${submission.id}`}
                       >
-                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-violet-500/50 transition-all group-hover:scale-[1.02]">
+                        <div className="overflow-hidden rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 group-hover:border-primary/50 transition-all group-hover:scale-[1.02]">
                           <div className="aspect-square relative">
                             <img
                               src={submission.mediaUrl}
@@ -383,7 +383,7 @@ export default function ContestDetailPage() {
                             <h3 className="text-base font-semibold text-white mb-1 truncate">
                               {submission.title}
                             </h3>
-                            <p className="text-sm text-slate-400 mb-3 truncate">
+                            <p className="text-sm text-gray-400 mb-3 truncate">
                               by {submission.user?.username || 'Unknown'}
                             </p>
                             <button
@@ -391,10 +391,10 @@ export default function ContestDetailPage() {
                                 e.stopPropagation();
                                 handleVote(submission.id);
                               }}
-                              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 transition-colors"
+                              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
                               data-testid={`button-vote-${submission.id}`}
                             >
-                              <Heart className={`h-4 w-4 ${submission.hasVoted ? 'fill-violet-400' : ''}`} />
+                              <Heart className={`h-4 w-4 ${submission.hasVoted ? 'fill-primary' : ''}`} />
                               <span className="font-semibold">{submission.voteCount}</span>
                             </button>
                           </div>
