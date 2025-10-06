@@ -1,5 +1,5 @@
 import { Calendar, Trophy, Share2, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/ui/glass-button";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import ShareModal from "@/components/ui/ShareModal";
@@ -72,7 +72,7 @@ export function ContestCard({ contest }: ContestCardProps) {
   const coverImage = contest.topSubmissionImageUrl || contest.coverImageUrl || defaultImage;
   
   return (
-    <div className="relative min-h-[600px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group">
+    <div className="relative min-h-[600px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group border border-transparent hover:border-primary/50 hover:shadow-[0_0_30px_rgba(124,60,236,0.3)]">
       {/* Background image with smooth zoom on hover */}
       <img
         src={coverImage}
@@ -97,7 +97,15 @@ export function ContestCard({ contest }: ContestCardProps) {
           </div>
         </div>
 
-        {/* (Prize badge removed) */}
+        {/* Prize */}
+        <div className="absolute top-4 right-4">
+          <div className="glassmorphism px-3 py-1 rounded-lg">
+            <div className="flex items-center gap-1 text-yellow-400">
+              <Trophy size={14} />
+              <span className="text-xs sm:text-sm font-bold text-white">{contest.prizeGlory.toLocaleString()} $GLORY</span>
+            </div>
+          </div>
+        </div>
 
         {/* Title + Desc */}
         <div className="mb-6">
@@ -159,14 +167,14 @@ export function ContestCard({ contest }: ContestCardProps) {
 
         {/* Actions */}
         <div className="flex justify-center items-center">
-          <Button
+          <GlassButton
             onClick={() => setLocation(`/contest/${contest.slug}`)}
-            className="rounded-lg bg-background-dark/80 backdrop-blur-sm border border-primary/30 text-white font-bold transition-all duration-300 hover:border-primary/50 px-6 py-3 text-base hover:bg-primary/20 w-full sm:w-auto min-w-[140px] sm:min-w-[160px] h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm tracking-wide hover:scale-105 flex items-center justify-center"
-            data-testid={`button-view-contest-${contest.id}`}
+            className="rounded-lg bg-background-dark/80 backdrop-blur-sm border border-primary/30 text-white font-bold transition-all duration-300 focus-ring hover:border-primary/50 glow-border px-6 py-3 text-base hover:bg-primary/20 w-full sm:w-auto min-w-[140px] sm:min-w-[160px] h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm tracking-wide hover:scale-105 flex items-center justify-center"
+            data-testid={`button-join-contest-${contest.id}`}
           >
             <Calendar size={16} className="mr-2" />
-            <span className="truncate">View Contest</span>
-          </Button>
+            <span className="truncate">Join Contest</span>
+          </GlassButton>
         </div>
 
         {/* Share */}
