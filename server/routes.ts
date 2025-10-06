@@ -290,7 +290,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { status } = req.query;
       const contests = await storage.getContests(status ? { status: status as string } : undefined);
-      res.json(contests);
+      
+      // Auto-end contests that have passed their endAt time
+      const now = new Date();
+      const updatedContests = await Promise.all(
+        contests.map(async (contest) => {
+          if (contest.status === "active" && new Date(contest.endAt) < now) {
+            const updated = await storage.updateContest(contest.id, { status: "ended" });
+            return updated || contest;
+          }
+          return contest;
+        })
+      );
+      
+      res.json(updatedContests);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contests" });
     }
@@ -298,9 +311,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contests/:id", async (req, res) => {
     try {
-      const contest = await storage.getContest(req.params.id);
+      let contest = await storage.getContest(req.params.id);
       if (!contest) {
         return res.status(404).json({ error: "Contest not found" });
+      }
+
+      // Auto-end contest if it has passed its endAt time
+      const now = new Date();
+      if (contest.status === "active" && new Date(contest.endAt) < now) {
+        const updated = await storage.updateContest(contest.id, { status: "ended" });
+        contest = updated || contest;
       }
 
       // Get top 10 submissions for this contest
