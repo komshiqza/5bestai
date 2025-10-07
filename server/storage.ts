@@ -1168,7 +1168,6 @@ export class DbStorage implements IStorage {
           })
           .where(eq(users.id, submission.userId));
 
-        console.log(`Awarded ${prize} GLORY to user ${user.username} (${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} place)`);
         awardedCount++;
       } catch (error) {
         console.error(`Error awarding prize to user ${user.username}:`, error);

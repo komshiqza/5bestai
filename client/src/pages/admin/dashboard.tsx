@@ -385,66 +385,15 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
     },
   });
 
-  // Test mutation for debugging
-  const testBulkDeleteMutation = useMutation({
-    mutationFn: async (userIds: string[]) => {
-      console.log("Frontend: Testing with userIds:", userIds);
-      const response = await apiRequest("DELETE", "/api/admin/users/bulk-test", { userIds });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      console.log("Test endpoint success:", data);
-      toast({
-        title: "Test Success",
-        description: "Test endpoint is working correctly",
-      });
-    },
-    onError: (error: any) => {
-      console.error("Test endpoint error:", error);
-      toast({
-        title: "Test Error",
-        description: error.message || "Test failed",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   // Bulk user deletion mutation
   const bulkDeleteUsersMutation = useMutation({
     mutationFn: async (userIds: string[]) => {
-      console.log("Frontend: Attempting to delete users:", userIds);
-      
-      try {
-        const response = await apiRequest("DELETE", "/api/admin/users/bulk", { userIds });
-        console.log("Frontend: Response status:", response.status);
-        console.log("Frontend: Response headers:", Object.fromEntries(response.headers.entries()));
-        
-        // Get response text first to debug
-        const responseText = await response.text();
-        console.log("Frontend: Response text:", responseText.substring(0, 500));
-        
-        // Check if response is actually JSON
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          console.error("Frontend: Non-JSON response received");
-          throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}. Content: ${responseText.substring(0, 200)}...`);
-        }
-        
-        // Parse JSON
-        try {
-          return JSON.parse(responseText);
-        } catch (parseError) {
-          console.error("Frontend: JSON parse error:", parseError);
-          throw new Error(`Failed to parse JSON response: ${responseText.substring(0, 100)}...`);
-        }
-        
-      } catch (fetchError) {
-        console.error("Frontend: Fetch error:", fetchError);
-        throw fetchError;
-      }
+      const response = await apiRequest("DELETE", "/api/admin/users/bulk", { userIds });
+      return response.json();
     },
     onSuccess: (data) => {
-      console.log("Frontend: Bulk delete success:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       setSelectedUserIds([]);
@@ -456,7 +405,6 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
       });
     },
     onError: (error: any) => {
-      console.error("Frontend: Bulk delete error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete users.",
@@ -627,17 +575,7 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
     bulkDeleteUsersMutation.mutate(selectedUserIds);
   };
 
-  const testEndpoint = () => {
-    if (selectedUserIds.length === 0) {
-      toast({
-        title: "No users selected",
-        description: "Select at least one user to test",
-        variant: "destructive",
-      });
-      return;
-    }
-    testBulkDeleteMutation.mutate(selectedUserIds);
-  };
+
 
   // Helper function to open Glory edit dialog
   const openGloryEditDialog = (userId: string, currentBalance: number) => {

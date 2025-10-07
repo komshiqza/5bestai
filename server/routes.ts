@@ -27,21 +27,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Track recent GLORY balance requests to prevent duplicates
   const recentGloryRequests = new Map<string, number>();
-  
-  // Debug middleware for GLORY balance requests
-  app.use((req, res, next) => {
-    if (req.path.includes('glory-balance')) {
-      console.log(`=== GLORY BALANCE REQUEST DEBUG ===`);
-      console.log(`Method: ${req.method}`);
-      console.log(`Original URL: ${req.originalUrl}`);
-      console.log(`Path: ${req.path}`);
-      console.log(`Base URL: ${req.baseUrl}`);
-      console.log(`Headers:`, req.headers);
-      console.log(`Body:`, req.body);
-      console.log(`====================================`);
-    }
-    next();
-  });
+
 
   
   // Serve uploaded files from public/uploads directory
@@ -1071,13 +1057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Bulk delete users route
   app.delete("/api/admin/users/bulk", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
-    console.log("=== BULK DELETE ENDPOINT HIT ===");
-    console.log("Method:", req.method);
-    console.log("Path:", req.path);
-    console.log("URL:", req.url);
-    console.log("Body:", req.body);
-    console.log("User:", req.user);
-    console.log("Content-Type:", req.headers['content-type']);
+
     
     try {
       // Ensure we always send JSON responses
@@ -1086,11 +1066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userIds } = req.body;
       
       if (!Array.isArray(userIds) || userIds.length === 0) {
-        console.log("Invalid userIds array:", userIds);
         return res.status(400).json({ error: "User IDs array is required" });
       }
-
-      console.log("Attempting to delete users:", userIds);
 
       // Check if storage methods exist
       if (typeof storage.getUsersByIds !== 'function') {
@@ -1105,7 +1082,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user details before deletion for audit logging
       const usersToDelete = await storage.getUsersByIds(userIds);
-      console.log("Found users to delete:", usersToDelete.length);
       
       if (usersToDelete.length === 0) {
         return res.status(404).json({ error: "No users found to delete" });
@@ -1113,7 +1089,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Delete users and all associated data
       const deletedCount = await storage.bulkDeleteUsers(userIds);
-      console.log("Successfully deleted:", deletedCount, "users");
 
       // Log the bulk deletion
       await storage.createAuditLog({
@@ -1130,7 +1105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      console.log("Bulk delete completed successfully");
+
       
       res.json({ 
         success: true, 
@@ -1139,9 +1114,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error("=== BULK DELETE ERROR ===");
-      console.error("Error details:", error);
-      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
       
       // Ensure we send JSON error response
       res.setHeader('Content-Type', 'application/json');
@@ -1158,17 +1130,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique request ID to track duplicates
       const requestId = `${Date.now()}-${Math.random()}`;
       
-      console.log(`=== GLORY BALANCE REQUEST #${requestId} ===`);
-      console.log(`Received amount: ${amount} (type: ${typeof amount})`);
-      console.log(`Received operation: ${operation}`);
-      console.log(`User ID: ${userId}`);
-      console.log(`Request timestamp: ${new Date().toISOString()}`);
+
       
       // Additional protection: Global rate limit per admin user (max 1 glory operation per 3 seconds)
       const adminRateLimitKey = `admin-glory:${req.user!.id}`;
       const lastAdminRequest = recentGloryRequests.get(adminRateLimitKey);
       if (lastAdminRequest && (Date.now() - lastAdminRequest) < 3000) {
-        console.log(`⚠️  ADMIN RATE LIMIT! Admin ${req.user!.id} tried to make glory request too quickly`);
         return res.status(429).json({ error: "Please wait before making another GLORY balance change." });
       }
       
@@ -1179,8 +1146,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If same request within 5 seconds, reject as duplicate (increased from 2 seconds)
       if (lastRequest && (now - lastRequest) < 5000) {
-        console.log(`⚠️  DUPLICATE REQUEST DETECTED! Same request within 5 seconds`);
-        console.log(`Previous request was ${now - lastRequest}ms ago`);
         return res.status(429).json({ error: "Duplicate request detected. Please wait before trying again." });
       }
       
@@ -1197,12 +1162,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       keysToDelete.forEach(key => recentGloryRequests.delete(key));
       
-      if (keysToDelete.length > 0) {
-        console.log(`Cleaned up ${keysToDelete.length} old request entries`);
-      }
+
       
       if (typeof amount !== 'number' || amount < 0 || isNaN(amount)) {
-        console.log(`Invalid amount validation failed: amount=${amount}, type=${typeof amount}, isNaN=${isNaN(amount)}`);
         return res.status(400).json({ error: "Valid amount (including 0) is required" });
       }
       
@@ -1216,7 +1178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      console.log(`User current balance: ${user.gloryBalance}`);
+
 
       let newBalance: number;
       let delta: number;
@@ -1227,19 +1189,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           newBalance = amount;
           delta = amount - user.gloryBalance;
           reason = `Admin set balance to ${amount} GLORY`;
-          console.log(`SET operation: newBalance=${newBalance}, delta=${delta}`);
+
           break;
         case 'add':
           newBalance = user.gloryBalance + amount;
           delta = amount;
           reason = `Admin added ${amount} GLORY`;
-          console.log(`ADD operation: ${user.gloryBalance} + ${amount} = ${newBalance}, delta=${delta}`);
+
           break;
         case 'subtract':
           newBalance = Math.max(0, user.gloryBalance - amount);
           delta = -(Math.min(amount, user.gloryBalance));
           reason = `Admin subtracted ${Math.min(amount, user.gloryBalance)} GLORY`;
-          console.log(`SUBTRACT operation: max(0, ${user.gloryBalance} - ${amount}) = ${newBalance}, delta=${delta}`);
+
           break;
         default:
           return res.status(400).json({ error: "Invalid operation" });
@@ -1276,9 +1238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      console.log(`Final result: actualBalance=${updatedUser.gloryBalance}, delta=${delta}, operation=${operation}`);
-      console.log(`Request ID: ${requestId} completed successfully`);
-      console.log(`=== END REQUEST #${requestId} ===`);
+
 
       res.json({ 
         success: true,
