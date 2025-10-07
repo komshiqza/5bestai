@@ -25,6 +25,25 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
   
+  // Track recent GLORY balance requests to prevent duplicates
+  const recentGloryRequests = new Map<string, number>();
+  
+  // Debug middleware for GLORY balance requests
+  app.use((req, res, next) => {
+    if (req.path.includes('glory-balance')) {
+      console.log(`=== GLORY BALANCE REQUEST DEBUG ===`);
+      console.log(`Method: ${req.method}`);
+      console.log(`Original URL: ${req.originalUrl}`);
+      console.log(`Path: ${req.path}`);
+      console.log(`Base URL: ${req.baseUrl}`);
+      console.log(`Headers:`, req.headers);
+      console.log(`Body:`, req.body);
+      console.log(`====================================`);
+    }
+    next();
+  });
+
+  
   // Serve uploaded files from public/uploads directory
   const express = await import("express");
   const path = await import("path");
@@ -1049,6 +1068,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
     }
   });
+
+  // Bulk delete users route
+  app.delete("/api/admin/users/bulk", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    console.log("=== BULK DELETE ENDPOINT HIT ===");
+    console.log("Method:", req.method);
+    console.log("Path:", req.path);
+    console.log("URL:", req.url);
+    console.log("Body:", req.body);
+    console.log("User:", req.user);
+    console.log("Content-Type:", req.headers['content-type']);
+    
+    try {
+      // Ensure we always send JSON responses
+      res.setHeader('Content-Type', 'application/json');
+      
+      const { userIds } = req.body;
+      
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        console.log("Invalid userIds array:", userIds);
+        return res.status(400).json({ error: "User IDs array is required" });
+      }
+
+      console.log("Attempting to delete users:", userIds);
+
+      // Check if storage methods exist
+      if (typeof storage.getUsersByIds !== 'function') {
+        console.error("ERROR: storage.getUsersByIds is not a function");
+        return res.status(500).json({ error: "Storage method getUsersByIds not implemented" });
+      }
+
+      if (typeof storage.bulkDeleteUsers !== 'function') {
+        console.error("ERROR: storage.bulkDeleteUsers is not a function");
+        return res.status(500).json({ error: "Storage method bulkDeleteUsers not implemented" });
+      }
+
+      // Get user details before deletion for audit logging
+      const usersToDelete = await storage.getUsersByIds(userIds);
+      console.log("Found users to delete:", usersToDelete.length);
+      
+      if (usersToDelete.length === 0) {
+        return res.status(404).json({ error: "No users found to delete" });
+      }
+
+      // Delete users and all associated data
+      const deletedCount = await storage.bulkDeleteUsers(userIds);
+      console.log("Successfully deleted:", deletedCount, "users");
+
+      // Log the bulk deletion
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "BULK_DELETE_USERS",
+        meta: {
+          deletedUserIds: userIds,
+          deletedUsers: usersToDelete.map(u => ({
+            id: u.id,
+            username: u.username,
+            email: u.email
+          })),
+          deletedCount
+        }
+      });
+
+      console.log("Bulk delete completed successfully");
+      
+      res.json({ 
+        success: true, 
+        deletedCount,
+        message: `Successfully deleted ${deletedCount} users and all associated data`
+      });
+
+    } catch (error) {
+      console.error("=== BULK DELETE ERROR ===");
+      console.error("Error details:", error);
+      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+      
+      // Ensure we send JSON error response
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).json({ error: "Failed to delete users", details: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Update user GLORY balance route
+  app.patch("/api/admin/users/:id/glory-balance", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { amount, operation } = req.body;
+      const userId = req.params.id;
+      
+      // Generate unique request ID to track duplicates
+      const requestId = `${Date.now()}-${Math.random()}`;
+      
+      console.log(`=== GLORY BALANCE REQUEST #${requestId} ===`);
+      console.log(`Received amount: ${amount} (type: ${typeof amount})`);
+      console.log(`Received operation: ${operation}`);
+      console.log(`User ID: ${userId}`);
+      console.log(`Request timestamp: ${new Date().toISOString()}`);
+      
+      // Additional protection: Global rate limit per admin user (max 1 glory operation per 3 seconds)
+      const adminRateLimitKey = `admin-glory:${req.user!.id}`;
+      const lastAdminRequest = recentGloryRequests.get(adminRateLimitKey);
+      if (lastAdminRequest && (Date.now() - lastAdminRequest) < 3000) {
+        console.log(`⚠️  ADMIN RATE LIMIT! Admin ${req.user!.id} tried to make glory request too quickly`);
+        return res.status(429).json({ error: "Please wait before making another GLORY balance change." });
+      }
+      
+      // Create request signature to detect duplicates
+      const requestSignature = `${userId}-${amount}-${operation}`;
+      const now = Date.now();
+      const lastRequest = recentGloryRequests.get(requestSignature);
+      
+      // If same request within 5 seconds, reject as duplicate (increased from 2 seconds)
+      if (lastRequest && (now - lastRequest) < 5000) {
+        console.log(`⚠️  DUPLICATE REQUEST DETECTED! Same request within 5 seconds`);
+        console.log(`Previous request was ${now - lastRequest}ms ago`);
+        return res.status(429).json({ error: "Duplicate request detected. Please wait before trying again." });
+      }
+      
+      // Store this request and admin rate limit
+      recentGloryRequests.set(requestSignature, now);
+      recentGloryRequests.set(adminRateLimitKey, now);
+      
+      // Clean up old entries (older than 10 seconds)
+      const keysToDelete: string[] = [];
+      recentGloryRequests.forEach((timestamp, key) => {
+        if (now - timestamp > 10000) {
+          keysToDelete.push(key);
+        }
+      });
+      keysToDelete.forEach(key => recentGloryRequests.delete(key));
+      
+      if (keysToDelete.length > 0) {
+        console.log(`Cleaned up ${keysToDelete.length} old request entries`);
+      }
+      
+      if (typeof amount !== 'number' || amount < 0 || isNaN(amount)) {
+        console.log(`Invalid amount validation failed: amount=${amount}, type=${typeof amount}, isNaN=${isNaN(amount)}`);
+        return res.status(400).json({ error: "Valid amount (including 0) is required" });
+      }
+      
+      if (!['set', 'add', 'subtract'].includes(operation)) {
+        return res.status(400).json({ error: "Invalid operation. Must be 'set', 'add', or 'subtract'" });
+      }
+
+      // Get current user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      console.log(`User current balance: ${user.gloryBalance}`);
+
+      let newBalance: number;
+      let delta: number;
+      let reason: string;
+
+      switch (operation) {
+        case 'set':
+          newBalance = amount;
+          delta = amount - user.gloryBalance;
+          reason = `Admin set balance to ${amount} GLORY`;
+          console.log(`SET operation: newBalance=${newBalance}, delta=${delta}`);
+          break;
+        case 'add':
+          newBalance = user.gloryBalance + amount;
+          delta = amount;
+          reason = `Admin added ${amount} GLORY`;
+          console.log(`ADD operation: ${user.gloryBalance} + ${amount} = ${newBalance}, delta=${delta}`);
+          break;
+        case 'subtract':
+          newBalance = Math.max(0, user.gloryBalance - amount);
+          delta = -(Math.min(amount, user.gloryBalance));
+          reason = `Admin subtracted ${Math.min(amount, user.gloryBalance)} GLORY`;
+          console.log(`SUBTRACT operation: max(0, ${user.gloryBalance} - ${amount}) = ${newBalance}, delta=${delta}`);
+          break;
+        default:
+          return res.status(400).json({ error: "Invalid operation" });
+      }
+
+      // Create glory transaction record which will also update user balance
+      if (delta !== 0) {
+        await storage.createGloryTransaction({
+          userId,
+          delta,
+          reason,
+          contestId: null,
+          submissionId: null
+        });
+      }
+
+      // Get updated user to return latest balance
+      const updatedUser = await storage.getUser(userId);
+      if (!updatedUser) {
+        return res.status(500).json({ error: "Failed to get updated user balance" });
+      }
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "UPDATE_USER_GLORY_BALANCE",
+        meta: { 
+          targetUserId: userId, 
+          operation,
+          amount,
+          oldBalance: user.gloryBalance,
+          newBalance: updatedUser.gloryBalance,
+          delta
+        }
+      });
+
+      console.log(`Final result: actualBalance=${updatedUser.gloryBalance}, delta=${delta}, operation=${operation}`);
+      console.log(`Request ID: ${requestId} completed successfully`);
+      console.log(`=== END REQUEST #${requestId} ===`);
+
+      res.json({ 
+        success: true,
+        newBalance: updatedUser.gloryBalance,
+        delta,
+        operation,
+        message: `GLORY balance ${operation === 'set' ? 'set to' : operation === 'add' ? 'increased by' : 'decreased by'} ${amount}`,
+        userData: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          gloryBalance: updatedUser.gloryBalance
+        }
+      });
+    } catch (error) {
+      console.error("Error updating GLORY balance:", error);
+      res.status(500).json({ error: "Failed to update GLORY balance" });
+    }
+  });
+
+
+
+
 
   // Admin cashout management routes
   app.get("/api/admin/cashout/requests", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {

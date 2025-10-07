@@ -33,7 +33,7 @@ import {
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { eq, and, desc, sql, count, countDistinct, sum } from "drizzle-orm";
+import { eq, and, desc, sql, count, countDistinct, sum, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -43,6 +43,8 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   getUsersWithFilters(filters: { status?: string; role?: string }): Promise<UserWithStats[]>;
+  getUsersByIds(ids: string[]): Promise<User[]>;
+  bulkDeleteUsers(ids: string[]): Promise<number>;
   
   // Contests
   getContest(id: string): Promise<Contest | undefined>;
@@ -228,6 +230,53 @@ export class MemStorage implements IStorage {
         .reduce((sum, s) => sum + s.votesCount, 0),
       contestWins: 0 // TODO: implement win tracking
     }));
+  }
+
+  async getUsersByIds(ids: string[]): Promise<User[]> {
+    return ids.map(id => this.users.get(id)).filter((u): u is User => u !== undefined);
+  }
+
+  async bulkDeleteUsers(ids: string[]): Promise<number> {
+    let deletedCount = 0;
+    
+    for (const userId of ids) {
+      if (this.users.has(userId)) {
+        // Delete user's submissions
+        const userSubmissions = Array.from(this.submissions.values()).filter(s => s.userId === userId);
+        for (const submission of userSubmissions) {
+          this.submissions.delete(submission.id);
+          // Delete votes on this submission
+          Array.from(this.votes.keys()).forEach(voteId => {
+            const vote = this.votes.get(voteId);
+            if (vote && vote.submissionId === submission.id) {
+              this.votes.delete(voteId);
+            }
+          });
+        }
+        
+        // Delete user's votes
+        Array.from(this.votes.keys()).forEach(voteId => {
+          const vote = this.votes.get(voteId);
+          if (vote && vote.userId === userId) {
+            this.votes.delete(voteId);
+          }
+        });
+        
+        // Delete user's glory ledger entries
+        Array.from(this.gloryLedger.keys()).forEach(ledgerId => {
+          const entry = this.gloryLedger.get(ledgerId);
+          if (entry && entry.userId === userId) {
+            this.gloryLedger.delete(ledgerId);
+          }
+        });
+        
+        // Finally delete the user
+        this.users.delete(userId);
+        deletedCount++;
+      }
+    }
+    
+    return deletedCount;
   }
 
   // Contests
@@ -669,6 +718,77 @@ export class DbStorage implements IStorage {
     }
 
     return result;
+  }
+
+  async getUsersByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    
+    const result = await db.query.users.findMany({
+      where: inArray(users.id, ids)
+    });
+    return result;
+  }
+
+  async bulkDeleteUsers(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    
+    try {
+      // Since neon-http doesn't support transactions, we'll delete in proper order
+      // to maintain referential integrity as much as possible
+      
+      // Get user submissions to delete associated votes
+      const userSubmissions = await db.select({ id: submissions.id })
+        .from(submissions)
+        .where(inArray(submissions.userId, ids));
+
+      const submissionIds = userSubmissions.map(s => s.id);
+
+      // Delete votes on user submissions first
+      if (submissionIds.length > 0) {
+        await db.delete(votes)
+          .where(inArray(votes.submissionId, submissionIds));
+      }
+
+      // Delete user votes
+      await db.delete(votes)
+        .where(inArray(votes.userId, ids));
+
+      // Delete cashout events (via cashout requests first)
+      const userCashoutRequests = await db.select({ id: cashoutRequests.id })
+        .from(cashoutRequests)
+        .where(inArray(cashoutRequests.userId, ids));
+      
+      const cashoutRequestIds = userCashoutRequests.map(r => r.id);
+      if (cashoutRequestIds.length > 0) {
+        await db.delete(cashoutEvents)
+          .where(inArray(cashoutEvents.cashoutRequestId, cashoutRequestIds));
+      }
+
+      // Delete cashout requests
+      await db.delete(cashoutRequests)
+        .where(inArray(cashoutRequests.userId, ids));
+
+      // Delete user wallets
+      await db.delete(userWallets)
+        .where(inArray(userWallets.userId, ids));
+
+      // Delete glory ledger entries
+      await db.delete(gloryLedger)
+        .where(inArray(gloryLedger.userId, ids));
+
+      // Delete submissions
+      await db.delete(submissions)
+        .where(inArray(submissions.userId, ids));
+
+      // Finally delete users
+      const result = await db.delete(users)
+        .where(inArray(users.id, ids));
+
+      return result.rowCount || 0;
+    } catch (error) {
+      console.error('Error in bulkDeleteUsers:', error);
+      throw error;
+    }
   }
 
   async getContest(id: string): Promise<Contest | undefined> {

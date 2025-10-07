@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Shield, 
   Users, 
@@ -25,7 +26,8 @@ import {
   BarChart3,
   DollarSign,
   Loader2,
-  Trash2
+  Trash2,
+  Edit3
 } from "lucide-react";
 import { useAuth, isAdmin } from "@/lib/auth";
 import { useLocation } from "wouter";
@@ -46,6 +48,16 @@ export default function AdminDashboard() {
   const [txHashDialogOpen, setTxHashDialogOpen] = useState(false);
   const [selectedCashoutId, setSelectedCashoutId] = useState("");
   const [txHashInput, setTxHashInput] = useState("");
+  
+  // Bulk deletion state
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // Glory balance edit state
+  const [gloryEditDialogOpen, setGloryEditDialogOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [gloryAmountInput, setGloryAmountInput] = useState("");
 
   // Redirect if not admin
   if (!user || !isAdmin(user)) {
@@ -373,6 +385,121 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
     },
   });
 
+  // Test mutation for debugging
+  const testBulkDeleteMutation = useMutation({
+    mutationFn: async (userIds: string[]) => {
+      console.log("Frontend: Testing with userIds:", userIds);
+      const response = await apiRequest("DELETE", "/api/admin/users/bulk-test", { userIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log("Test endpoint success:", data);
+      toast({
+        title: "Test Success",
+        description: "Test endpoint is working correctly",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Test endpoint error:", error);
+      toast({
+        title: "Test Error",
+        description: error.message || "Test failed",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Bulk user deletion mutation
+  const bulkDeleteUsersMutation = useMutation({
+    mutationFn: async (userIds: string[]) => {
+      console.log("Frontend: Attempting to delete users:", userIds);
+      
+      try {
+        const response = await apiRequest("DELETE", "/api/admin/users/bulk", { userIds });
+        console.log("Frontend: Response status:", response.status);
+        console.log("Frontend: Response headers:", Object.fromEntries(response.headers.entries()));
+        
+        // Get response text first to debug
+        const responseText = await response.text();
+        console.log("Frontend: Response text:", responseText.substring(0, 500));
+        
+        // Check if response is actually JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          console.error("Frontend: Non-JSON response received");
+          throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}. Content: ${responseText.substring(0, 200)}...`);
+        }
+        
+        // Parse JSON
+        try {
+          return JSON.parse(responseText);
+        } catch (parseError) {
+          console.error("Frontend: JSON parse error:", parseError);
+          throw new Error(`Failed to parse JSON response: ${responseText.substring(0, 100)}...`);
+        }
+        
+      } catch (fetchError) {
+        console.error("Frontend: Fetch error:", fetchError);
+        throw fetchError;
+      }
+    },
+    onSuccess: (data) => {
+      console.log("Frontend: Bulk delete success:", data);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
+      setSelectedUserIds([]);
+      setBulkDeleteDialogOpen(false);
+      setDeleteConfirmText("");
+      toast({
+        title: "Users deleted",
+        description: `Successfully deleted ${data.deletedCount} users and all their associated assets.`,
+      });
+    },
+    onError: (error: any) => {
+      console.error("Frontend: Bulk delete error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete users.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update Glory Balance mutation
+  const updateGloryBalanceMutation = useMutation({
+    mutationFn: async ({ userId, amount, operation }: { userId: string; amount: number; operation: 'set' | 'add' | 'subtract' }) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/glory-balance`, { 
+        amount, 
+        operation 
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setGloryEditDialogOpen(false);
+      setGloryAmountInput("");
+      setSelectedUserId("");
+      
+      // Also invalidate /api/me for all users to update their balance display
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      
+      // Force refetch to ensure immediate update
+      queryClient.refetchQueries({ queryKey: ["/api/me"] });
+      
+      toast({
+        title: "GLORY balance updated",
+        description: data.message || `Successfully updated user's GLORY balance to ${data.newBalance?.toLocaleString()}.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update GLORY balance.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Helper functions
   const getInitials = (username: string) => {
     return username.substring(0, 2).toUpperCase();
@@ -462,6 +589,108 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
       submission.user.username.toLowerCase().includes(submissionSearchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  // Helper functions for bulk selection
+  const handleUserSelect = (userId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedUserIds(prev => [...prev, userId]);
+    } else {
+      setSelectedUserIds(prev => prev.filter(id => id !== userId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedUserIds(filteredUsers.map((user: any) => user.id));
+    } else {
+      setSelectedUserIds([]);
+    }
+  };
+
+  const isAllSelected = filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length;
+  const isSomeSelected = selectedUserIds.length > 0 && selectedUserIds.length < filteredUsers.length;
+
+  const handleBulkDelete = () => {
+    if (selectedUserIds.length === 0) return;
+    setBulkDeleteDialogOpen(true);
+  };
+
+  const confirmBulkDelete = () => {
+    if (deleteConfirmText !== "DELETE") {
+      toast({
+        title: "Confirmation required",
+        description: 'Please type "DELETE" to confirm the deletion.',
+        variant: "destructive",
+      });
+      return;
+    }
+    bulkDeleteUsersMutation.mutate(selectedUserIds);
+  };
+
+  const testEndpoint = () => {
+    if (selectedUserIds.length === 0) {
+      toast({
+        title: "No users selected",
+        description: "Select at least one user to test",
+        variant: "destructive",
+      });
+      return;
+    }
+    testBulkDeleteMutation.mutate(selectedUserIds);
+  };
+
+  // Helper function to open Glory edit dialog
+  const openGloryEditDialog = (userId: string, currentBalance: number) => {
+    setSelectedUserId(userId);
+    setGloryAmountInput(currentBalance.toString());
+    setGloryEditDialogOpen(true);
+  };
+
+  // Helper function to handle Glory balance update
+  const handleGloryBalanceUpdate = () => {
+    // Prevent double clicks while mutation is pending
+    if (updateGloryBalanceMutation.isPending) {
+      return;
+    }
+
+    const input = gloryAmountInput.trim();
+    if (!input) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let operation: 'set' | 'add' | 'subtract';
+    let amount: number;
+
+    if (input.startsWith('+')) {
+      operation = 'add';
+      amount = parseInt(input.substring(1));
+    } else if (input.startsWith('-')) {
+      operation = 'subtract';
+      amount = parseInt(input.substring(1));
+    } else {
+      // When no +/- prefix, treat as 'set' operation
+      operation = 'set';
+      amount = parseInt(input);
+    }
+
+    if (isNaN(amount) || amount < 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid number (0 or greater)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateGloryBalanceMutation.mutate({ userId: selectedUserId, amount, operation });
+  };
+
+
 
   return (
     <div className="min-h-screen py-16" data-testid="admin-dashboard">
@@ -568,6 +797,17 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                 <div className="flex items-center justify-between">
                   <CardTitle>User Management</CardTitle>
                   <div className="flex items-center space-x-2">
+                    {selectedUserIds.length > 0 && (
+                      <Button
+                        variant="outline"
+                        className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                        onClick={handleBulkDelete}
+                        data-testid="bulk-delete-button"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Selected ({selectedUserIds.length})
+                      </Button>
+                    )}
                     <Select value={userStatusFilter} onValueChange={setUserStatusFilter} data-testid="user-status-filter">
                       <SelectTrigger className="w-40">
                         <SelectValue />
@@ -597,6 +837,13 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                   <table className="w-full" data-testid="users-table">
                     <thead className="bg-muted">
                       <tr>
+                        <th className="px-6 py-3 text-left">
+                          <Checkbox
+                            checked={isSomeSelected ? "indeterminate" : isAllSelected}
+                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                            data-testid="select-all-checkbox"
+                          />
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           User
                         </th>
@@ -617,6 +864,13 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                     <tbody className="divide-y divide-border">
                       {filteredUsers.map((user: any) => (
                         <tr key={user.id} className="hover:bg-muted/30 transition-colors" data-testid={`user-row-${user.id}`}>
+                          <td className="px-6 py-4">
+                            <Checkbox
+                              checked={selectedUserIds.includes(user.id)}
+                              onCheckedChange={(checked) => handleUserSelect(user.id, !!checked)}
+                              data-testid={`select-user-${user.id}`}
+                            />
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center space-x-3">
                               <Avatar>
@@ -640,8 +894,22 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                               <span className="ml-1">{user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span>
                             </Badge>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-semibold font-mono" data-testid={`glory-${user.id}`}>
-                            {user.gloryBalance.toLocaleString()}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-semibold font-mono" data-testid={`glory-${user.id}`}>
+                                {user.gloryBalance.toLocaleString()}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 hover:bg-primary/20"
+                                onClick={() => openGloryEditDialog(user.id, user.gloryBalance)}
+                                data-testid={`edit-glory-${user.id}`}
+                                title="Edit GLORY balance"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground" data-testid={`joined-${user.id}`}>
                             {new Date(user.createdAt).toLocaleDateString()}
@@ -1231,6 +1499,177 @@ ${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free 
                 </>
               ) : (
                 "Mark as Sent"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <DialogContent data-testid="bulk-delete-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Selected Users</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  You are about to permanently delete <span className="font-semibold">{selectedUserIds.length}</span> users.
+                </p>
+                <div>
+                  <p className="text-destructive font-medium mb-2">
+                    This will also delete ALL associated data including:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm ml-4 text-muted-foreground">
+                    <li>All submissions and media files</li>
+                    <li>All votes and interactions</li>
+                    <li>GLORY balance and transaction history</li>
+                    <li>Profile data and settings</li>
+                    <li>Cashout requests</li>
+                  </ul>
+                </div>
+                <p className="font-semibold text-destructive">
+                  This action cannot be undone!
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirmDelete">
+                Type <span className="font-mono font-bold">DELETE</span> to confirm
+              </Label>
+              <Input
+                id="confirmDelete"
+                placeholder="Type DELETE to confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                data-testid="confirm-delete-input"
+              />
+            </div>
+            <div className="bg-muted p-3 rounded-md">
+              <h4 className="font-semibold text-sm mb-2">Selected users:</h4>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {selectedUserIds.map(userId => {
+                  const user = filteredUsers.find((u: any) => u.id === userId);
+                  return (
+                    <div key={userId} className="text-sm text-muted-foreground">
+                      {user?.username} ({user?.email})
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkDeleteDialogOpen(false);
+                setDeleteConfirmText("");
+              }}
+              data-testid="cancel-bulk-delete"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmBulkDelete}
+              disabled={bulkDeleteUsersMutation.isPending || deleteConfirmText !== "DELETE"}
+              data-testid="confirm-bulk-delete"
+            >
+              {bulkDeleteUsersMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete {selectedUserIds.length} Users
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Glory Balance Edit Dialog */}
+      <Dialog open={gloryEditDialogOpen} onOpenChange={setGloryEditDialogOpen}>
+        <DialogContent data-testid="glory-edit-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Crown className="w-5 h-5 mr-2 text-primary" />
+              Edit GLORY Balance
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Edit the GLORY balance for the selected user.
+                </p>
+                <div className="bg-muted p-3 rounded-md text-sm">
+                  <p className="font-medium mb-2">Supported formats:</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li><code className="bg-background px-1 rounded">300</code> - Set balance to exactly 300</li>
+                    <li><code className="bg-background px-1 rounded">+50</code> - Add 50 to current balance</li>
+                    <li><code className="bg-background px-1 rounded">-20</code> - Subtract 20 from current balance</li>
+                  </ul>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedUserId && (
+              <div className="bg-muted p-3 rounded-md">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Current balance:</span>
+                  <span className="font-mono font-semibold ml-2">
+                    {filteredUsers.find((u: any) => u.id === selectedUserId)?.gloryBalance.toLocaleString() || 0} GLORY
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="gloryAmount">New GLORY Amount</Label>
+              <Input
+                id="gloryAmount"
+                placeholder="e.g., 300, +50, -20"
+                value={gloryAmountInput}
+                onChange={(e) => setGloryAmountInput(e.target.value)}
+                data-testid="glory-amount-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter a number to set exact balance, or use +/- to add/subtract
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setGloryEditDialogOpen(false);
+                setGloryAmountInput("");
+                setSelectedUserId("");
+              }}
+              data-testid="cancel-glory-edit"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGloryBalanceUpdate}
+              disabled={updateGloryBalanceMutation.isPending || !gloryAmountInput.trim()}
+              data-testid="confirm-glory-edit"
+              className="bg-primary/20 text-primary hover:bg-primary/30 border-primary/30"
+            >
+              {updateGloryBalanceMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Crown className="h-4 w-4 mr-2" />
+                  Update Balance
+                </>
               )}
             </Button>
           </DialogFooter>

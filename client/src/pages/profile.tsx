@@ -8,11 +8,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
+import { useUserBalance } from "@/hooks/useUserBalance";
 import { WalletConnect } from "@/components/wallet/WalletConnect";
 import { CashoutRequest } from "@/components/wallet/CashoutRequest";
 
 export default function Profile() {
   const { data: user } = useAuth();
+  const { balance } = useUserBalance();
   const [, setLocation] = useLocation();
 
   // Redirect if not authenticated
@@ -103,7 +105,7 @@ export default function Profile() {
                 <div className="gradient-glory rounded-xl p-6 text-center mb-6" data-testid="glory-balance">
                   <div className="text-white/80 text-sm mb-2">Your GLORY Balance</div>
                   <div className="text-white text-4xl font-black mb-2">
-                    {user.gloryBalance.toLocaleString()}
+                    {balance.toLocaleString()}
                   </div>
                   <div className="text-white/60 text-xs">
                     {/* Mock rank calculation */}

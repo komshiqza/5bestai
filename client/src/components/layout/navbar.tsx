@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth, useLogout, isAuthenticated, isAdmin } from "@/lib/auth";
+import { useUserBalance } from "@/hooks/useUserBalance";
 import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { GlassButton } from "@/components/GlassButton";
@@ -11,6 +12,7 @@ import { useState } from "react";
 
 export function Navbar() {
   const { data: user } = useAuth();
+  const { balance } = useUserBalance();
   const { theme, toggleTheme } = useTheme();
   const logout = useLogout();
   const [, setLocation] = useLocation();
@@ -71,7 +73,7 @@ export function Navbar() {
             {isAuthenticated(user) && (
               <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-muted" data-testid="glory-balance">
                 <Trophy className="text-primary w-4 h-4" />
-                <span className="text-sm font-semibold">{user.gloryBalance.toLocaleString()} GLORY</span>
+                <span className="text-sm font-semibold">{balance.toLocaleString()} GLORY</span>
               </div>
             )}
 
@@ -179,7 +181,7 @@ export function Navbar() {
               <div className="mt-4 px-4 py-2 bg-muted rounded-lg mx-2" data-testid="mobile-glory-balance">
                 <div className="flex items-center space-x-2">
                   <Trophy className="text-primary w-4 h-4" />
-                  <span className="text-sm font-semibold">{user.gloryBalance.toLocaleString()} GLORY</span>
+                  <span className="text-sm font-semibold">{balance.toLocaleString()} GLORY</span>
                 </div>
               </div>
             )}

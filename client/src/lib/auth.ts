@@ -29,6 +29,9 @@ export function useAuth() {
         return null;
       }
     },
+    staleTime: 5000, // Consider data stale after 5 seconds
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true, // Refetch when window gets focus
   });
 }
 
