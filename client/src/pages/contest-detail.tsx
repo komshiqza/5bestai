@@ -235,24 +235,24 @@ export default function ContestDetailPage() {
 
   return (
     <>
-      <div className="flex-1 px-4 py-8 sm:px-6 md:px-10 lg:px-20">
+      <div className="flex-1 px-4 py-6 sm:px-6 md:px-10 lg:px-20">
         <div className="mx-auto max-w-screen-xl">
           {/* Back Button */}
-          <Link href="/contests" className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors" data-testid="link-back-contests">
+          <Link href="/contests" className="inline-flex items-center text-gray-400 hover:text-white mb-6 md:mb-8 transition-colors" data-testid="link-back-contests">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Contests
           </Link>
 
           {/* Header Controls - Contest Type Selector, Timer, Prize Pool */}
-          <div className="mb-12 flex flex-col items-center justify-between gap-8">
+          <div className="mb-8 md:mb-12 flex flex-col items-center justify-between gap-6 md:gap-8">
             {/* Contest Type Selector and Upload Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4 w-full">
               <div className="w-full max-w-sm text-center">
-                <h1 className="text-2xl font-bold text-white mb-2" data-testid="text-contest-title">
+                <h1 className="text-xl sm:text-2xl font-bold text-white mb-2" data-testid="text-contest-title">
                   {contest.title}
                 </h1>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full sm:w-auto">
                 <GlassButton
                   onClick={handleShowUpload}
                   className="flex flex-shrink-0 items-center justify-center gap-2 px-6 py-3 text-base font-bold w-full sm:w-auto"

@@ -56,20 +56,20 @@ export default function Contests() {
   }
 
   return (
-    <div className="min-h-screen py-16" data-testid="contests-page">
+    <div className="min-h-screen py-8 md:py-16" data-testid="contests-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="contests-title">
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="contests-title">
             AI Art Contests
           </h2>
-          <p className="mt-4 text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
+          <p className="mt-3 md:mt-4 text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto px-4">
             Participate in exciting AI art contests and showcase your creativity to win amazing prizes.
           </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
           <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-prizes">
             <Trophy className="text-primary mx-auto mb-3" size={32} />
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -94,8 +94,8 @@ export default function Contests() {
         </div>
 
         {/* Filters and Search */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="flex items-center space-x-2 flex-wrap">
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-6 md:mb-8">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant={statusFilter === "all" ? "default" : "ghost"}
               size="sm"

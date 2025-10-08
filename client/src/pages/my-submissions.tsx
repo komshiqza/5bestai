@@ -137,17 +137,17 @@ export default function MySubmissions() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/20 to-gray-950">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent" data-testid="heading-my-submissions">
+      <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-1 md:mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent" data-testid="heading-my-submissions">
             My Gallery
           </h1>
-          <p className="text-gray-400" data-testid="text-gallery-description">
+          <p className="text-sm md:text-base text-gray-400" data-testid="text-gallery-description">
             View all your uploaded creative works
           </p>
         </div>
 
-        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="mb-8">
+        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="mb-6 md:mb-8">
           <TabsList className="bg-white/5 border border-white/10">
             <TabsTrigger value="all" data-testid="tab-all">
               All ({statusCounts.all})
@@ -165,7 +165,7 @@ export default function MySubmissions() {
         </Tabs>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {[...Array(6)].map((_, i) => (
               <Card key={i} className="bg-white/5 border-white/10">
                 <CardContent className="p-0">
