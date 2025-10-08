@@ -220,6 +220,54 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       validationErrors.push('Voting start date is required');
     }
     
+    // Chronological validation - only if all required dates are present
+    if (validationErrors.length === 0) {
+      // Build date objects for comparison
+      const startAt = dataToValidate.startDateOption === 'now' 
+        ? new Date() 
+        : new Date(`${dataToValidate.startDate}T${dataToValidate.startTime || '00:00'}`);
+      
+      const votingEndAt = new Date(
+        `${dataToValidate.votingEndDate}T${dataToValidate.votingEndTime || '23:59'}`
+      );
+      
+      const votingStartAt = dataToValidate.votingStartOption === 'now'
+        ? new Date()
+        : new Date(`${dataToValidate.votingStartDate}T00:00`);
+      
+      // Check: Contest start must be before voting end
+      if (startAt >= votingEndAt) {
+        validationErrors.push('Contest start time must be before voting end time');
+      }
+      
+      // Check: Voting start must be after or equal to contest start
+      if (votingStartAt < startAt) {
+        validationErrors.push('Voting cannot start before the contest starts');
+      }
+      
+      // Check: Voting start must be before voting end
+      if (votingStartAt >= votingEndAt) {
+        validationErrors.push('Voting start time must be before voting end time');
+      }
+      
+      // Check submission deadline if enabled
+      if (dataToValidate.enableSubmissionDeadline && dataToValidate.submissionDeadline) {
+        const submissionEndAt = new Date(
+          `${dataToValidate.submissionDeadline}T${dataToValidate.submissionDeadlineTime || '23:59'}`
+        );
+        
+        // Submission deadline must be after contest start
+        if (submissionEndAt <= startAt) {
+          validationErrors.push('Submission deadline must be after contest start time');
+        }
+        
+        // Submission deadline must be before or equal to voting end
+        if (submissionEndAt > votingEndAt) {
+          validationErrors.push('Submission deadline cannot be after voting end time');
+        }
+      }
+    }
+    
     return validationErrors;
   };
 
