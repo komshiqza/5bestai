@@ -54,6 +54,9 @@ export default function AdminDashboard() {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
+  // Bulk submission actions state
+  const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<string[]>([]);
+
   // Glory balance edit state
   const [gloryEditDialogOpen, setGloryEditDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -495,7 +498,25 @@ export default function AdminDashboard() {
     bulkDeleteUsersMutation.mutate(selectedUserIds);
   };
 
+  // Helper functions for bulk submission selection
+  const handleSubmissionSelect = (submissionId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedSubmissionIds(prev => [...prev, submissionId]);
+    } else {
+      setSelectedSubmissionIds(prev => prev.filter(id => id !== submissionId));
+    }
+  };
 
+  const handleSelectAllSubmissions = (checked: boolean) => {
+    if (checked) {
+      setSelectedSubmissionIds(filteredSubmissions.map((sub: any) => sub.id));
+    } else {
+      setSelectedSubmissionIds([]);
+    }
+  };
+
+  const isAllSubmissionsSelected = filteredSubmissions.length > 0 && selectedSubmissionIds.length === filteredSubmissions.length;
+  const isSomeSubmissionsSelected = selectedSubmissionIds.length > 0 && selectedSubmissionIds.length < filteredSubmissions.length;
 
   // Helper function to open Glory edit dialog
   const openGloryEditDialog = (userId: string, currentBalance: number) => {
