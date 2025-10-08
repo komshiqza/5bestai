@@ -60,6 +60,8 @@ export default function AdminDashboard() {
 
   // Bulk contest actions state
   const [selectedContestIds, setSelectedContestIds] = useState<string[]>([]);
+  const [bulkDeleteContestsDialogOpen, setBulkDeleteContestsDialogOpen] = useState(false);
+  const [deleteContestsConfirmText, setDeleteContestsConfirmText] = useState("");
 
   // Glory balance edit state
   const [gloryEditDialogOpen, setGloryEditDialogOpen] = useState(false);
@@ -336,6 +338,30 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to end contests.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteContestsMutation = useMutation({
+    mutationFn: async (contestIds: string[]) => {
+      const response = await apiRequest("DELETE", "/api/admin/contests/bulk", { contestIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contests"] });
+      setSelectedContestIds([]);
+      setBulkDeleteContestsDialogOpen(false);
+      setDeleteContestsConfirmText("");
+      toast({
+        title: "Contests deleted",
+        description: `Successfully deleted ${data.deletedCount} contests.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete contests.",
         variant: "destructive",
       });
     },
@@ -745,7 +771,22 @@ export default function AdminDashboard() {
     bulkEndContestsMutation.mutate(selectedContestIds);
   };
 
+  const handleBulkDeleteContests = () => {
+    if (selectedContestIds.length === 0) return;
+    setBulkDeleteContestsDialogOpen(true);
+  };
 
+  const confirmBulkDeleteContests = () => {
+    if (deleteContestsConfirmText !== "DELETE") {
+      toast({
+        title: "Confirmation required",
+        description: 'Please type "DELETE" to confirm the deletion.',
+        variant: "destructive",
+      });
+      return;
+    }
+    bulkDeleteContestsMutation.mutate(selectedContestIds);
+  };
 
   return (
     <div className="min-h-screen py-16" data-testid="admin-dashboard">
@@ -1300,6 +1341,17 @@ export default function AdminDashboard() {
                           <Trophy className="w-4 h-4 mr-2" />
                           End & Distribute Selected ({selectedContestIds.length})
                         </Button>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                          onClick={handleBulkDeleteContests}
+                          disabled={bulkDeleteContestsMutation.isPending}
+                          data-testid="bulk-delete-contests"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Selected ({selectedContestIds.length})
+                        </Button>
                       </>
                     )}
                     <Button 
@@ -1774,6 +1826,93 @@ export default function AdminDashboard() {
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete {selectedUserIds.length} Users
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Contests Confirmation Dialog */}
+      <Dialog open={bulkDeleteContestsDialogOpen} onOpenChange={setBulkDeleteContestsDialogOpen}>
+        <DialogContent data-testid="bulk-delete-contests-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Selected Contests</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  You are about to permanently delete <span className="font-semibold">{selectedContestIds.length}</span> contests.
+                </p>
+                <div>
+                  <p className="text-destructive font-medium mb-2">
+                    This will also delete ALL associated data including:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm ml-4 text-muted-foreground">
+                    <li>All submissions in these contests</li>
+                    <li>All votes on these submissions</li>
+                    <li>All media files associated with submissions</li>
+                    <li>Prize pool and reward distribution data</li>
+                  </ul>
+                </div>
+                <p className="font-semibold text-destructive">
+                  This action cannot be undone!
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirmDeleteContests">
+                Type <span className="font-mono font-bold">DELETE</span> to confirm
+              </Label>
+              <Input
+                id="confirmDeleteContests"
+                placeholder="Type DELETE to confirm"
+                value={deleteContestsConfirmText}
+                onChange={(e) => setDeleteContestsConfirmText(e.target.value)}
+                data-testid="confirm-delete-contests-input"
+              />
+            </div>
+            <div className="bg-muted p-3 rounded-md">
+              <h4 className="font-semibold text-sm mb-2">Selected contests:</h4>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {selectedContestIds.map(contestId => {
+                  const contest = contests.find((c: any) => c.id === contestId);
+                  return (
+                    <div key={contestId} className="text-sm text-muted-foreground">
+                      {contest?.title} ({contest?.status})
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkDeleteContestsDialogOpen(false);
+                setDeleteContestsConfirmText("");
+              }}
+              data-testid="cancel-bulk-delete-contests"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmBulkDeleteContests}
+              disabled={bulkDeleteContestsMutation.isPending || deleteContestsConfirmText !== "DELETE"}
+              data-testid="confirm-bulk-delete-contests"
+            >
+              {bulkDeleteContestsMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete {selectedContestIds.length} Contests
                 </>
               )}
             </Button>

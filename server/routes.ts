@@ -571,6 +571,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk delete contests
+  app.delete("/api/admin/contests/bulk", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { contestIds } = z.object({ contestIds: z.array(z.string()).min(1) }).parse(req.body);
+      
+      let deletedCount = 0;
+      const deletedContests = [];
+      
+      for (const contestId of contestIds) {
+        const contest = await storage.getContest(contestId);
+        if (contest) {
+          await storage.deleteContest(contestId);
+          deletedCount++;
+          deletedContests.push({ id: contest.id, title: contest.title });
+        }
+      }
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "BULK_DELETE_CONTESTS",
+        meta: { contestIds, deletedContests, deletedCount }
+      });
+
+      res.json({ success: true, deletedCount, message: `Successfully deleted ${deletedCount} contests` });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
   // Submission routes - optional auth (public can see approved, users can see approved + their own pending)
   app.get("/api/submissions", async (req: AuthRequest, res) => {
     try {
