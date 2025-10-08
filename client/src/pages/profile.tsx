@@ -327,8 +327,8 @@ export default function Profile() {
             <Card className="sticky top-20" data-testid="profile-sidebar">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
-                  <div className="relative inline-block group">
-                    <Avatar className="w-24 h-24 mx-auto mb-4">
+                  <div className="relative inline-block group mb-4">
+                    <Avatar className="w-24 h-24">
                       {user.avatarUrl ? (
                         <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
                       ) : (
