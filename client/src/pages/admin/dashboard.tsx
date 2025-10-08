@@ -221,91 +221,9 @@ export default function AdminDashboard() {
 
   const createContestMutation = useMutation({
     mutationFn: async (formData: any) => {
-      const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      
-      // Handle start date
-      const startAt = formData.startDateOption === 'now' 
-        ? new Date() 
-        : new Date(`${formData.startDate}T${formData.startTime || '00:00'}`);
-      
-      // Handle end date (submission deadline)
-      const endAt = new Date(`${formData.endDate}T${formData.endTime || '23:59'}`);
-      
-      // Build rules text from form data
-      const rulesText = `
-## Contest Rules
-
-### Contest Type
-${formData.contestType || 'Image'} Contest
-
-### Category
-${formData.category || 'General'}
-
-### Prize Pool
-${formData.prizePool} ${formData.currency}
-
-### Prize Distribution
-${formData.prizeDistribution.map((p: any) => `${p.place} place: ${p.value} ${formData.currency}`).join('\n')}
-
-### Participation Rules
-- Eligibility: ${formData.eligibility}
-- Max Submissions per User: ${formData.maxSubmissions}
-- File Size Limit: ${formData.fileSizeLimit}MB
-- Allowed Media Types: ${formData.allowedMediaTypes.join(', ')}
-- NSFW Content: ${formData.nsfwAllowed ? 'Allowed' : 'Not Allowed'}
-
-### Entry Fee
-${formData.entryFee ? `${formData.entryFeeAmount} ${formData.currency}` : 'Free to enter'}
-
-### Voting Rules
-- Methods: ${formData.votingMethods.join(', ')}
-- Votes per period: ${formData.voteLimitPerPeriod}
-- Period duration: ${formData.votePeriodHours} hours
-- Total vote limit: ${formData.totalVoteLimit === 0 ? 'Unlimited' : formData.totalVoteLimit}
-
-### Important Dates
-- Voting Start: ${formData.votingStartOption === 'now' ? 'Immediately' : `${formData.votingStartDate}`}
-- Contest End: ${formData.votingEndDate} ${formData.votingEndTime || ''}
-      `.trim();
-      
-      // Store all configuration in a structured format
-      const config = {
-        contestType: formData.contestType,
-        category: formData.category,
-        currency: formData.currency,
-        prizeDistribution: formData.prizeDistribution,
-        entryFee: formData.entryFee,
-        entryFeeAmount: formData.entryFeeAmount,
-        eligibility: formData.eligibility,
-        maxSubmissions: formData.maxSubmissions,
-        fileSizeLimit: formData.fileSizeLimit,
-        allowedMediaTypes: formData.allowedMediaTypes,
-        nsfwAllowed: formData.nsfwAllowed,
-        votingMethods: formData.votingMethods,
-        voteLimitPerPeriod: formData.voteLimitPerPeriod,
-        votePeriodHours: formData.votePeriodHours,
-        totalVoteLimit: formData.totalVoteLimit,
-        votingStartOption: formData.votingStartOption,
-        votingStartDate: formData.votingStartDate,
-        votingEndDate: formData.votingEndDate,
-        votingEndTime: formData.votingEndTime,
-        featured: formData.featured
-      };
-      
-      const contestData = {
-        title: formData.title,
-        slug,
-        description: formData.description,
-        rules: rulesText,
-        prizeGlory: parseInt(formData.prizePool) || 0,
-        startAt: startAt.toISOString(),
-        endAt: endAt.toISOString(),
-        status: formData.status || 'draft',
-        coverImageUrl: formData.coverImage || null,
-        config
-      };
-
-      const response = await apiRequest("POST", "/api/admin/contests", contestData);
+      // The CreateContestModal already sends data in the correct format
+      // with all processing done (slug, dates, config object, etc.)
+      const response = await apiRequest("POST", "/api/admin/contests", formData);
       return response.json();
     },
     onSuccess: () => {
