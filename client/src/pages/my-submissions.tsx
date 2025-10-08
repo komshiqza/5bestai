@@ -106,15 +106,16 @@ export default function MySubmissions() {
         ) : filteredSubmissions && filteredSubmissions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredSubmissions.map((submission) => (
-              <SubmissionCard
-                key={submission.id}
-                submission={{
-                  ...submission,
-                  type: submission.type as "image" | "video",
-                  thumbnailUrl: submission.thumbnailUrl ?? undefined
-                }}
-                showVoting={false}
-              />
+              <div key={submission.id} className="[&_>div>div:first-child]:!aspect-video [&_>div>div:first-child]:!h-auto">
+                <SubmissionCard
+                  submission={{
+                    ...submission,
+                    type: submission.type as "image" | "video",
+                    thumbnailUrl: submission.thumbnailUrl ?? undefined
+                  }}
+                  showVoting={false}
+                />
+              </div>
             ))}
           </div>
         ) : (
