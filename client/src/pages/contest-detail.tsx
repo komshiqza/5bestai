@@ -300,8 +300,8 @@ export default function ContestDetailPage() {
                       contest.prizeDistribution.length === 4 ? 'grid-cols-4' :
                       'grid-cols-5'
                     }`}>
-                      {/* Show first 5 places */}
-                      {contest.prizeDistribution.slice(0, 5).map((prize: any, index: number) => {
+                      {/* Show first 4 places if more than 5, otherwise show all up to 5 */}
+                      {contest.prizeDistribution.slice(0, contest.prizeDistribution.length > 5 ? 4 : 5).map((prize: any, index: number) => {
                         const placeNumber = index + 1;
                         const badgeColor = 
                           placeNumber === 1 ? 'from-yellow-400 to-yellow-600' :
@@ -344,7 +344,7 @@ export default function ContestDetailPage() {
                             <span className="text-xs font-bold text-white">+</span>
                           </div>
                           <p className="text-xs font-bold text-white mb-1">
-                            {contest.prizeDistribution.length - 5}
+                            {contest.prizeDistribution.length - 4}
                           </p>
                           <p className="text-xs text-primary font-medium">More</p>
                         </button>
