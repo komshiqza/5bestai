@@ -70,12 +70,20 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     if (contest && isOpen) {
       const config = contest.config || {};
       
-      const startDate = new Date(contest.startAt);
-      const endDate = new Date(contest.endAt);
+      // Safely parse dates with validation
+      const startDate = contest.startAt ? new Date(contest.startAt) : new Date();
+      const endDate = contest.endAt ? new Date(contest.endAt) : new Date();
+      
+      // Validate dates - check if they're valid
+      const isValidStartDate = startDate instanceof Date && !isNaN(startDate.getTime());
+      const isValidEndDate = endDate instanceof Date && !isNaN(endDate.getTime());
       
       // Parse submission deadline from config
       const submissionEndAt = config.submissionEndAt ? new Date(config.submissionEndAt) : null;
+      const isValidSubmissionEndAt = submissionEndAt && !isNaN(submissionEndAt.getTime());
+      
       const votingStartAt = config.votingStartAt ? new Date(config.votingStartAt) : null;
+      const isValidVotingStartAt = votingStartAt && !isNaN(votingStartAt.getTime());
       
       setFormData({
         title: contest.title || '',
@@ -86,17 +94,17 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         entryFee: config.entryFee || false,
         entryFeeAmount: config.entryFeeAmount,
         startDateOption: 'later',
-        startDate: startDate.toISOString().split('T')[0],
-        startTime: startDate.toTimeString().slice(0, 5),
-        endDate: endDate.toISOString().split('T')[0],
-        endTime: endDate.toTimeString().slice(0, 5),
-        submissionDeadline: submissionEndAt ? submissionEndAt.toISOString().split('T')[0] : '',
-        submissionDeadlineTime: submissionEndAt ? submissionEndAt.toTimeString().slice(0, 5) : '',
-        enableSubmissionDeadline: !!submissionEndAt && submissionEndAt.getTime() !== endDate.getTime(),
+        startDate: isValidStartDate ? startDate.toISOString().split('T')[0] : '',
+        startTime: isValidStartDate ? startDate.toTimeString().slice(0, 5) : '',
+        endDate: isValidEndDate ? endDate.toISOString().split('T')[0] : '',
+        endTime: isValidEndDate ? endDate.toTimeString().slice(0, 5) : '',
+        submissionDeadline: isValidSubmissionEndAt ? submissionEndAt!.toISOString().split('T')[0] : '',
+        submissionDeadlineTime: isValidSubmissionEndAt ? submissionEndAt!.toTimeString().slice(0, 5) : '',
+        enableSubmissionDeadline: !!(isValidSubmissionEndAt && isValidEndDate && submissionEndAt!.getTime() !== endDate.getTime()),
         votingStartOption: 'later',
-        votingStartDate: votingStartAt ? votingStartAt.toISOString().split('T')[0] : '',
-        votingEndDate: endDate.toISOString().split('T')[0],
-        votingEndTime: endDate.toTimeString().slice(0, 5),
+        votingStartDate: isValidVotingStartAt ? votingStartAt!.toISOString().split('T')[0] : '',
+        votingEndDate: isValidEndDate ? endDate.toISOString().split('T')[0] : '',
+        votingEndTime: isValidEndDate ? endDate.toTimeString().slice(0, 5) : '',
         prizePool: String(contest.prizeGlory || 0),
         currency: config.currency || 'GLORY',
         prizeDistribution: config.prizeDistribution || [
