@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { SolanaWalletProvider } from "@/lib/wallet-provider";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { BottomNav } from "@/components/layout/bottom-nav";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -23,7 +24,7 @@ function Router() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1">
+      <main className="flex-1 pb-16 md:pb-0">
         <Switch>
           <Route path="/" component={Home} />
           <Route path="/login" component={Login} />
@@ -40,6 +41,7 @@ function Router() {
         </Switch>
       </main>
       <Footer />
+      <BottomNav />
     </div>
   );
 }

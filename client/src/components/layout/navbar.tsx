@@ -6,15 +6,13 @@ import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, Users, Menu, LogOut, User, Shield, Image } from "lucide-react";
-import { useState } from "react";
+import { Trophy, Upload, LogOut, User, Shield, Image } from "lucide-react";
 
 export function Navbar() {
   const { data: user } = useAuth();
   const { balance } = useUserBalance();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout.mutate();
@@ -44,17 +42,22 @@ export function Navbar() {
             <Link href="/contests" data-testid="link-contests">
               <Button variant="ghost" className="px-4 py-2">Contests</Button>
             </Link>
-            {isAuthenticated(user) && (
-              <Link href="/upload" data-testid="link-upload">
-                <GlassButton className="px-4 py-2">Upload</GlassButton>
-              </Link>
-            )}
           </div>
 
-          {/* User Actions */}
-          <div className="flex items-center space-x-3">
+          {/* Upload Button - Mobile & Desktop */}
+          {isAuthenticated(user) && (
+            <Link href="/upload" data-testid="link-upload" className="ml-auto mr-3 md:mr-0">
+              <GlassButton className="px-4 py-2">
+                <Upload className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Upload</span>
+              </GlassButton>
+            </Link>
+          )}
+
+          {/* User Actions - Desktop Only */}
+          <div className="hidden md:flex items-center space-x-3">
             {isAuthenticated(user) && (
-              <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-muted" data-testid="glory-balance">
+              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-muted" data-testid="glory-balance">
                 <Trophy className="text-primary w-4 h-4" />
                 <span className="text-sm font-semibold">{balance.toLocaleString()} GLORY</span>
               </div>
@@ -129,47 +132,8 @@ export function Navbar() {
                 </Link>
               </div>
             )}
-
-            {/* Mobile menu button */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="md:hidden w-10 h-10"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              data-testid="button-mobile-menu"
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
           </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border py-2" data-testid="mobile-menu">
-            <div className="space-y-1">
-              <Link href="/contests" data-testid="mobile-link-contests">
-                <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
-                  Contests
-                </Button>
-              </Link>
-              {isAuthenticated(user) && (
-                <Link href="/upload" data-testid="mobile-link-upload">
-                  <GlassButton className="w-full justify-start" onClick={() => setMobileMenuOpen(false)}>
-                    Upload
-                  </GlassButton>
-                </Link>
-              )}
-            </div>
-            {isAuthenticated(user) && (
-              <div className="mt-4 px-4 py-2 bg-muted rounded-lg mx-2" data-testid="mobile-glory-balance">
-                <div className="flex items-center space-x-2">
-                  <Trophy className="text-primary w-4 h-4" />
-                  <span className="text-sm font-semibold">{balance.toLocaleString()} GLORY</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </nav>
   );
