@@ -43,6 +43,7 @@ export default function AdminDashboard() {
   const [userStatusFilter, setUserStatusFilter] = useState("all");
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [submissionStatusFilter, setSubmissionStatusFilter] = useState("all");
+  const [submissionContestFilter, setSubmissionContestFilter] = useState("all");
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState("");
   const [isCreateContestModalOpen, setIsCreateContestModalOpen] = useState(false);
   const [txHashDialogOpen, setTxHashDialogOpen] = useState(false);
@@ -523,11 +524,12 @@ export default function AdminDashboard() {
   // Filtered submissions
   const filteredSubmissions = submissions.filter((submission: any) => {
     const matchesStatus = submissionStatusFilter === "all" || submission.status === submissionStatusFilter;
+    const matchesContest = submissionContestFilter === "all" || submission.contestId === submissionContestFilter;
     const matchesSearch = 
       submission.title.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
       (submission.description?.toLowerCase() || "").includes(submissionSearchQuery.toLowerCase()) ||
       submission.user.username.toLowerCase().includes(submissionSearchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesContest && matchesSearch;
   });
 
   // Helper functions for bulk selection
