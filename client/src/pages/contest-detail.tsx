@@ -676,19 +676,19 @@ export default function ContestDetailPage() {
               {allSubmissions.length > 0 && (
                 <div className="mt-8">
                   <h3 className="mb-6 text-2xl font-bold text-white">All Submissions</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
                     {allSubmissions.map((submission: any) => (
                       <div
                         key={submission.id}
-                        className="group"
+                        className="group break-inside-avoid mb-6"
                         data-testid={`card-submission-${submission.id}`}
                       >
                         <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
-                          <div className="relative overflow-hidden aspect-square">
+                          <div className="relative overflow-hidden">
                             <img
                               src={submission.mediaUrl}
                               alt={submission.title}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                             
                             {/* Hover Overlay */}
