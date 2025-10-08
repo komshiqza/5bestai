@@ -1550,8 +1550,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle GLORY balance changes
       if (status === "approved" && oldStatus === "pending") {
         // Deduct GLORY when approving pending request
-        await storage.updateUserGloryBalance(request.userId, -request.amountGlory);
-        
         await storage.createGloryTransaction({
           userId: request.userId,
           delta: -request.amountGlory,
@@ -1561,8 +1559,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else if ((status === "rejected" || status === "failed") && (oldStatus === "approved" || oldStatus === "processing" || oldStatus === "sent")) {
         // Refund GLORY if an approved/processing/sent request is rejected or failed
-        await storage.updateUserGloryBalance(request.userId, request.amountGlory);
-        
         await storage.createGloryTransaction({
           userId: request.userId,
           delta: request.amountGlory,
@@ -1619,8 +1615,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: "Request approved by admin"
       });
 
-      await storage.updateUserGloryBalance(request.userId, -request.amountGlory);
-      
       await storage.createGloryTransaction({
         userId: request.userId,
         delta: -request.amountGlory,
@@ -1724,8 +1718,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: "Request approved by admin (bulk operation)"
           });
 
-          await storage.updateUserGloryBalance(request.userId, -request.amountGlory);
-          
           await storage.createGloryTransaction({
             userId: request.userId,
             delta: -request.amountGlory,
