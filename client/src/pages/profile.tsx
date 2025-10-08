@@ -153,6 +153,21 @@ export default function Profile() {
     },
   });
 
+  // Delete glory transaction mutation
+  const deleteGloryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/glory-ledger/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/glory-ledger"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      toast({ title: "Success", description: "Transaction deleted and balance updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete transaction", variant: "destructive" });
+    },
+  });
+
   // Handle edit submission
   const handleEdit = (submission: any) => {
     setSelectedSubmission(submission);
@@ -197,6 +212,13 @@ export default function Profile() {
     }).catch(() => {
       toast({ title: "Error", description: "Failed to copy link", variant: "destructive" });
     });
+  };
+
+  // Handle delete glory transaction with confirmation
+  const handleDeleteGloryTransaction = (transactionId: string) => {
+    if (confirm("Are you sure you want to delete this GLORY transaction? Your balance will be adjusted.")) {
+      deleteGloryMutation.mutate(transactionId);
+    }
   };
 
   return (
@@ -427,6 +449,9 @@ export default function Profile() {
                               <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Amount
                               </th>
+                              <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Actions
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-border">
@@ -452,6 +477,16 @@ export default function Profile() {
                                   >
                                     {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} GLORY
                                   </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteGloryTransaction(transaction.id)}
+                                    data-testid={`button-delete-glory-${index}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
                                 </td>
                               </tr>
                             ))}
