@@ -27,7 +27,7 @@ export default function ContestDetailPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch contest by slug
-  const { data: contests = [] } = useQuery<any[]>({
+  const { data: contests = [], isLoading: contestsLoading } = useQuery<any[]>({
     queryKey: ["/api/contests"]
   });
 
@@ -38,6 +38,9 @@ export default function ContestDetailPage() {
     queryKey: ["/api/submissions", contest?.id],
     enabled: !!contest?.id,
     queryFn: async () => {
+      if (!contest?.id) {
+        throw new Error("Contest ID is not available");
+      }
       const response = await fetch(`/api/submissions?contestId=${contest.id}`, {
         credentials: "include"
       });
