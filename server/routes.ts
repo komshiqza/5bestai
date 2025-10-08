@@ -1108,6 +1108,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin cleanup broken submissions
+  app.post("/api/admin/cleanup-broken-submissions", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const allSubmissions = await storage.getSubmissions({ status: "approved" });
+      const brokenSubmissions: string[] = [];
+      
+      // Check each submission's media URL
+      for (const submission of allSubmissions) {
+        try {
+          // Try to fetch the URL to see if it exists
+          const response = await fetch(submission.mediaUrl, { method: 'HEAD' });
+          if (!response.ok) {
+            brokenSubmissions.push(submission.id);
+          }
+        } catch (error) {
+          // URL is broken or unreachable
+          brokenSubmissions.push(submission.id);
+        }
+      }
+      
+      // Delete broken submissions
+      let deletedCount = 0;
+      for (const id of brokenSubmissions) {
+        const submission = await storage.getSubmission(id);
+        if (submission) {
+          await storage.deleteSubmission(id);
+          await storage.createAuditLog({
+            actorUserId: req.user!.id,
+            action: "DELETE_SUBMISSION",
+            meta: { submissionId: id, userId: submission.userId, reason: "broken_media_url" }
+          });
+          deletedCount++;
+        }
+      }
+      
+      res.json({ 
+        message: `Cleanup completed: ${deletedCount} broken submission(s) removed`,
+        deletedCount,
+        brokenSubmissionIds: brokenSubmissions
+      });
+    } catch (error) {
+      console.error("Error during cleanup:", error);
+      res.status(500).json({ 
+        error: "Failed to cleanup broken submissions",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // User delete their own submission
   app.delete("/api/submissions/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
