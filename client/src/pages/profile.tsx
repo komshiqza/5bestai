@@ -708,7 +708,6 @@ export default function Profile() {
                 </Card>
 
                 <WalletConnect />
-                <CashoutRequest />
 
                 <Card className="border-destructive">
                   <CardContent className="p-6">
