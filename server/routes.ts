@@ -313,7 +313,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? updatedContests.filter(contest => contest.status === status)
         : updatedContests;
       
-      res.json(filteredContests);
+      // Flatten prizeDistribution from config for frontend
+      const contestsWithPrizes = filteredContests.map(contest => ({
+        ...contest,
+        prizeDistribution: (contest.config as any)?.prizeDistribution || []
+      }));
+      
+      res.json(contestsWithPrizes);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contests" });
     }
@@ -338,6 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         ...contest,
+        prizeDistribution: (contest.config as any)?.prizeDistribution || [],
         topSubmissions
       });
     } catch (error) {
