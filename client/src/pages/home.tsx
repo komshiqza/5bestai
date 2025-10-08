@@ -212,9 +212,9 @@ export default function Home() {
     filtered.sort((a: any, b: any) => {
       switch (sortOption) {
         case 'most-voted':
-          return (b.voteCount || 0) - (a.voteCount || 0);
+          return (b.votesCount || 0) - (a.votesCount || 0);
         case 'least-voted':
-          return (a.voteCount || 0) - (b.voteCount || 0);
+          return (a.votesCount || 0) - (b.votesCount || 0);
         case 'newest':
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case 'oldest':

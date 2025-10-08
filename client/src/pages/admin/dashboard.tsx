@@ -1299,7 +1299,7 @@ export default function AdminDashboard() {
                           </Badge>
                         </div>
                         <div className="text-xs text-muted-foreground mb-4" data-testid={`submission-contest-${submission.id}`}>
-                          {submission.contest.title} • {submission.voteCount || 0} votes
+                          {submission.contest.title} • {submission.votesCount || 0} votes
                         </div>
                         <div className="flex items-center gap-2">
                           {submission.status === "pending" && (
