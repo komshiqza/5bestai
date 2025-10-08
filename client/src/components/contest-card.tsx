@@ -2,7 +2,7 @@ import { Calendar, Trophy, Share2, Users } from "lucide-react";
 import { GlassButton } from "@/components/ui/glass-button";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import ShareModal from "@/components/ui/ShareModal";
+import { useToast } from "@/hooks/use-toast";
 
 interface Contest {
   id: string;
@@ -26,7 +26,41 @@ interface ContestCardProps {
 export function ContestCard({ contest }: ContestCardProps) {
   const [, setLocation] = useLocation();
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [shareOpen, setShareOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/contest/${contest.slug}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: contest.title,
+          text: contest.description,
+          url: shareUrl,
+        });
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Error sharing:', error);
+        }
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: "Link copied!",
+          description: "Contest link copied to clipboard",
+        });
+      } catch (error) {
+        console.error('Error copying to clipboard:', error);
+        toast({
+          title: "Error",
+          description: "Could not copy link to clipboard",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -191,7 +225,7 @@ export function ContestCard({ contest }: ContestCardProps) {
           <p className="text-xs font-medium text-white/75">Share:</p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShareOpen(true)}
+              onClick={handleShare}
               className="group flex items-center justify-center rounded-full size-8 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors"
               aria-label="Share contest"
             >
@@ -199,14 +233,6 @@ export function ContestCard({ contest }: ContestCardProps) {
             </button>
           </div>
         </div>
-
-        {/* Share modal */}
-        <ShareModal
-          open={shareOpen}
-          onClose={() => setShareOpen(false)}
-          title={contest.title}
-          url={typeof window !== "undefined" ? `${window.location.origin}/contest/${contest.slug}` : `/contest/${contest.slug}`}
-        />
       </div>
     </div>
   );
