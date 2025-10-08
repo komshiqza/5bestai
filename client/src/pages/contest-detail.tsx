@@ -323,8 +323,8 @@ export default function ContestDetailPage() {
                               </span>
                             </div>
                             <p className="text-xs font-bold text-white mb-1">
-                              {typeof prize.amount === 'number' 
-                                ? prize.amount.toLocaleString()
+                              {typeof prize.value === 'number' 
+                                ? prize.value.toLocaleString()
                                 : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
                               }
                             </p>
@@ -803,8 +803,8 @@ export default function ContestDetailPage() {
                   
                   <div className="text-right">
                     <p className="text-lg font-bold text-white">
-                      {typeof prize.amount === 'number' 
-                        ? prize.amount.toLocaleString()
+                      {typeof prize.value === 'number' 
+                        ? prize.value.toLocaleString()
                         : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
                       }
                     </p>
