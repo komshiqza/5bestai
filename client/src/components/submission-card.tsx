@@ -157,7 +157,7 @@ export function SubmissionCard({
 
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
             <GlassButton 
               variant="ghost"
               size="icon"
@@ -187,23 +187,6 @@ export function SubmissionCard({
               <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
             </GlassButton>
           </div>
-        </div>
-
-        {/* Type badge - moved to top left */}
-        <div className="absolute top-3 left-3">
-          <Badge variant="secondary" className="text-xs">
-            {submission.type === "image" ? (
-              <>
-                <Eye className="w-3 h-3 mr-1" />
-                Image
-              </>
-            ) : (
-              <>
-                <Play className="w-3 h-3 mr-1" />
-                Video
-              </>
-            )}
-          </Badge>
         </div>
 
         {/* Rank badge */}
