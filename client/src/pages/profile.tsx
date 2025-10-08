@@ -5,7 +5,8 @@ import { GlassButton } from "@/components/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal } from "lucide-react";
+import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
 import { useUserBalance } from "@/hooks/useUserBalance";
@@ -25,6 +26,7 @@ export default function Profile() {
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
 
   // Redirect if not authenticated
   if (!isAuthenticated(user)) {
@@ -153,19 +155,8 @@ export default function Profile() {
     },
   });
 
-  // Clear all glory history mutation
-  const clearGloryHistoryMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("DELETE", `/api/glory-ledger`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/glory-ledger"] });
-      toast({ title: "Success", description: "All GLORY history cleared successfully" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to clear GLORY history", variant: "destructive" });
-    },
-  });
+  // Fetch wallet data for withdraw modal
+  const { data: walletData } = useQuery<any>({ queryKey: ["/api/wallet/me"] });
 
   // Handle edit submission
   const handleEdit = (submission: any) => {
@@ -213,10 +204,14 @@ export default function Profile() {
     });
   };
 
-  // Handle clear all glory history with confirmation
-  const handleClearGloryHistory = () => {
-    if (confirm("Are you sure you want to clear all GLORY history? Your current balance will remain unchanged.")) {
-      clearGloryHistoryMutation.mutate();
+  // Handle copy wallet address
+  const handleCopyWallet = () => {
+    if (walletData?.wallet?.address) {
+      navigator.clipboard.writeText(walletData.wallet.address).then(() => {
+        toast({ title: "Copied!", description: "Wallet address copied to clipboard" });
+      }).catch(() => {
+        toast({ title: "Error", description: "Failed to copy wallet address", variant: "destructive" });
+      });
     }
   };
 
@@ -435,15 +430,13 @@ export default function Profile() {
                 {gloryHistory.length > 0 ? (
                   <>
                     <div className="flex justify-end">
-                      <Button
-                        variant="destructive"
-                        onClick={handleClearGloryHistory}
-                        disabled={clearGloryHistoryMutation.isPending}
-                        data-testid="button-clear-glory-history"
+                      <GlassButton
+                        onClick={() => setWithdrawModalOpen(true)}
+                        data-testid="button-withdraw-glory"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Clear All History
-                      </Button>
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Withdraw Glory
+                      </GlassButton>
                     </div>
                     <Card>
                       <CardContent className="p-0">
@@ -553,6 +546,44 @@ export default function Profile() {
         onSubmit={handleSaveEdit}
         submission={selectedSubmission || { id: '', title: '', description: '', tags: [] }}
       />
+
+      {/* Withdraw Glory Modal */}
+      <Dialog open={withdrawModalOpen} onOpenChange={setWithdrawModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Cash Out GLORY
+            </DialogTitle>
+            <DialogDescription>
+              Convert your GLORY points to USDC on Solana
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 mt-4">
+            {walletData?.wallet && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Wallet Address</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-3 rounded-lg bg-muted/50">
+                    <p className="font-mono text-sm break-all">{walletData.wallet.address}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyWallet}
+                    data-testid="button-copy-wallet"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <CashoutRequest />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
