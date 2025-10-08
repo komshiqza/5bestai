@@ -210,6 +210,20 @@ export default function MySubmissions() {
                       </div>
                     </div>
                   )}
+
+                  {/* Delete button - always visible at bottom right */}
+                  <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 z-10">
+                    <GlassButton 
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-red-500/80 hover:bg-red-500"
+                      onClick={() => handleDelete(submission.id)}
+                      disabled={deleteSubmissionMutation.isPending}
+                      data-testid={`button-delete-${submission.id}`}
+                    >
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                    </GlassButton>
+                  </div>
                 </div>
 
                 <CardContent className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-b-2xl">
@@ -217,21 +231,8 @@ export default function MySubmissions() {
                     {submission.title}
                   </h3>
 
-                  <div className="flex items-center justify-between">
-                    <div className="text-gray-200 text-xs truncate">
-                      {submission.contest?.title || 'No contest'}
-                    </div>
-
-                    <GlassButton 
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full bg-red-500/20 hover:bg-red-500/40"
-                      onClick={() => handleDelete(submission.id)}
-                      disabled={deleteSubmissionMutation.isPending}
-                      data-testid={`button-delete-${submission.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </GlassButton>
+                  <div className="text-gray-200 text-xs truncate">
+                    {submission.contest?.title || 'No contest'}
                   </div>
                 </CardContent>
               </Card>
