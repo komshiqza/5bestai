@@ -6,12 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { SubmissionCard } from "@/components/submission-card";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { GlassButton } from "@/components/GlassButton";
-import { Trophy, Upload, ArrowRight, Users, Image as ImageIcon, Clock, Play } from "lucide-react";
+import { Trophy, Upload, ArrowRight, Users, Image as ImageIcon, Clock, Play, ArrowUpDown } from "lucide-react";
 import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Home() {
   const { data: user } = useAuth();
@@ -23,6 +30,8 @@ export default function Home() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'images' | 'videos'>('all');
+  const [sortOption, setSortOption] = useState<'most-voted' | 'least-voted' | 'newest' | 'oldest'>('newest');
 
   const { data: contests = [] } = useQuery({
     queryKey: ["/api/contests", { status: "active" }],
@@ -184,6 +193,40 @@ export default function Home() {
 
   const featuredContest = contests[0];
 
+  // Filter and sort submissions
+  const filteredAndSortedSubmissions = useMemo(() => {
+    let filtered = [...allSubmissions];
+
+    // Apply media filter
+    if (mediaFilter === 'images') {
+      filtered = filtered.filter((sub: any) => 
+        sub.mediaUrl?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      );
+    } else if (mediaFilter === 'videos') {
+      filtered = filtered.filter((sub: any) => 
+        sub.mediaUrl?.match(/\.(mp4|webm|mov)$/i)
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a: any, b: any) => {
+      switch (sortOption) {
+        case 'most-voted':
+          return (b.voteCount || 0) - (a.voteCount || 0);
+        case 'least-voted':
+          return (a.voteCount || 0) - (b.voteCount || 0);
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [allSubmissions, mediaFilter, sortOption]);
+
   return (
     <div className="min-h-screen" data-testid="home-page">
       {/* Hero Section */}
@@ -228,7 +271,7 @@ export default function Home() {
       {/* Latest Submissions */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
               <h2 className="text-3xl font-bold tracking-tight mb-2" data-testid="submissions-section-title">
                 Latest Submissions
@@ -236,23 +279,59 @@ export default function Home() {
               <p className="text-muted-foreground">Discover amazing work from our community</p>
             </div>
             
-            <div className="hidden md:flex items-center space-x-2">
-              <Button variant="outline" size="sm" className="bg-primary text-primary-foreground" data-testid="filter-all">
-                All
-              </Button>
-              <Button variant="ghost" size="sm" data-testid="filter-images">
-                Images
-              </Button>
-              <Button variant="ghost" size="sm" data-testid="filter-videos">
-                Videos
-              </Button>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+              {/* Media Type Filter */}
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant={mediaFilter === 'all' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setMediaFilter('all')}
+                  data-testid="filter-all"
+                >
+                  All
+                </Button>
+                <Button 
+                  variant={mediaFilter === 'images' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setMediaFilter('images')}
+                  data-testid="filter-images"
+                >
+                  <ImageIcon className="w-4 h-4 mr-1" />
+                  Images
+                </Button>
+                <Button 
+                  variant={mediaFilter === 'videos' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setMediaFilter('videos')}
+                  data-testid="filter-videos"
+                >
+                  <Play className="w-4 h-4 mr-1" />
+                  Videos
+                </Button>
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+                <Select value={sortOption} onValueChange={(value: any) => setSortOption(value)}>
+                  <SelectTrigger className="w-[160px]" data-testid="sort-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="most-voted" data-testid="sort-most-voted">Most Voted</SelectItem>
+                    <SelectItem value="least-voted" data-testid="sort-least-voted">Least Voted</SelectItem>
+                    <SelectItem value="newest" data-testid="sort-newest">Newest</SelectItem>
+                    <SelectItem value="oldest" data-testid="sort-oldest">Oldest</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
-          {allSubmissions.length > 0 ? (
+          {filteredAndSortedSubmissions.length > 0 ? (
             <>
               <div className="masonry-grid" data-testid="submissions-grid">
-                {allSubmissions.map((submission: any) => (
+                {filteredAndSortedSubmissions.map((submission: any) => (
                   <SubmissionCard 
                     key={submission.id}
                     submission={submission}
@@ -273,13 +352,13 @@ export default function Home() {
               )}
               
               {/* End of content indicator */}
-              {!hasMore && allSubmissions.length > 0 && allSubmissions.length < 8 && (
+              {!hasMore && filteredAndSortedSubmissions.length > 0 && allSubmissions.length < 8 && (
                 <div className="mt-8 text-center">
                   <p className="text-sm text-muted-foreground">All submissions loaded 📚</p>
                 </div>
               )}
               
-              {!hasMore && allSubmissions.length >= 8 && (
+              {!hasMore && filteredAndSortedSubmissions.length > 0 && allSubmissions.length >= 8 && (
                 <div className="mt-8 text-center">
                   <p className="text-sm text-muted-foreground">You've reached the end! 🎉</p>
                 </div>

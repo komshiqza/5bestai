@@ -65,7 +65,7 @@ export function ContestLightboxModal({
       data-testid="lightbox-overlay"
     >
       {/* Full-screen image */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex items-center justify-center z-0">
         <img
           src={submission.mediaUrl}
           alt={submission.title}
@@ -76,7 +76,7 @@ export function ContestLightboxModal({
       </div>
 
       {/* Top Left - Vote and Share Icons */}
-      <div className="absolute top-6 left-6 flex gap-3 z-20">
+      <div className="absolute top-6 left-6 flex gap-3 z-30">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -105,14 +105,14 @@ export function ContestLightboxModal({
       {/* Top Right - Close Icon */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-all duration-300 border border-white/20 z-20"
+        className="absolute top-6 right-6 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-all duration-300 border border-white/20 z-30"
         data-testid="button-close-lightbox"
       >
         <X className="h-6 w-6" />
       </button>
 
       {/* Bottom Info Bar (Optional - can be toggled) */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 z-10">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 z-20">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-white mb-2" data-testid="text-submission-title">
             {submission.title}
