@@ -1065,10 +1065,8 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
             onClick={async () => {
               const draftData = { ...formData, status: 'draft' };
               
-              // Validate inline
-              const validationErrors: string[] = [];
-              if (!draftData.title.trim()) validationErrors.push('Contest title is required');
-              if (!draftData.description.trim()) validationErrors.push('Description is required');
+              // Use unified validation function
+              const validationErrors = validateFormData(draftData);
               
               setErrors(validationErrors);
               
