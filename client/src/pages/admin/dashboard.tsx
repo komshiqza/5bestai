@@ -265,6 +265,29 @@ export default function AdminDashboard() {
     },
   });
 
+  const cleanupBrokenSubmissionsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/cleanup-broken-submissions", {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
+      toast({
+        title: "Cleanup completed",
+        description: data.message || `Successfully removed ${data.deletedCount} broken submission(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cleanup broken submissions.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const activateContestMutation = useMutation({
     mutationFn: async (contestId: string) => {
       const response = await apiRequest("PATCH", `/api/admin/contests/${contestId}/activate`);
@@ -1207,6 +1230,21 @@ export default function AdminDashboard() {
                         </Button>
                       </>
                     )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border-orange-500/30"
+                      onClick={() => cleanupBrokenSubmissionsMutation.mutate()}
+                      disabled={cleanupBrokenSubmissionsMutation.isPending}
+                      data-testid="cleanup-broken-submissions"
+                    >
+                      {cleanupBrokenSubmissionsMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 mr-1" />
+                      )}
+                      Cleanup Broken
+                    </Button>
                     <Select value={submissionStatusFilter} onValueChange={setSubmissionStatusFilter} data-testid="submission-status-filter">
                       <SelectTrigger className="w-40">
                         <SelectValue />
