@@ -660,8 +660,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contestId: contestId as string | undefined,
           userId: currentUserId,
           status: undefined, // Get all statuses for own submissions
-          page: validPage,
-          limit: validLimit
+          page: 1,
+          limit: 1000 // Get all user's own submissions without limit
         });
         
         // Merge and deduplicate (approved submissions might already be in the list)
@@ -670,7 +670,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           submissionMap.set(sub.id, sub);
         });
         
-        return res.json(Array.from(submissionMap.values()).slice(0, validLimit));
+        // Return merged submissions without additional slicing
+        return res.json(Array.from(submissionMap.values()));
       }
       
       // Unauthenticated users only see approved
