@@ -335,9 +335,9 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       votingStartAt,
       votingEndAt: endAt,
       
-      // Prize distribution
-      prizeDistribution: dataToSubmit.prizeDistribution,
-      additionalRewards: dataToSubmit.additionalRewards,
+      // Prize distribution (with safety checks)
+      prizeDistribution: dataToSubmit.prizeDistribution || [],
+      additionalRewards: dataToSubmit.additionalRewards || [],
       currency: dataToSubmit.currency,
       
       // Participation rules
