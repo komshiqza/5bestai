@@ -667,13 +667,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Filter to only non-approved submissions to avoid duplicates
         const nonApprovedOwn = ownPendingSubmissions.filter(sub => sub.status !== "approved");
         
-        // Merge approved with user's non-approved submissions
-        const merged = [...approvedSubmissions, ...nonApprovedOwn];
+        // Merge and deduplicate by ID using Map
+        const submissionMap = new Map<string, any>();
+        [...approvedSubmissions, ...nonApprovedOwn].forEach(sub => {
+          submissionMap.set(sub.id, sub);
+        });
         
-        // Sort by createdAt DESC to maintain consistent order
-        merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // Convert to array and sort by createdAt DESC to maintain consistent order
+        const deduped = Array.from(submissionMap.values());
+        deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        return res.json(merged.slice(0, validLimit));
+        return res.json(deduped.slice(0, validLimit));
       }
       
       // Unauthenticated users only see approved

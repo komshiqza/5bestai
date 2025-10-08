@@ -46,11 +46,22 @@ export default function Home() {
   // Update submissions when new data arrives
   useEffect(() => {
     if (submissions && submissions.length > 0) {
-      if (page === 1) {
-        setAllSubmissions(submissions);
-      } else {
-        setAllSubmissions(prev => [...prev, ...submissions]);
-      }
+      setAllSubmissions(prev => {
+        if (page === 1) {
+          // Page 1: replace all submissions but ensure no duplicates within the page itself
+          const uniqueMap = new Map(submissions.map((s: any) => [s.id, s]));
+          return Array.from(uniqueMap.values());
+        } else {
+          // Page > 1: merge and deduplicate
+          const allMap = new Map(prev.map((s: any) => [s.id, s]));
+          submissions.forEach((s: any) => {
+            if (!allMap.has(s.id)) {
+              allMap.set(s.id, s);
+            }
+          });
+          return Array.from(allMap.values());
+        }
+      });
       setHasMore(submissions.length === 8); // If we got less than 8, no more pages
       setIsLoadingMore(false);
     } else if (submissions && submissions.length === 0 && page > 1) {
@@ -88,7 +99,8 @@ export default function Home() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      // Only invalidate page 1 to prevent duplicate keys from refetching all pages
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions", 1] });
       toast({
         title: "Vote recorded!",
         description: "Your vote has been counted successfully.",
