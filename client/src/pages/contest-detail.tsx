@@ -684,11 +684,11 @@ export default function ContestDetailPage() {
                         data-testid={`card-submission-${submission.id}`}
                       >
                         <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
-                          <div className="relative overflow-hidden">
+                          <div className="relative overflow-hidden min-h-[240px]">
                             <img
                               src={submission.mediaUrl}
                               alt={submission.title}
-                              className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110"
+                              className="w-full h-auto min-h-[240px] object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                             
                             {/* Hover Overlay */}
