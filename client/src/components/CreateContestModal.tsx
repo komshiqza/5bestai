@@ -282,8 +282,8 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     const timestamp = Date.now().toString(36);
     const slug = `${baseSlug}-${timestamp}`;
     
-    // Calculate total prize from distribution
-    const totalPrize = dataToSubmit.prizeDistribution.reduce((sum, prize) => sum + prize.value, 0);
+    // Calculate total prize from distribution (with safety check)
+    const totalPrize = (dataToSubmit.prizeDistribution || []).reduce((sum, prize) => sum + prize.value, 0);
     
     // Set contest start time
     let startAt: string;
