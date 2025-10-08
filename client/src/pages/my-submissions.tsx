@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Image, Video, Calendar, Award, Trash2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { SubmissionWithUser } from "@shared/schema";
+import { SubmissionCard } from "@/components/submission-card";
 
 export default function MySubmissions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -54,19 +54,6 @@ export default function MySubmissions() {
     pending: allSubmissions?.filter(s => s.status === "pending").length || 0,
     approved: allSubmissions?.filter(s => s.status === "approved").length || 0,
     rejected: allSubmissions?.filter(s => s.status === "rejected").length || 0
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "approved":
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30" data-testid={`badge-status-approved`}>Approved</Badge>;
-      case "pending":
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30" data-testid={`badge-status-pending`}>Pending</Badge>;
-      case "rejected":
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30" data-testid={`badge-status-rejected`}>Rejected</Badge>;
-      default:
-        return <Badge data-testid={`badge-status-${status}`}>{status}</Badge>;
-    }
   };
 
   const filteredSubmissions = statusFilter === "all" 
@@ -119,86 +106,15 @@ export default function MySubmissions() {
         ) : filteredSubmissions && filteredSubmissions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredSubmissions.map((submission) => (
-              <Card
+              <SubmissionCard
                 key={submission.id}
-                className="group bg-white/5 backdrop-blur-xl border border-white/10 hover:border-purple-500/50 transition-all duration-300 overflow-hidden"
-                data-testid={`card-submission-${submission.id}`}
-              >
-                <CardContent className="p-0">
-                  <div className="relative aspect-video bg-gradient-to-br from-purple-500/10 to-pink-500/10">
-                    {submission.type === "image" ? (
-                      <img
-                        src={submission.mediaUrl}
-                        alt={submission.title}
-                        className="w-full h-full object-cover"
-                        data-testid={`img-submission-${submission.id}`}
-                      />
-                    ) : (
-                      <video
-                        src={submission.mediaUrl}
-                        className="w-full h-full object-cover"
-                        controls
-                        data-testid={`video-submission-${submission.id}`}
-                      />
-                    )}
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      {getStatusBadge(submission.status)}
-                      <Badge variant="outline" className="bg-black/50 backdrop-blur-sm border-white/20">
-                        {submission.type === "image" ? <Image className="w-3 h-3" /> : <Video className="w-3 h-3" />}
-                      </Badge>
-                    </div>
-                    {submission.votesCount > 0 && (
-                      <div className="absolute bottom-3 left-3">
-                        <Badge className="bg-purple-500/80 backdrop-blur-sm border-purple-400/30" data-testid={`badge-votes-${submission.id}`}>
-                          <Award className="w-3 h-3 mr-1" />
-                          {submission.votesCount} votes
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-1 text-white" data-testid={`text-title-${submission.id}`}>
-                      {submission.title}
-                    </h3>
-                    {submission.description && (
-                      <p className="text-sm text-gray-400 mb-2 line-clamp-2" data-testid={`text-description-${submission.id}`}>
-                        {submission.description}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between gap-2 text-xs text-gray-500 mb-2">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3" />
-                        <span data-testid={`text-date-${submission.id}`}>
-                          {new Date(submission.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this submission? This action cannot be undone.')) {
-                            deleteSubmissionMutation.mutate(submission.id);
-                          }
-                        }}
-                        disabled={deleteSubmissionMutation.isPending}
-                        data-testid={`button-delete-${submission.id}`}
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Delete
-                      </Button>
-                    </div>
-                    {submission.contest && (
-                      <div className="pt-2 border-t border-white/10">
-                        <p className="text-xs text-gray-400" data-testid={`text-contest-${submission.id}`}>
-                          Contest: <span className="text-purple-400">{submission.contest.title}</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                submission={{
+                  ...submission,
+                  type: submission.type as "image" | "video",
+                  thumbnailUrl: submission.thumbnailUrl ?? undefined
+                }}
+                showVoting={false}
+              />
             ))}
           </div>
         ) : (
