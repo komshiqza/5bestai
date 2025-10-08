@@ -192,42 +192,74 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
   };
 
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
+    // Validate required fields
+    if (!dataToSubmit.startDate) {
+      setErrors(['Contest start date is required']);
+      return;
+    }
+    
+    if (!dataToSubmit.endDate && !dataToSubmit.votingEndDate) {
+      setErrors(['Contest end date is required']);
+      return;
+    }
+    
     // Calculate total prize from distribution
     const totalPrize = dataToSubmit.prizeDistribution.reduce((sum, prize) => sum + prize.value, 0);
     
-    // Set contest start time
+    // Set contest start time with validation
     let startAt: string;
     if (dataToSubmit.startDateOption === 'now') {
       startAt = new Date().toISOString();
     } else {
-      startAt = new Date(
+      const startDateObj = new Date(
         `${dataToSubmit.startDate}T${dataToSubmit.startTime || '00:00'}`
-      ).toISOString();
+      );
+      if (isNaN(startDateObj.getTime())) {
+        setErrors(['Invalid start date']);
+        return;
+      }
+      startAt = startDateObj.toISOString();
     }
     
-    // Set contest end time
-    const endAt = new Date(
-      `${dataToSubmit.votingEndDate}T${dataToSubmit.votingEndTime || '23:59'}`
-    ).toISOString();
+    // Set contest end time with validation
+    const endDateStr = dataToSubmit.votingEndDate || dataToSubmit.endDate;
+    const endTimeStr = dataToSubmit.votingEndTime || dataToSubmit.endTime || '23:59';
+    const endDateObj = new Date(`${endDateStr}T${endTimeStr}`);
+    
+    if (isNaN(endDateObj.getTime())) {
+      setErrors(['Invalid end date']);
+      return;
+    }
+    const endAt = endDateObj.toISOString();
     
     // Process submission deadline logic
     let submissionEndAt: string;
     if (dataToSubmit.enableSubmissionDeadline && dataToSubmit.submissionDeadline) {
-      submissionEndAt = new Date(
+      const submissionDeadlineObj = new Date(
         `${dataToSubmit.submissionDeadline}T${dataToSubmit.submissionDeadlineTime || '23:59'}`
-      ).toISOString();
+      );
+      if (isNaN(submissionDeadlineObj.getTime())) {
+        setErrors(['Invalid submission deadline']);
+        return;
+      }
+      submissionEndAt = submissionDeadlineObj.toISOString();
     } else {
       submissionEndAt = endAt;
     }
     
-    // Set voting start time
+    // Set voting start time with validation
     let votingStartAt: string;
     if (dataToSubmit.votingStartOption === 'now') {
       votingStartAt = new Date().toISOString();
+    } else if (dataToSubmit.votingStartDate) {
+      const votingStartObj = new Date(`${dataToSubmit.votingStartDate}T00:00`);
+      if (isNaN(votingStartObj.getTime())) {
+        setErrors(['Invalid voting start date']);
+        return;
+      }
+      votingStartAt = votingStartObj.toISOString();
     } else {
-      votingStartAt = new Date(
-        `${dataToSubmit.votingStartDate}T00:00`
-      ).toISOString();
+      votingStartAt = startAt; // Default to contest start
     }
     
     // Create comprehensive contest config object with ALL settings

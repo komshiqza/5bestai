@@ -59,56 +59,20 @@ export default function AdminContestDetail() {
 
   const updateContestMutation = useMutation({
     mutationFn: async (formData: any) => {
-      const startDateTime = new Date(`${formData.startDate}T${formData.startTime || '00:00'}`);
-      // Contest end is votingEndDate/votingEndTime, not endDate/endTime (which is submission deadline)
-      const endDateTime = new Date(`${formData.votingEndDate || formData.endDate}T${formData.votingEndTime || formData.endTime || '23:59'}`);
-      
+      // The EditContestModal already sends data in the correct format
+      // with startAt, endAt as ISO strings and config object containing all settings
       const updateData: any = {
         title: formData.title,
+        slug: formData.slug,
         description: formData.description,
-        prizeGlory: parseInt(formData.prizePool) || 0,
-        startAt: startDateTime.toISOString(),
-        endAt: endDateTime.toISOString(),
+        rules: formData.rules || formData.description,
+        prizeGlory: formData.prizeGlory,
+        startAt: formData.startAt,
+        endAt: formData.endAt,
         status: formData.status,
-        config: {
-          contestType: formData.contestType,
-          category: formData.category,
-          entryFee: formData.entryFee,
-          entryFeeAmount: formData.entryFeeAmount,
-          prizeDistribution: formData.prizeDistribution,
-          additionalRewards: formData.additionalRewards,
-          currency: formData.currency,
-          eligibility: formData.eligibility,
-          maxSubmissions: formData.maxSubmissions,
-          allowedMediaTypes: formData.allowedMediaTypes,
-          fileSizeLimit: formData.fileSizeLimit,
-          nsfwAllowed: formData.nsfwAllowed,
-          agreeToRules: formData.agreeToRules,
-          votingMethods: formData.votingMethods,
-          voteLimitPerPeriod: formData.voteLimitPerPeriod,
-          votePeriodHours: formData.votePeriodHours,
-          totalVoteLimit: formData.totalVoteLimit,
-          startDateOption: formData.startDateOption,
-          startDate: formData.startDate,
-          startTime: formData.startTime,
-          endDate: formData.endDate,
-          endTime: formData.endTime,
-          submissionDeadline: formData.submissionDeadline,
-          votingStartOption: formData.votingStartOption,
-          votingStartDate: formData.votingStartDate,
-          votingEndDate: formData.votingEndDate,
-          votingEndTime: formData.votingEndTime,
-          featured: formData.featured,
-        }
+        config: formData.config,
+        coverImageUrl: formData.coverImageUrl || ''
       };
-
-      // Only include coverImageUrl if it's a valid string URL
-      if (formData.coverImage && typeof formData.coverImage === 'string') {
-        updateData.coverImageUrl = formData.coverImage;
-      } else {
-        // Send empty string to trigger backend auto-cover logic
-        updateData.coverImageUrl = '';
-      }
 
       const response = await apiRequest("PATCH", `/api/admin/contests/${id}`, updateData);
       return response.json();
