@@ -773,6 +773,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User update own submission
+  app.patch("/api/submissions/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const submission = await storage.getSubmission(req.params.id);
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Check if user owns the submission
+      if (submission.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized to update this submission" });
+      }
+
+      // Validate update data
+      const updateSchema = z.object({
+        title: z.string().min(1).max(255).optional(),
+        description: z.string().max(5000).optional(),
+        tags: z.array(z.string()).optional(),
+      });
+
+      const validatedData = updateSchema.parse(req.body);
+      const updatedSubmission = await storage.updateSubmission(req.params.id, validatedData);
+      res.json(updatedSubmission);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error updating submission:", error);
+      res.status(500).json({ error: "Failed to update submission" });
+    }
+  });
+
+  // User delete own submission
+  app.delete("/api/submissions/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const submission = await storage.getSubmission(req.params.id);
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Check if user owns the submission
+      if (submission.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized to delete this submission" });
+      }
+
+      // Delete the submission media files if they exist
+      if (submission.mediaUrl) {
+        await deleteFile(submission.mediaUrl).catch(err => console.error("Failed to delete media:", err));
+      }
+      if (submission.thumbnailUrl) {
+        await deleteFile(submission.thumbnailUrl).catch(err => console.error("Failed to delete thumbnail:", err));
+      }
+
+      await storage.deleteSubmission(req.params.id);
+      res.json({ message: "Submission deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting submission:", error);
+      res.status(500).json({ error: "Failed to delete submission" });
+    }
+  });
+
   // Admin get all submissions
   app.get("/api/admin/submissions", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {

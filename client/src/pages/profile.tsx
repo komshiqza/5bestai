@@ -1,21 +1,30 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GlassButton } from "@/components/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
 import { useUserBalance } from "@/hooks/useUserBalance";
 import { WalletConnect } from "@/components/wallet/WalletConnect";
 import { CashoutRequest } from "@/components/wallet/CashoutRequest";
+import { EditSubmissionModal } from "@/components/EditSubmissionModal";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export default function Profile() {
   const { data: user } = useAuth();
   const { balance } = useUserBalance();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
   // Redirect if not authenticated
   if (!isAuthenticated(user)) {
@@ -23,6 +32,7 @@ export default function Profile() {
     return null;
   }
 
+  // Fetch user's submissions
   const { data: submissions = [] } = useQuery({
     queryKey: ["/api/submissions", { userId: user.id }],
     queryFn: async () => {
@@ -30,6 +40,46 @@ export default function Profile() {
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
+  });
+
+  // Fetch active contests to filter submissions
+  const { data: activeContests = [] } = useQuery({
+    queryKey: ["/api/contests", { status: "active" }],
+    queryFn: async () => {
+      const response = await fetch("/api/contests?status=active");
+      if (!response.ok) throw new Error("Failed to fetch contests");
+      return response.json();
+    },
+  });
+
+  // Filter submissions to only those in active contests
+  const activeContestSubmissions = submissions.filter((sub: any) => 
+    sub.contestId && activeContests.some((c: any) => c.id === sub.contestId)
+  );
+
+  // Fetch all approved submissions for ranking calculation
+  const { data: allApprovedSubmissions = [] } = useQuery({
+    queryKey: ["/api/submissions", { status: "approved" }],
+    queryFn: async () => {
+      const response = await fetch("/api/submissions?status=approved");
+      if (!response.ok) throw new Error("Failed to fetch approved submissions");
+      return response.json();
+    },
+  });
+
+  // Calculate rank for each submission in its contest (using all contest submissions)
+  const submissionsWithRank = activeContestSubmissions.map((submission: any) => {
+    if (submission.status !== "approved") {
+      return { ...submission, rank: null };
+    }
+
+    // Get all approved submissions for this contest, not just user's
+    const contestSubmissions = allApprovedSubmissions
+      .filter((s: any) => s.contestId === submission.contestId)
+      .sort((a: any, b: any) => b.votesCount - a.votesCount);
+    
+    const rank = contestSubmissions.findIndex((s: any) => s.id === submission.id) + 1;
+    return { ...submission, rank: rank > 0 ? rank : null };
   });
 
   const { data: gloryHistory = [] } = useQuery({
@@ -73,6 +123,81 @@ export default function Profile() {
 
   const approvedSubmissions = submissions.filter((s: any) => s.status === "approved");
   const totalVotes = approvedSubmissions.reduce((sum: number, s: any) => sum + s.votesCount, 0);
+
+  // Update submission mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest("PATCH", `/api/submissions/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      toast({ title: "Success", description: "Submission updated successfully" });
+      setEditModalOpen(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update submission", variant: "destructive" });
+    },
+  });
+
+  // Delete submission mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/submissions/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      toast({ title: "Success", description: "Submission deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete submission", variant: "destructive" });
+    },
+  });
+
+  // Handle edit submission
+  const handleEdit = (submission: any) => {
+    setSelectedSubmission(submission);
+    setEditModalOpen(true);
+  };
+
+  // Handle save from edit modal
+  const handleSaveEdit = (data: { title: string; description: string; tags: string[] }) => {
+    if (selectedSubmission) {
+      updateMutation.mutate({ id: selectedSubmission.id, data });
+    }
+  };
+
+  // Handle delete with confirmation
+  const handleDelete = (submissionId: string) => {
+    if (confirm("Are you sure you want to delete this submission? This action cannot be undone.")) {
+      deleteMutation.mutate(submissionId);
+    }
+  };
+
+  // Handle share
+  const handleShare = (submission: any) => {
+    const shareUrl = `${window.location.origin}/submission/${submission.id}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: submission.title,
+        text: `Check out my submission: ${submission.title}`,
+        url: shareUrl,
+      }).catch(() => {
+        fallbackShare(shareUrl);
+      });
+    } else {
+      fallbackShare(shareUrl);
+    }
+  };
+
+  // Fallback share (copy to clipboard)
+  const fallbackShare = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast({ title: "Link copied!", description: "Submission link copied to clipboard" });
+    }).catch(() => {
+      toast({ title: "Error", description: "Failed to copy link", variant: "destructive" });
+    });
+  };
 
   return (
     <div className="min-h-screen py-16" data-testid="profile-page">
@@ -163,9 +288,9 @@ export default function Profile() {
 
               {/* Submissions Tab */}
               <TabsContent value="submissions" className="space-y-4" data-testid="submissions-tab">
-                {submissions.length > 0 ? (
+                {submissionsWithRank.length > 0 ? (
                   <div className="space-y-4">
-                    {submissions.map((submission: any) => (
+                    {submissionsWithRank.map((submission: any) => (
                       <Card key={submission.id} className={`hover:border-primary/50 transition-colors ${submission.status === "rejected" ? "opacity-75" : ""}`} data-testid={`submission-item-${submission.id}`}>
                         <CardContent className="p-6">
                           <div className="flex flex-col sm:flex-row gap-4">
@@ -184,9 +309,17 @@ export default function Profile() {
                             <div className="flex-1 flex flex-col justify-between">
                               <div>
                                 <div className="flex items-start justify-between mb-2">
-                                  <h3 className="font-bold text-lg" data-testid={`submission-title-${submission.id}`}>
-                                    {submission.title}
-                                  </h3>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-lg" data-testid={`submission-title-${submission.id}`}>
+                                      {submission.title}
+                                    </h3>
+                                    {submission.rank && submission.rank <= 5 && submission.status === "approved" && (
+                                      <Badge className="gradient-glory text-white" data-testid={`rank-badge-${submission.id}`}>
+                                        <Medal className="w-3 h-3 mr-1" />
+                                        #{submission.rank}
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <Badge className={getStatusColor(submission.status)} data-testid={`submission-status-${submission.id}`}>
                                     {getStatusIcon(submission.status)}
                                     <span className="ml-1">{submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}</span>
@@ -197,45 +330,58 @@ export default function Profile() {
                                     {submission.description}
                                   </p>
                                 )}
+                                {submission.tags && submission.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mb-3">
+                                    {submission.tags.map((tag: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-xs">
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                  <div className="flex items-center space-x-1">
-                                    <Calendar className="w-4 h-4" />
-                                    <span data-testid={`submission-date-${submission.id}`}>
-                                      {new Date(submission.createdAt).toLocaleDateString()}
-                                    </span>
-                                  </div>
                                   <div className="flex items-center space-x-1">
                                     <Trophy className="w-4 h-4" />
                                     <span data-testid={`submission-contest-${submission.id}`}>
                                       {submission.contest.title}
                                     </span>
                                   </div>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  {submission.status === "approved" ? (
-                                    <div className="flex items-center space-x-1 font-semibold">
-                                      <Trophy className="w-4 h-4 text-primary" />
+                                  {submission.status === "approved" && (
+                                    <div className="flex items-center space-x-1 font-semibold text-primary">
+                                      <Trophy className="w-4 h-4" />
                                       <span data-testid={`submission-votes-${submission.id}`}>
-                                        {submission.votesCount}
+                                        {submission.votesCount} votes
                                       </span>
                                     </div>
-                                  ) : (
-                                    <div className="flex items-center space-x-1 text-muted-foreground">
-                                      {submission.status === "pending" ? (
-                                        <>
-                                          <EyeOff className="w-4 h-4" />
-                                          <span>Hidden</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <XCircle className="w-4 h-4" />
-                                          <span>Rejected</span>
-                                        </>
-                                      )}
-                                    </div>
                                   )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(submission)}
+                                    data-testid={`button-edit-${submission.id}`}
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleShare(submission)}
+                                    data-testid={`button-share-${submission.id}`}
+                                  >
+                                    <Share2 className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(submission.id)}
+                                    data-testid={`button-delete-${submission.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
                                 </div>
                               </div>
                             </div>
@@ -247,16 +393,16 @@ export default function Profile() {
                 ) : (
                   <div className="text-center py-12" data-testid="no-submissions">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
-                      <Upload className="w-12 h-12 text-muted-foreground" />
+                      <Trophy className="w-12 h-12 text-muted-foreground" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">No submissions yet</h3>
+                    <h3 className="text-xl font-semibold mb-2">No active contest submissions</h3>
                     <p className="text-muted-foreground mb-6">
-                      Start competing by uploading your first creative work!
+                      You don't have any submissions in active contests. Start competing!
                     </p>
-                    <Link href="/upload" data-testid="first-upload-button">
+                    <Link href="/contests" data-testid="browse-contests-button">
                       <GlassButton>
-                        Upload New Entry
-                        <Upload className="w-4 h-4 ml-2" />
+                        Browse Active Contests
+                        <Trophy className="w-4 h-4 ml-2" />
                       </GlassButton>
                     </Link>
                   </div>
@@ -365,6 +511,14 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Edit Submission Modal */}
+      <EditSubmissionModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onSubmit={handleSaveEdit}
+        submission={selectedSubmission || { id: '', title: '', description: '', tags: [] }}
+      />
     </div>
   );
 }

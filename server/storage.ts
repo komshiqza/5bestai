@@ -396,6 +396,7 @@ export class MemStorage implements IStorage {
       contestId: insertSubmission.contestId || null,
       contestName: insertSubmission.contestName || null,
       thumbnailUrl: insertSubmission.thumbnailUrl || null,
+      tags: insertSubmission.tags || null,
       votesCount: 0,
       createdAt: new Date()
     };

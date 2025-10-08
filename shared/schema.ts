@@ -49,6 +49,7 @@ export const submissions = pgTable("submissions", {
   description: text("description"),
   mediaUrl: text("media_url").notNull(),
   thumbnailUrl: text("thumbnail_url"),
+  tags: text("tags").array(),
   status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, rejected
   votesCount: integer("votes_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow()
