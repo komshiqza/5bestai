@@ -63,6 +63,9 @@ export default function AdminDashboard() {
   const [bulkDeleteContestsDialogOpen, setBulkDeleteContestsDialogOpen] = useState(false);
   const [deleteContestsConfirmText, setDeleteContestsConfirmText] = useState("");
 
+  // Bulk cashout actions state
+  const [selectedCashoutIds, setSelectedCashoutIds] = useState<string[]>([]);
+
   // Glory balance edit state
   const [gloryEditDialogOpen, setGloryEditDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -452,7 +455,51 @@ export default function AdminDashboard() {
     },
   });
 
+  // Bulk cashout approval mutation
+  const bulkApproveCashoutsMutation = useMutation({
+    mutationFn: async (requestIds: string[]) => {
+      const response = await apiRequest("POST", "/api/admin/cashout/bulk-approve", { requestIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      setSelectedCashoutIds([]);
+      toast({
+        title: "Cashouts approved",
+        description: `Successfully approved ${data.approvedCount} cashout requests.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve cashouts.",
+        variant: "destructive",
+      });
+    },
+  });
 
+  // Bulk cashout rejection mutation
+  const bulkRejectCashoutsMutation = useMutation({
+    mutationFn: async (requestIds: string[]) => {
+      const response = await apiRequest("POST", "/api/admin/cashout/bulk-reject", { requestIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      setSelectedCashoutIds([]);
+      toast({
+        title: "Cashouts rejected",
+        description: `Successfully rejected ${data.rejectedCount} cashout requests.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject cashouts.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Bulk user approval mutation
   const bulkApproveUsersMutation = useMutation({
@@ -1487,13 +1534,65 @@ export default function AdminDashboard() {
           <TabsContent value="cashouts" className="space-y-4" data-testid="cashouts-tab">
             <Card>
               <CardHeader>
-                <CardTitle>Cashout Requests Management</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Cashout Requests Management</CardTitle>
+                  {selectedCashoutIds.length > 0 && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-muted-foreground">
+                        {selectedCashoutIds.length} selected
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-success/20 text-success hover:bg-success/30 border-success/30"
+                        onClick={() => bulkApproveCashoutsMutation.mutate(selectedCashoutIds)}
+                        disabled={bulkApproveCashoutsMutation.isPending}
+                        data-testid="bulk-approve-cashouts"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Approve Selected
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                        onClick={() => bulkRejectCashoutsMutation.mutate(selectedCashoutIds)}
+                        disabled={bulkRejectCashoutsMutation.isPending}
+                        data-testid="bulk-reject-cashouts"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Reject Selected
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full" data-testid="cashouts-table">
                     <thead className="bg-muted">
                       <tr>
+                        <th className="px-6 py-3 text-left">
+                          <input
+                            type="checkbox"
+                            checked={
+                              cashoutRequests.filter((r: any) => r.status === "pending").length > 0 &&
+                              cashoutRequests
+                                .filter((r: any) => r.status === "pending")
+                                .every((r: any) => selectedCashoutIds.includes(r.id))
+                            }
+                            onChange={(e) => {
+                              const pendingRequests = cashoutRequests.filter((r: any) => r.status === "pending");
+                              if (e.target.checked) {
+                                setSelectedCashoutIds(pendingRequests.map((r: any) => r.id));
+                              } else {
+                                setSelectedCashoutIds([]);
+                              }
+                            }}
+                            className="rounded border-border"
+                            data-testid="select-all-cashouts"
+                          />
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           User
                         </th>
@@ -1517,6 +1616,23 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-border">
                       {cashoutRequests.map((request: any) => (
                         <tr key={request.id} className="hover:bg-muted/30 transition-colors" data-testid={`cashout-request-${request.id}`}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {request.status === "pending" && (
+                              <input
+                                type="checkbox"
+                                checked={selectedCashoutIds.includes(request.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedCashoutIds([...selectedCashoutIds, request.id]);
+                                  } else {
+                                    setSelectedCashoutIds(selectedCashoutIds.filter(id => id !== request.id));
+                                  }
+                                }}
+                                className="rounded border-border"
+                                data-testid={`select-cashout-${request.id}`}
+                              />
+                            )}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center space-x-3">
                               <Avatar>
