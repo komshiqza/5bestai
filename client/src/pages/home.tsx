@@ -46,19 +46,11 @@ export default function Home() {
   // Update submissions when new data arrives
   useEffect(() => {
     if (submissions && submissions.length > 0) {
-      setAllSubmissions(prev => {
-        if (page === 1) {
-          // Page 1: replace all submissions but ensure no duplicates within the page itself
-          const uniqueMap = new Map(submissions.map((s: any) => [s.id, s]));
-          return Array.from(uniqueMap.values());
-        } else {
-          // Page > 1: append new submissions (already sorted by newest from API)
-          const existingIds = new Set(prev.map((s: any) => s.id));
-          const newSubmissions = submissions.filter((s: any) => !existingIds.has(s.id));
-          // Append older submissions to the end, maintaining chronological order
-          return [...prev, ...newSubmissions];
-        }
-      });
+      if (page === 1) {
+        setAllSubmissions(submissions);
+      } else {
+        setAllSubmissions(prev => [...prev, ...submissions]);
+      }
       setHasMore(submissions.length === 8); // If we got less than 8, no more pages
       setIsLoadingMore(false);
     } else if (submissions && submissions.length === 0 && page > 1) {
@@ -95,22 +87,8 @@ export default function Home() {
       });
       return response.json();
     },
-    onSuccess: (data: any) => {
-      // Optimistically update the vote count in ALL cached pages
-      queryClient.setQueriesData(
-        { queryKey: ["/api/submissions"], exact: false },
-        (oldData: any) => {
-          if (!oldData || !Array.isArray(oldData)) return oldData;
-          return oldData.map((sub: any) => 
-            sub.id === selectedSubmission?.id 
-              ? { ...sub, votesCount: sub.votesCount + 1 }
-              : sub
-          );
-        }
-      );
-      
-      // Only invalidate page 1 to prevent duplicate keys from refetching all pages
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions", 1] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
       toast({
         title: "Vote recorded!",
         description: "Your vote has been counted successfully.",
@@ -206,7 +184,7 @@ export default function Home() {
 
   const featuredContest = contests[0];
 
-  // Filter submissions by media type (always sorted by newest from API)
+  // Filter submissions by media type (always sorted by newest)
   const filteredSubmissions = useMemo(() => {
     let filtered = [...allSubmissions];
 
@@ -221,8 +199,11 @@ export default function Home() {
       );
     }
 
-    // Submissions are already sorted by newest from API - no re-sorting needed
-    // This ensures voting doesn't change the order
+    // Always sort by newest (already sorted from API, but ensure consistency)
+    filtered.sort((a: any, b: any) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
     return filtered;
   }, [allSubmissions, mediaFilter]);
 

@@ -60,23 +60,7 @@ export function SubmissionCard({
     },
     onSuccess: () => {
       setHasVoted(true);
-      
-      // Optimistically update the vote count in ALL cached pages
-      queryClient.setQueriesData(
-        { queryKey: ["/api/submissions"], exact: false },
-        (oldData: any) => {
-          if (!oldData || !Array.isArray(oldData)) return oldData;
-          return oldData.map((sub: any) => 
-            sub.id === submission.id 
-              ? { ...sub, votesCount: sub.votesCount + 1 }
-              : sub
-          );
-        }
-      );
-      
-      // Invalidate page 1 to get fresh data in background
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions", 1] });
-      
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
       toast({
         title: "Vote recorded!",
         description: "Your vote has been counted successfully.",
