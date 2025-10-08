@@ -218,9 +218,9 @@ export default function Home() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-6 leading-tight" data-testid="hero-title">
+            <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-6 leading-tight gradient-text" data-testid="hero-title">
               Compete, Create, <br/>
-              <span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Win GLORY</span>
+              Win GLORY
             </h1>
             <p className="text-xl text-muted-foreground mb-8" data-testid="hero-description">
               Join creative contests, showcase your talent, and win rewards. Top 5 submissions win GLORY rewards.
