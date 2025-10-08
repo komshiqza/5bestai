@@ -67,14 +67,14 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
   );
 
   // Fetch active contests
-  const { data: contests = [] } = useQuery({
+  const { data: contests = [] } = useQuery<any[]>({
     queryKey: ["/api/contests"],
   });
 
   const activeContests = contests.filter((c: any) => c.status === "active");
 
   // Fetch user's submissions for gallery
-  const { data: allSubmissions = [] } = useQuery({
+  const { data: allSubmissions = [] } = useQuery<any[]>({
     queryKey: ["/api/submissions"],
     enabled: !!user?.id,
   });
