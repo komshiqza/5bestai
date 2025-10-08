@@ -43,6 +43,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<void>;
   getUsersWithFilters(filters: { status?: string; role?: string }): Promise<UserWithStats[]>;
   getUsersByIds(ids: string[]): Promise<User[]>;
   bulkDeleteUsers(ids: string[]): Promise<number>;
@@ -212,6 +213,23 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...user, ...updates, updatedAt: new Date() };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    this.users.delete(id);
+    // Cascade delete related data
+    Array.from(this.submissions.values())
+      .filter(s => s.userId === id)
+      .forEach(s => this.submissions.delete(s.id));
+    Array.from(this.votes.values())
+      .filter(v => v.userId === id)
+      .forEach(v => this.votes.delete(v.id));
+    Array.from(this.gloryLedger.values())
+      .filter(g => g.userId === id)
+      .forEach(g => this.gloryLedger.delete(g.id));
+    Array.from(this.auditLogs.values())
+      .filter(a => a.actorUserId === id)
+      .forEach(a => this.auditLogs.delete(a.id));
   }
 
   async getUsersWithFilters(filters: { status?: string; role?: string }): Promise<UserWithStats[]> {
@@ -705,6 +723,11 @@ export class DbStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+    // Cascade delete is handled by database constraints
   }
 
   async getUsersWithFilters(filters: { status?: string; role?: string }): Promise<UserWithStats[]> {

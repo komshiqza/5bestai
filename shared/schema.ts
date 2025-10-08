@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   username: varchar("username", { length: 255 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  avatarUrl: text("avatar_url"),
   role: varchar("role", { length: 50 }).notNull().default("user"), // user, admin
   status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, banned
   gloryBalance: integer("glory_balance").notNull().default(0),

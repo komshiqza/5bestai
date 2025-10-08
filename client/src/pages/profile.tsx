@@ -5,8 +5,9 @@ import { GlassButton } from "@/components/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy } from "lucide-react";
+import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy, Camera, Save, X as XIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
 import { useUserBalance } from "@/hooks/useUserBalance";
@@ -27,6 +28,8 @@ export default function Profile() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
 
   // Redirect if not authenticated
   if (!isAuthenticated(user)) {
@@ -236,6 +239,84 @@ export default function Profile() {
     }
   };
 
+  // Update username mutation
+  const updateUsernameMutation = useMutation({
+    mutationFn: async (username: string) => {
+      return await apiRequest("PATCH", "/api/me", { username });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      setEditingUsername(false);
+      toast({ title: "Success", description: "Username updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update username", variant: "destructive" });
+    },
+  });
+
+  // Upload avatar mutation
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      const response = await fetch("/api/me/avatar", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) throw new Error("Failed to upload avatar");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      toast({ title: "Success", description: "Avatar updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to upload avatar", variant: "destructive" });
+    },
+  });
+
+  // Delete profile mutation
+  const deleteProfileMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", "/api/me");
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Profile deleted successfully" });
+      setLocation("/login");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete profile", variant: "destructive" });
+    },
+  });
+
+  // Handle username save
+  const handleSaveUsername = () => {
+    if (!newUsername.trim() || newUsername.trim().length < 3) {
+      toast({ title: "Error", description: "Username must be at least 3 characters", variant: "destructive" });
+      return;
+    }
+    updateUsernameMutation.mutate(newUsername);
+  };
+
+  // Handle avatar upload
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+        return;
+      }
+      uploadAvatarMutation.mutate(file);
+    }
+  };
+
+  // Handle delete profile
+  const handleDeleteProfile = () => {
+    if (confirm("Are you sure you want to delete your profile? This action cannot be undone and will delete all your data including submissions, votes, and GLORY balance.")) {
+      deleteProfileMutation.mutate();
+    }
+  };
+
   return (
     <div className="min-h-screen py-16" data-testid="profile-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -246,11 +327,28 @@ export default function Profile() {
             <Card className="sticky top-20" data-testid="profile-sidebar">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
-                  <Avatar className="w-24 h-24 mx-auto mb-4">
-                    <AvatarFallback className="gradient-glory text-white text-4xl font-bold">
-                      {getInitials(user.username)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative inline-block group">
+                    <Avatar className="w-24 h-24 mx-auto mb-4">
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <AvatarFallback className="gradient-glory text-white text-4xl font-bold">
+                          {getInitials(user.username)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <Camera className="w-6 h-6 text-white" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                        disabled={uploadAvatarMutation.isPending}
+                        data-testid="input-avatar-upload"
+                      />
+                    </label>
+                  </div>
                   <h2 className="text-2xl font-bold mb-1" data-testid="profile-username">
                     {user.username}
                   </h2>
@@ -539,7 +637,50 @@ export default function Profile() {
                     <div className="space-y-4">
                       <div>
                         <label className="text-sm font-medium">Username</label>
-                        <p className="text-muted-foreground">{user.username}</p>
+                        {editingUsername ? (
+                          <div className="flex gap-2 mt-2">
+                            <Input
+                              value={newUsername}
+                              onChange={(e) => setNewUsername(e.target.value)}
+                              placeholder="Enter new username"
+                              data-testid="input-new-username"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={handleSaveUsername}
+                              disabled={updateUsernameMutation.isPending}
+                              data-testid="button-save-username"
+                            >
+                              <Save className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingUsername(false);
+                                setNewUsername("");
+                              }}
+                              data-testid="button-cancel-username"
+                            >
+                              <XIcon className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mt-2">
+                            <p className="text-muted-foreground">{user.username}</p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingUsername(true);
+                                setNewUsername(user.username);
+                              }}
+                              data-testid="button-edit-username"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium">Email</label>
@@ -558,12 +699,34 @@ export default function Profile() {
                         <label className="text-sm font-medium">Role</label>
                         <p className="text-muted-foreground capitalize">{user.role}</p>
                       </div>
+                      <div>
+                        <label className="text-sm font-medium">Member Since</label>
+                        <p className="text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <WalletConnect />
                 <CashoutRequest />
+
+                <Card className="border-destructive">
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold mb-2 text-destructive">Danger Zone</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Once you delete your profile, there is no going back. This will permanently delete your account, submissions, votes, and GLORY balance.
+                    </p>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteProfile}
+                      disabled={deleteProfileMutation.isPending}
+                      data-testid="button-delete-profile"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Profile
+                    </Button>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>

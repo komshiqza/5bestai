@@ -144,7 +144,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       email: user.email,
       role: user.role,
       status: user.status,
-      gloryBalance: user.gloryBalance
+      gloryBalance: user.gloryBalance,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt
     });
   });
 
@@ -161,6 +163,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submissions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch submissions" });
+    }
+  });
+
+  // Update profile (username)
+  app.patch("/api/me", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { username } = req.body;
+      const userId = req.user!.id;
+
+      if (!username || username.trim().length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
+
+      // Check if username is already taken by another user
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+
+      await storage.updateUser(userId, { username: username.trim() });
+      const updatedUser = await storage.getUser(userId);
+
+      res.json({
+        id: updatedUser!.id,
+        username: updatedUser!.username,
+        email: updatedUser!.email,
+        role: updatedUser!.role,
+        status: updatedUser!.status,
+        gloryBalance: updatedUser!.gloryBalance,
+        avatarUrl: updatedUser!.avatarUrl,
+        createdAt: updatedUser!.createdAt
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update profile" });
+    }
+  });
+
+  // Upload/update avatar
+  app.post("/api/me/avatar", authenticateToken, upload.single("avatar"), async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { url } = await uploadFile(req.file);
+
+      await storage.updateUser(userId, { avatarUrl: url });
+      const updatedUser = await storage.getUser(userId);
+
+      res.json({
+        id: updatedUser!.id,
+        username: updatedUser!.username,
+        email: updatedUser!.email,
+        role: updatedUser!.role,
+        status: updatedUser!.status,
+        gloryBalance: updatedUser!.gloryBalance,
+        avatarUrl: updatedUser!.avatarUrl,
+        createdAt: updatedUser!.createdAt
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to upload avatar" });
+    }
+  });
+
+  // Delete profile
+  app.delete("/api/me", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Delete user (cascade will handle related data)
+      await storage.deleteUser(userId);
+
+      // Clear auth cookie
+      res.clearCookie("authToken");
+      
+      res.json({ message: "Profile deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to delete profile" });
     }
   });
 
