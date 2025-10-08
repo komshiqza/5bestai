@@ -23,22 +23,7 @@ export default function AdminContestDetail() {
   const [itemToDelete, setItemToDelete] = useState<{ type: 'contest' | 'submission'; id: string } | null>(null);
   const [userToSuspend, setUserToSuspend] = useState<string | null>(null);
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user || !isAdmin(user)) {
-    setLocation("/admin");
-    return null;
-  }
-
+  // All hooks must be called before any conditional returns
   const { data: contest, isLoading: contestLoading } = useQuery({
     queryKey: ["/api/contests", id],
     queryFn: async () => {
@@ -46,6 +31,7 @@ export default function AdminContestDetail() {
       if (!response.ok) throw new Error("Failed to fetch contest");
       return response.json();
     },
+    enabled: !!user && isAdmin(user) && !authLoading, // Only fetch when authorized
   });
 
   const { data: submissions = [], isLoading: submissionsLoading } = useQuery({
@@ -55,6 +41,7 @@ export default function AdminContestDetail() {
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
+    enabled: !!user && isAdmin(user) && !authLoading, // Only fetch when authorized
   });
 
   const updateContestMutation = useMutation({
@@ -169,6 +156,23 @@ export default function AdminContestDetail() {
       });
     },
   });
+
+  // All hooks defined - now safe to do conditional returns
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin(user)) {
+    setLocation("/admin");
+    return null;
+  }
 
   const handleEditContest = () => {
     setIsEditModalOpen(true);
