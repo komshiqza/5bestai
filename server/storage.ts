@@ -1122,6 +1122,7 @@ export class DbStorage implements IStorage {
   }
 
   async distributeContestRewards(contestId: string): Promise<void> {
+    // Note: Can't use db.transaction with neon-http driver
     const contest = await db.query.contests.findFirst({
       where: eq(contests.id, contestId)
     });
@@ -1171,57 +1172,61 @@ export class DbStorage implements IStorage {
     }
     
     const numPrizes = Math.min(topSubmissionsData.length, prizes.length);
-    let awardedCount = 0;
+    
+    // Batch prepare all ledger entries and user updates
+    const ledgerEntries = [];
+    const userUpdates = [];
+    
+    // Check for existing ledger entries in one query
+    const existingLedgers = await db.query.gloryLedger.findMany({
+      where: and(
+        eq(gloryLedger.contestId, contestId),
+        inArray(gloryLedger.submissionId, topSubmissionsData.map(s => s.id))
+      )
+    });
+    
+    const existingSubmissionIds = new Set(existingLedgers.map(l => l.submissionId));
     
     for (let i = 0; i < numPrizes; i++) {
       const submission = topSubmissionsData[i];
       const prize = prizes[i];
       
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, submission.userId)
-      });
-
-      if (!user) {
-        console.error("User not found for submission:", submission.id);
+      // Skip if already awarded
+      if (existingSubmissionIds.has(submission.id)) {
         continue;
       }
 
-      const existingLedger = await db.query.gloryLedger.findFirst({
-        where: and(
-          eq(gloryLedger.contestId, contestId),
-          eq(gloryLedger.submissionId, submission.id)
-        )
+      ledgerEntries.push({
+        userId: submission.userId,
+        delta: prize,
+        reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
+        contestId: contestId,
+        submissionId: submission.id
       });
+      
+      userUpdates.push({
+        userId: submission.userId,
+        prize: prize
+      });
+    }
 
-      if (existingLedger) {
-        awardedCount++;
-        continue;
-      }
-
-      try {
-        await db.insert(gloryLedger).values({
-          userId: submission.userId,
-          delta: prize,
-          reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
-          contestId: contestId,
-          submissionId: submission.id
-        }).onConflictDoNothing();
-
+    // Batch insert ledger entries (single query)
+    if (ledgerEntries.length > 0) {
+      await db.insert(gloryLedger).values(ledgerEntries).onConflictDoNothing();
+      
+      // Update user balances (unfortunately needs to be individual queries)
+      for (const update of userUpdates) {
         await db.update(users)
           .set({ 
-            gloryBalance: sql`${users.gloryBalance} + ${prize}`,
+            gloryBalance: sql`${users.gloryBalance} + ${update.prize}`,
             updatedAt: new Date()
           })
-          .where(eq(users.id, submission.userId));
-
-        awardedCount++;
-      } catch (error) {
-        console.error(`Error awarding prize to user ${user.username}:`, error);
-        throw error;
+          .where(eq(users.id, update.userId));
       }
     }
 
-    if (awardedCount > 0 || topSubmissionsData.length > 0) {
+    // Only end contest if we actually awarded new prizes
+    if (ledgerEntries.length > 0) {
       await db.update(contests)
         .set({ status: "ended" })
         .where(eq(contests.id, contestId));
