@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand, Share2 } from "lucide-react";
+import { Search, FileText, Upload, Heart, Trophy, ChevronDown, ArrowLeft, Expand, Share2, X } from "lucide-react";
 import { GlassButton } from "@/components/GlassButton";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -21,6 +22,7 @@ export default function ContestDetailPage() {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showUploadWizard, setShowUploadWizard] = useState(false);
+  const [showAllPrizesModal, setShowAllPrizesModal] = useState(false);
   const [sortBy, setSortBy] = useState("votes");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -333,7 +335,11 @@ export default function ContestDetailPage() {
                       
                       {/* Show "+" indicator if more than 5 places */}
                       {contest.prizeDistribution.length > 5 && (
-                        <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-2 transition-all hover:bg-primary/20 hover:scale-105">
+                        <button
+                          onClick={() => setShowAllPrizesModal(true)}
+                          className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-2 transition-all hover:bg-primary/20 hover:scale-105 cursor-pointer"
+                          data-testid="button-view-all-prizes"
+                        >
                           <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center mb-1">
                             <span className="text-xs font-bold text-white">+</span>
                           </div>
@@ -341,7 +347,7 @@ export default function ContestDetailPage() {
                             {contest.prizeDistribution.length - 5}
                           </p>
                           <p className="text-xs text-primary font-medium">More</p>
-                        </div>
+                        </button>
                       )}
                     </div>
                   </>
@@ -756,6 +762,66 @@ export default function ContestDetailPage() {
         onClose={() => setShowUploadWizard(false)}
         preselectedContestId={contest.id}
       />
+
+      {/* Prize Distribution Modal */}
+      <Dialog open={showAllPrizesModal} onOpenChange={setShowAllPrizesModal}>
+        <DialogContent className="bg-gradient-to-br from-slate-900/95 to-purple-900/95 border-primary/30 text-white max-w-md max-h-[80vh] overflow-hidden backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-center text-white flex items-center justify-center gap-2">
+              <Trophy className="h-6 w-6 text-yellow-400" />
+              Prize Distribution
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-2">
+            {contest?.prizeDistribution?.map((prize: any, index: number) => {
+              const placeNumber = index + 1;
+              const badgeColor = 
+                placeNumber === 1 ? 'from-yellow-400 to-yellow-600' :
+                placeNumber === 2 ? 'from-gray-300 to-gray-500' :
+                placeNumber === 3 ? 'from-orange-400 to-orange-600' :
+                placeNumber === 4 ? 'from-blue-400 to-blue-600' :
+                placeNumber === 5 ? 'from-green-400 to-green-600' :
+                'from-purple-400 to-purple-600';
+
+              return (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between p-3 rounded-lg bg-primary/10 hover:bg-primary/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${badgeColor} flex items-center justify-center`}>
+                      <span className="text-sm font-bold text-black">
+                        {placeNumber === 1 ? '1st' :
+                         placeNumber === 2 ? '2nd' :
+                         placeNumber === 3 ? '3rd' :
+                         `${placeNumber}th`}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-white/80">Place</span>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-white">
+                      {typeof prize.amount === 'number' 
+                        ? prize.amount.toLocaleString()
+                        : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
+                      }
+                    </p>
+                    <p className="text-xs text-primary font-medium">GLORY</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-3 border-t border-primary/20 text-center">
+            <p className="text-sm text-gray-300">
+              Total Pool: <span className="font-bold text-white">{contest?.prizeGlory?.toLocaleString()}</span> GLORY
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
