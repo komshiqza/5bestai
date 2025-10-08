@@ -182,6 +182,75 @@ export default function AdminDashboard() {
     },
   });
 
+  const bulkApproveSubmissionsMutation = useMutation({
+    mutationFn: async (submissionIds: string[]) => {
+      const response = await apiRequest("PATCH", "/api/admin/submissions/bulk/approve", { submissionIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      setSelectedSubmissionIds([]);
+      toast({
+        title: "Submissions approved",
+        description: `Successfully approved ${data.count} submission(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve submissions.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkRejectSubmissionsMutation = useMutation({
+    mutationFn: async (submissionIds: string[]) => {
+      const response = await apiRequest("PATCH", "/api/admin/submissions/bulk/reject", { submissionIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      setSelectedSubmissionIds([]);
+      toast({
+        title: "Submissions rejected",
+        description: `Successfully rejected ${data.count} submission(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject submissions.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteSubmissionsMutation = useMutation({
+    mutationFn: async (submissionIds: string[]) => {
+      const response = await apiRequest("DELETE", "/api/admin/submissions/bulk", { submissionIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      setSelectedSubmissionIds([]);
+      toast({
+        title: "Submissions deleted",
+        description: `Successfully deleted ${data.count} submission(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete submissions.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const activateContestMutation = useMutation({
     mutationFn: async (contestId: string) => {
       const response = await apiRequest("PATCH", `/api/admin/contests/${contestId}/activate`);
