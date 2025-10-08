@@ -28,9 +28,10 @@ export default function Home() {
   // Clear submissions cache on mount to ensure fresh data
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+    queryClient.removeQueries({ queryKey: ["/api/submissions"] }); // Force remove cache
     setAllSubmissions([]);
     setPage(1);
-  }, []);
+  }, [queryClient]);
 
   const { data: contests = [] } = useQuery({
     queryKey: ["/api/contests", { status: "active" }],
