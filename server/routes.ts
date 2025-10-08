@@ -650,6 +650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const submission = await storage.createSubmission({
         userId: req.user!.id,
         contestId,
+        contestName: contest.title, // Preserve contest name for historical reference
         type,
         title,
         description: description || "",
