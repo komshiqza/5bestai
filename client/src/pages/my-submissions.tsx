@@ -49,7 +49,9 @@ export default function MySubmissions() {
       return { previousSubmissions };
     },
     onSuccess: () => {
+      // Invalidate all submissions caches to remove deleted submission everywhere
       queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
       toast({
         title: "Submission deleted",
         description: "Your submission has been permanently deleted.",

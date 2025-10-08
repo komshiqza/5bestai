@@ -122,6 +122,7 @@ export class MemStorage implements IStorage {
       username: "admin",
       email: "bellapokerstars@gmail.com",
       passwordHash: adminPasswordHash,
+      avatarUrl: null,
       role: "admin",
       status: "approved",
       gloryBalance: 0,
@@ -147,6 +148,7 @@ export class MemStorage implements IStorage {
         username: userData.username,
         email: userData.email,
         passwordHash,
+        avatarUrl: null,
         role: "user",
         status: "approved",
         gloryBalance: userData.gloryBalance,
@@ -196,6 +198,7 @@ export class MemStorage implements IStorage {
     const user: User = {
       ...insertUser,
       id,
+      avatarUrl: insertUser.avatarUrl || null,
       role: insertUser.role || "user",
       status: insertUser.status || "pending",
       gloryBalance: 0,
