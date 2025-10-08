@@ -111,9 +111,9 @@ export default function MySubmissions() {
     rejected: allSubmissions?.filter(s => s.status === "rejected").length || 0
   };
 
-  const filteredSubmissions = statusFilter === "all" 
+  const filteredSubmissions = (statusFilter === "all" 
     ? allSubmissions 
-    : allSubmissions?.filter(s => s.status === statusFilter);
+    : allSubmissions?.filter(s => s.status === statusFilter))?.filter(s => s.mediaUrl);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/20 to-gray-950">
