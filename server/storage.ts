@@ -15,6 +15,7 @@ import {
   type InsertUserWallet,
   type CashoutRequest,
   type InsertCashoutRequest,
+  type CashoutRequestWithRelations,
   type CashoutEvent,
   type InsertCashoutEvent,
   type SubmissionWithUser,
@@ -89,7 +90,7 @@ export interface IStorage {
   
   // Cashout Requests
   getCashoutRequest(id: string): Promise<CashoutRequest | undefined>;
-  getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequest[]>;
+  getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequestWithRelations[]>;
   createCashoutRequest(request: InsertCashoutRequest): Promise<CashoutRequest>;
   updateCashoutRequest(id: string, updates: Partial<CashoutRequest>): Promise<CashoutRequest | undefined>;
   
@@ -590,7 +591,7 @@ export class MemStorage implements IStorage {
     throw new Error("MemStorage cashout methods not implemented");
   }
 
-  async getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequest[]> {
+  async getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequestWithRelations[]> {
     throw new Error("MemStorage cashout methods not implemented");
   }
 
@@ -1220,16 +1221,33 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequest[]> {
+  async getCashoutRequests(filters?: { userId?: string; status?: string }): Promise<CashoutRequestWithRelations[]> {
     const conditions = [];
     if (filters?.userId) conditions.push(eq(cashoutRequests.userId, filters.userId));
     if (filters?.status) conditions.push(eq(cashoutRequests.status, filters.status));
 
     const result = await db.query.cashoutRequests.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(cashoutRequests.createdAt)]
+      orderBy: [desc(cashoutRequests.createdAt)],
+      with: {
+        user: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+            gloryBalance: true
+          }
+        },
+        wallet: {
+          columns: {
+            id: true,
+            address: true,
+            provider: true
+          }
+        }
+      }
     });
-    return result;
+    return result as CashoutRequestWithRelations[];
   }
 
   async createCashoutRequest(request: InsertCashoutRequest): Promise<CashoutRequest> {

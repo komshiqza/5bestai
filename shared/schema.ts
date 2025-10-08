@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, relations } from "drizzle-orm";
 import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -148,6 +148,18 @@ export const cashoutEvents = pgTable("cashout_events", {
   createdAtIdx: index("cashout_events_created_at_idx").on(table.createdAt)
 }));
 
+// Relations
+export const cashoutRequestsRelations = relations(cashoutRequests, ({ one }) => ({
+  user: one(users, {
+    fields: [cashoutRequests.userId],
+    references: [users.id],
+  }),
+  wallet: one(userWallets, {
+    fields: [cashoutRequests.walletId],
+    references: [userWallets.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -292,4 +304,9 @@ export type UserWithStats = User & {
   submissionCount: number;
   totalVotes: number;
   contestWins: number;
+};
+
+export type CashoutRequestWithRelations = CashoutRequest & {
+  user: Pick<User, 'id' | 'username' | 'email' | 'gloryBalance'>;
+  wallet: Pick<UserWallet, 'id' | 'address' | 'provider'>;
 };
