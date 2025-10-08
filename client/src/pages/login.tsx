@@ -151,14 +151,6 @@ export default function Login() {
               </Link>
             </p>
           </div>
-
-          <div className="mt-4 p-4 bg-muted rounded-lg">
-            <p className="text-xs text-muted-foreground text-center">
-              <strong>Demo credentials:</strong><br />
-              Email: bellapokerstars@gmail.com<br />
-              Password: Admin123!
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
