@@ -654,23 +654,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: validLimit
       });
       
-      // If user is authenticated, also get their own pending/rejected submissions
+      // If user is authenticated, also get their own pending/rejected submissions (not approved, as those are already included)
       if (currentUserId) {
-        const ownSubmissions = await storage.getSubmissions({
+        const ownPendingSubmissions = await storage.getSubmissions({
           contestId: contestId as string | undefined,
           userId: currentUserId,
-          status: undefined, // Get all statuses for own submissions
-          page: validPage,
-          limit: validLimit
+          status: undefined, // Get all statuses
+          page: 1, // Always get from page 1 for own submissions
+          limit: 100 // Get more to ensure we don't miss any
         });
         
-        // Merge and deduplicate (approved submissions might already be in the list)
-        const submissionMap = new Map();
-        [...approvedSubmissions, ...ownSubmissions].forEach(sub => {
-          submissionMap.set(sub.id, sub);
-        });
+        // Filter to only non-approved submissions to avoid duplicates
+        const nonApprovedOwn = ownPendingSubmissions.filter(sub => sub.status !== "approved");
         
-        return res.json(Array.from(submissionMap.values()).slice(0, validLimit));
+        // Merge approved with user's non-approved submissions
+        const merged = [...approvedSubmissions, ...nonApprovedOwn];
+        
+        // Sort by createdAt DESC to maintain consistent order
+        merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        return res.json(merged.slice(0, validLimit));
       }
       
       // Unauthenticated users only see approved

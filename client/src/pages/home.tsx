@@ -184,7 +184,7 @@ export default function Home() {
 
   const featuredContest = contests[0];
 
-  // Filter submissions by media type (always sorted by newest)
+  // Filter submissions by media type (always sorted by newest from API)
   const filteredSubmissions = useMemo(() => {
     let filtered = [...allSubmissions];
 
@@ -199,11 +199,8 @@ export default function Home() {
       );
     }
 
-    // Always sort by newest (already sorted from API, but ensure consistency)
-    filtered.sort((a: any, b: any) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
+    // Submissions are already sorted by newest from API - no re-sorting needed
+    // This ensures voting doesn't change the order
     return filtered;
   }, [allSubmissions, mediaFilter]);
 
