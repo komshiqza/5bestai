@@ -1553,7 +1553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createGloryTransaction({
           userId: request.userId,
           delta: -request.amountGlory,
-          reason: `Cashout request approved (Glory)`,
+          reason: `Cashout request approved`,
           contestId: null,
           submissionId: null
         });
@@ -1618,7 +1618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createGloryTransaction({
         userId: request.userId,
         delta: -request.amountGlory,
-        reason: `Cashout request approved (Glory)`,
+        reason: `Cashout request approved`,
         contestId: null,
         submissionId: null
       });
@@ -1721,7 +1721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createGloryTransaction({
             userId: request.userId,
             delta: -request.amountGlory,
-            reason: `Cashout request approved (Glory)`,
+            reason: `Cashout request approved`,
             contestId: null,
             submissionId: null
           });
