@@ -1837,6 +1837,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/admin/audit-logs", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      await storage.clearAuditLogs();
+      
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "CLEAR_AUDIT_LOGS",
+        meta: { clearedAt: new Date().toISOString() }
+      });
+      
+      res.json({ message: "All audit logs cleared successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear audit logs" });
+    }
+  });
+
   // Placeholder for video thumbnails in local mode
   app.get("/api/placeholder/video-thumbnail", (req, res) => {
     // Return a simple SVG placeholder for video thumbnails

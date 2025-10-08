@@ -78,6 +78,7 @@ export interface IStorage {
   // Audit Log
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
+  clearAuditLogs(): Promise<void>;
   
   // Contest distribution
   distributeContestRewards(contestId: string): Promise<void>;
@@ -521,6 +522,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.auditLogs.values())
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit);
+  }
+
+  async clearAuditLogs(): Promise<void> {
+    this.auditLogs.clear();
   }
 
   // Contest distribution
@@ -1073,6 +1078,10 @@ export class DbStorage implements IStorage {
       limit
     });
     return result;
+  }
+
+  async clearAuditLogs(): Promise<void> {
+    await db.delete(auditLog);
   }
 
   async distributeContestRewards(contestId: string): Promise<void> {
