@@ -58,6 +58,9 @@ export default function AdminDashboard() {
   // Bulk submission actions state
   const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<string[]>([]);
 
+  // Bulk contest actions state
+  const [selectedContestIds, setSelectedContestIds] = useState<string[]>([]);
+
   // Glory balance edit state
   const [gloryEditDialogOpen, setGloryEditDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -294,6 +297,50 @@ export default function AdminDashboard() {
     },
   });
 
+  const bulkActivateContestsMutation = useMutation({
+    mutationFn: async (contestIds: string[]) => {
+      const response = await apiRequest("PATCH", "/api/admin/contests/bulk/activate", { contestIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contests"] });
+      setSelectedContestIds([]);
+      toast({
+        title: "Contests activated",
+        description: `Successfully activated ${data.updatedCount} contests.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to activate contests.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkEndContestsMutation = useMutation({
+    mutationFn: async (contestIds: string[]) => {
+      const response = await apiRequest("POST", "/api/admin/contests/bulk/end", { contestIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contests"] });
+      setSelectedContestIds([]);
+      toast({
+        title: "Contests ended",
+        description: `Successfully ended ${data.endedCount} contests and distributed rewards.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to end contests.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createContestMutation = useMutation({
     mutationFn: async (formData: any) => {
       // The CreateContestModal already sends data in the correct format
@@ -379,6 +426,29 @@ export default function AdminDashboard() {
   });
 
 
+
+  // Bulk user approval mutation
+  const bulkApproveUsersMutation = useMutation({
+    mutationFn: async (userIds: string[]) => {
+      const response = await apiRequest("PATCH", "/api/admin/users/bulk/approve", { userIds });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setSelectedUserIds([]);
+      toast({
+        title: "Users approved",
+        description: `Successfully approved ${data.updatedCount} users.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve users.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Bulk user deletion mutation
   const bulkDeleteUsersMutation = useMutation({
@@ -552,6 +622,11 @@ export default function AdminDashboard() {
   const isAllSelected = filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length;
   const isSomeSelected = selectedUserIds.length > 0 && selectedUserIds.length < filteredUsers.length;
 
+  const handleBulkApprove = () => {
+    if (selectedUserIds.length === 0) return;
+    bulkApproveUsersMutation.mutate(selectedUserIds);
+  };
+
   const handleBulkDelete = () => {
     if (selectedUserIds.length === 0) return;
     setBulkDeleteDialogOpen(true);
@@ -638,6 +713,36 @@ export default function AdminDashboard() {
     }
 
     updateGloryBalanceMutation.mutate({ userId: selectedUserId, amount, operation });
+  };
+
+  // Helper functions for bulk contest selection
+  const handleContestSelect = (contestId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedContestIds(prev => [...prev, contestId]);
+    } else {
+      setSelectedContestIds(prev => prev.filter(id => id !== contestId));
+    }
+  };
+
+  const handleSelectAllContests = (checked: boolean) => {
+    if (checked) {
+      setSelectedContestIds(contests.map((contest: any) => contest.id));
+    } else {
+      setSelectedContestIds([]);
+    }
+  };
+
+  const isAllContestsSelected = contests.length > 0 && selectedContestIds.length === contests.length;
+  const isSomeContestsSelected = selectedContestIds.length > 0 && selectedContestIds.length < contests.length;
+
+  const handleBulkActivateContests = () => {
+    if (selectedContestIds.length === 0) return;
+    bulkActivateContestsMutation.mutate(selectedContestIds);
+  };
+
+  const handleBulkEndContests = () => {
+    if (selectedContestIds.length === 0) return;
+    bulkEndContestsMutation.mutate(selectedContestIds);
   };
 
 
@@ -748,15 +853,26 @@ export default function AdminDashboard() {
                   <CardTitle>User Management</CardTitle>
                   <div className="flex items-center space-x-2">
                     {selectedUserIds.length > 0 && (
-                      <Button
-                        variant="outline"
-                        className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
-                        onClick={handleBulkDelete}
-                        data-testid="bulk-delete-button"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Selected ({selectedUserIds.length})
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          className="bg-success/20 text-success hover:bg-success/30 border-success/30"
+                          onClick={handleBulkApprove}
+                          data-testid="bulk-approve-button"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approve Selected ({selectedUserIds.length})
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                          onClick={handleBulkDelete}
+                          data-testid="bulk-delete-button"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Selected ({selectedUserIds.length})
+                        </Button>
+                      </>
                     )}
                     <Select value={userStatusFilter} onValueChange={setUserStatusFilter} data-testid="user-status-filter">
                       <SelectTrigger className="w-40">
@@ -1159,56 +1275,105 @@ export default function AdminDashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Contest Management</CardTitle>
-                  <Button 
-                    className="gradient-glory" 
-                    data-testid="create-contest-button"
-                    onClick={() => setIsCreateContestModalOpen(true)}
-                  >
-                    <Trophy className="w-4 h-4 mr-2" />
-                    Create Contest
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {selectedContestIds.length > 0 && (
+                      <>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="bg-success/20 text-success hover:bg-success/30 border-success/30"
+                          onClick={handleBulkActivateContests}
+                          disabled={bulkActivateContestsMutation.isPending}
+                          data-testid="bulk-activate-contests"
+                        >
+                          <Trophy className="w-4 h-4 mr-2" />
+                          Activate Selected ({selectedContestIds.length})
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="gradient-glory"
+                          onClick={handleBulkEndContests}
+                          disabled={bulkEndContestsMutation.isPending}
+                          data-testid="bulk-end-contests"
+                        >
+                          <Trophy className="w-4 h-4 mr-2" />
+                          End & Distribute Selected ({selectedContestIds.length})
+                        </Button>
+                      </>
+                    )}
+                    <Button 
+                      className="gradient-glory" 
+                      data-testid="create-contest-button"
+                      onClick={() => setIsCreateContestModalOpen(true)}
+                    >
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Create Contest
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
+                {contests.length > 0 && (
+                  <div className="mb-4 flex items-center">
+                    <Checkbox
+                      checked={isAllContestsSelected}
+                      onCheckedChange={handleSelectAllContests}
+                      data-testid="select-all-contests"
+                      className={isSomeContestsSelected && !isAllContestsSelected ? "data-[state=checked]:bg-primary/50" : ""}
+                    />
+                    <label className="ml-2 text-sm font-medium text-muted-foreground">
+                      Select All Contests
+                    </label>
+                  </div>
+                )}
                 <div className="space-y-4">
                   {contests.map((contest: any) => (
                     <Card key={contest.id} className={contest.status === "active" ? "border-primary/50" : ""} data-testid={`contest-item-${contest.id}`}>
                       <CardContent className="p-6">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h4 className="text-xl font-bold" data-testid={`contest-title-${contest.id}`}>
-                                {contest.title}
-                              </h4>
-                              <Badge className={getStatusColor(contest.status)} data-testid={`contest-status-${contest.id}`}>
-                                {getStatusIcon(contest.status)}
-                                <span className="ml-1">{contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}</span>
-                              </Badge>
-                            </div>
-                            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">Prize Pool:</span>
-                                <span className="font-semibold ml-2 text-primary" data-testid={`contest-prize-${contest.id}`}>
-                                  {contest.prizeGlory.toLocaleString()} GLORY
-                                </span>
+                          <div className="flex items-start gap-4 flex-1">
+                            <Checkbox
+                              checked={selectedContestIds.includes(contest.id)}
+                              onCheckedChange={(checked) => handleContestSelect(contest.id, checked as boolean)}
+                              data-testid={`select-contest-${contest.id}`}
+                              className="mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <h4 className="text-xl font-bold" data-testid={`contest-title-${contest.id}`}>
+                                  {contest.title}
+                                </h4>
+                                <Badge className={getStatusColor(contest.status)} data-testid={`contest-status-${contest.id}`}>
+                                  {getStatusIcon(contest.status)}
+                                  <span className="ml-1">{contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}</span>
+                                </Badge>
                               </div>
-                              <div>
-                                <span className="text-muted-foreground">Submissions:</span>
-                                <span className="font-semibold ml-2" data-testid={`contest-submissions-${contest.id}`}>
-                                  {contest.submissionCount || 0}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Participants:</span>
-                                <span className="font-semibold ml-2" data-testid={`contest-participants-${contest.id}`}>
-                                  {contest.participantCount || 0}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Total Votes:</span>
-                                <span className="font-semibold ml-2" data-testid={`contest-votes-${contest.id}`}>
-                                  {contest.totalVotes || 0}
-                                </span>
+                              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Prize Pool:</span>
+                                  <span className="font-semibold ml-2 text-primary" data-testid={`contest-prize-${contest.id}`}>
+                                    {contest.prizeGlory.toLocaleString()} GLORY
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Submissions:</span>
+                                  <span className="font-semibold ml-2" data-testid={`contest-submissions-${contest.id}`}>
+                                    {contest.submissionCount || 0}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Participants:</span>
+                                  <span className="font-semibold ml-2" data-testid={`contest-participants-${contest.id}`}>
+                                    {contest.participantCount || 0}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Total Votes:</span>
+                                  <span className="font-semibold ml-2" data-testid={`contest-votes-${contest.id}`}>
+                                    {contest.totalVotes || 0}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>

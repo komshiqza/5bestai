@@ -9,6 +9,7 @@ import { authenticateToken, requireAdmin, requireApproved, generateToken, type A
 import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
+import { z } from "zod";
 import { 
   loginSchema, 
   registerSchema, 
@@ -495,6 +496,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: "Failed to delete contest",
         details: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // Bulk activate contests
+  app.patch("/api/admin/contests/bulk/activate", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { contestIds } = z.object({ contestIds: z.array(z.string()).min(1) }).parse(req.body);
+      
+      let updatedCount = 0;
+      const updatedContests = [];
+      
+      for (const contestId of contestIds) {
+        const contest = await storage.getContest(contestId);
+        if (contest && contest.status === "draft") {
+          const updated = await storage.updateContest(contestId, { status: "active" });
+          if (updated) {
+            updatedCount++;
+            updatedContests.push({ id: updated.id, title: updated.title });
+          }
+        }
+      }
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "BULK_ACTIVATE_CONTESTS",
+        meta: { contestIds, updatedContests, updatedCount }
+      });
+
+      res.json({ success: true, updatedCount, message: `Successfully activated ${updatedCount} contests` });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
+  // Bulk end and distribute contests
+  app.post("/api/admin/contests/bulk/end", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { contestIds } = z.object({ contestIds: z.array(z.string()).min(1) }).parse(req.body);
+      
+      let endedCount = 0;
+      const endedContests = [];
+      const errors = [];
+      
+      for (const contestId of contestIds) {
+        try {
+          const contest = await storage.getContest(contestId);
+          if (contest && contest.status === "active") {
+            await storage.distributeContestRewards(contestId);
+            endedCount++;
+            endedContests.push({ id: contest.id, title: contest.title, prizeGlory: contest.prizeGlory });
+          }
+        } catch (error) {
+          errors.push({ contestId, error: error instanceof Error ? error.message : "Unknown error" });
+        }
+      }
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "BULK_END_CONTESTS",
+        meta: { contestIds, endedContests, endedCount, errors }
+      });
+
+      res.json({ 
+        success: true, 
+        endedCount, 
+        message: `Successfully ended ${endedCount} contests and distributed rewards`,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
     }
   });
 
@@ -1146,6 +1219,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(updatedUser);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
+  // Bulk approve users route
+  app.patch("/api/admin/users/bulk/approve", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { userIds } = z.object({ userIds: z.array(z.string()).min(1) }).parse(req.body);
+      
+      let updatedCount = 0;
+      const updatedUsers = [];
+      
+      for (const userId of userIds) {
+        const user = await storage.updateUser(userId, { status: "approved" });
+        if (user) {
+          updatedCount++;
+          updatedUsers.push({ id: user.id, username: user.username, email: user.email });
+        }
+      }
+
+      // Log admin action
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "BULK_APPROVE_USERS",
+        meta: { userIds, updatedUsers, updatedCount }
+      });
+
+      res.json({ success: true, updatedCount, message: `Successfully approved ${updatedCount} users` });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
     }
