@@ -98,7 +98,20 @@ export default function Home() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      // Optimistically update the vote count in ALL cached pages
+      queryClient.setQueriesData(
+        { queryKey: ["/api/submissions"], exact: false },
+        (oldData: any) => {
+          if (!oldData || !Array.isArray(oldData)) return oldData;
+          return oldData.map((sub: any) => 
+            sub.id === selectedSubmission?.id 
+              ? { ...sub, votesCount: sub.votesCount + 1 }
+              : sub
+          );
+        }
+      );
+      
       // Only invalidate page 1 to prevent duplicate keys from refetching all pages
       queryClient.invalidateQueries({ queryKey: ["/api/submissions", 1] });
       toast({
