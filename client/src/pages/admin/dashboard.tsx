@@ -119,6 +119,7 @@ export default function AdminDashboard() {
       const data = await response.json();
       return data.requests;
     },
+    refetchInterval: 10000,
   });
 
   // Mutations
