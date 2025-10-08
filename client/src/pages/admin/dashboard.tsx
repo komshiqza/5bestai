@@ -141,6 +141,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
       toast({
         title: "Submission status updated",
         description: "The submission's status has been successfully updated.",
@@ -163,6 +164,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
       toast({
         title: "Submission deleted",
         description: "The submission has been permanently deleted.",
