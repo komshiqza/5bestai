@@ -71,6 +71,10 @@ export default function AdminDashboard() {
   const [selectedUserId, setSelectedUserId] = useState("");
   const [gloryAmountInput, setGloryAmountInput] = useState("");
 
+  // Clear audit logs state
+  const [clearLogsDialogOpen, setClearLogsDialogOpen] = useState(false);
+  const [clearLogsConfirmText, setClearLogsConfirmText] = useState("");
+
   // Redirect if not admin
   if (!user || !isAdmin(user)) {
     setLocation("/");
@@ -545,6 +549,30 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete users.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Clear audit logs mutation
+  const clearAuditLogsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", "/api/admin/audit-logs", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
+      setClearLogsDialogOpen(false);
+      setClearLogsConfirmText("");
+      toast({
+        title: "Audit logs cleared",
+        description: "All audit logs have been successfully cleared.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to clear audit logs.",
         variant: "destructive",
       });
     },
@@ -1748,7 +1776,19 @@ export default function AdminDashboard() {
           <TabsContent value="audit" className="space-y-4" data-testid="audit-tab">
             <Card>
               <CardHeader>
-                <CardTitle>Audit Logs</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Audit Logs</CardTitle>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                    onClick={() => setClearLogsDialogOpen(true)}
+                    data-testid="button-clear-logs"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear All Logs
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -2030,6 +2070,72 @@ export default function AdminDashboard() {
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete {selectedContestIds.length} Contests
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear Audit Logs Confirmation Dialog */}
+      <Dialog open={clearLogsDialogOpen} onOpenChange={setClearLogsDialogOpen}>
+        <DialogContent data-testid="clear-logs-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Clear All Audit Logs</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  You are about to permanently delete <span className="font-semibold">all audit logs</span>.
+                </p>
+                <p className="text-destructive font-medium">
+                  This will remove all historical records of admin actions and system events.
+                </p>
+                <p className="font-semibold text-destructive">
+                  This action cannot be undone!
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirmClearLogs">
+                Type <span className="font-mono font-bold">CLEAR</span> to confirm
+              </Label>
+              <Input
+                id="confirmClearLogs"
+                placeholder="Type CLEAR to confirm"
+                value={clearLogsConfirmText}
+                onChange={(e) => setClearLogsConfirmText(e.target.value)}
+                data-testid="confirm-clear-logs-input"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setClearLogsDialogOpen(false);
+                setClearLogsConfirmText("");
+              }}
+              data-testid="cancel-clear-logs"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => clearAuditLogsMutation.mutate()}
+              disabled={clearAuditLogsMutation.isPending || clearLogsConfirmText !== "CLEAR"}
+              data-testid="confirm-clear-logs"
+            >
+              {clearAuditLogsMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Clearing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Logs
                 </>
               )}
             </Button>
