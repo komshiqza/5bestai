@@ -284,6 +284,14 @@ export default function Profile() {
                       Upload New Entry
                     </Button>
                   </Link>
+                  <GlassButton
+                    className="w-full"
+                    onClick={() => setWithdrawModalOpen(true)}
+                    data-testid="button-withdraw-glory"
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Withdraw Glory
+                  </GlassButton>
                   <Button variant="outline" className="w-full" data-testid="settings-button">
                     <Settings className="w-4 h-4 mr-2" />
                     Settings
@@ -428,17 +436,7 @@ export default function Profile() {
               {/* Glory History Tab */}
               <TabsContent value="glory" className="space-y-4" data-testid="glory-tab">
                 {gloryHistory.length > 0 ? (
-                  <>
-                    <div className="flex justify-end">
-                      <GlassButton
-                        onClick={() => setWithdrawModalOpen(true)}
-                        data-testid="button-withdraw-glory"
-                      >
-                        <DollarSign className="w-4 h-4 mr-2" />
-                        Withdraw Glory
-                      </GlassButton>
-                    </div>
-                    <Card>
+                  <Card>
                       <CardContent className="p-0">
                         <div className="overflow-x-auto">
                           <table className="w-full" data-testid="glory-history-table">
@@ -486,7 +484,6 @@ export default function Profile() {
                         </div>
                       </CardContent>
                     </Card>
-                  </>
                 ) : (
                   <div className="text-center py-12" data-testid="no-glory-history">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
