@@ -1888,29 +1888,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/glory-ledger/:id", authenticateToken, async (req: AuthRequest, res) => {
+  app.delete("/api/glory-ledger", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const transaction = await storage.getGloryTransaction(req.params.id);
-      
-      if (!transaction) {
-        return res.status(404).json({ error: "Transaction not found" });
-      }
+      // Clear all glory transactions for the user without affecting balance
+      await storage.clearGloryTransactions(req.user!.id);
 
-      // Check if user owns this transaction
-      if (transaction.userId !== req.user!.id) {
-        return res.status(403).json({ error: "Not authorized to delete this transaction" });
-      }
-
-      // Reverse the transaction by updating user's balance
-      await storage.updateUserGloryBalance(req.user!.id, -transaction.delta);
-
-      // Delete the transaction
-      await storage.deleteGloryTransaction(req.params.id);
-
-      res.json({ message: "Transaction deleted successfully" });
+      res.json({ message: "All GLORY history cleared successfully" });
     } catch (error) {
-      console.error("Error deleting glory transaction:", error);
-      res.status(500).json({ error: "Failed to delete transaction" });
+      console.error("Error clearing glory history:", error);
+      res.status(500).json({ error: "Failed to clear GLORY history" });
     }
   });
 

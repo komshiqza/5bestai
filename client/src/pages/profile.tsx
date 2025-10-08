@@ -153,18 +153,17 @@ export default function Profile() {
     },
   });
 
-  // Delete glory transaction mutation
-  const deleteGloryMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/glory-ledger/${id}`);
+  // Clear all glory history mutation
+  const clearGloryHistoryMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", `/api/glory-ledger`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/glory-ledger"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-      toast({ title: "Success", description: "Transaction deleted and balance updated" });
+      toast({ title: "Success", description: "All GLORY history cleared successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to delete transaction", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to clear GLORY history", variant: "destructive" });
     },
   });
 
@@ -214,10 +213,10 @@ export default function Profile() {
     });
   };
 
-  // Handle delete glory transaction with confirmation
-  const handleDeleteGloryTransaction = (transactionId: string) => {
-    if (confirm("Are you sure you want to delete this GLORY transaction? Your balance will be adjusted.")) {
-      deleteGloryMutation.mutate(transactionId);
+  // Handle clear all glory history with confirmation
+  const handleClearGloryHistory = () => {
+    if (confirm("Are you sure you want to clear all GLORY history? Your current balance will remain unchanged.")) {
+      clearGloryHistoryMutation.mutate();
     }
   };
 
@@ -434,67 +433,67 @@ export default function Profile() {
               {/* Glory History Tab */}
               <TabsContent value="glory" className="space-y-4" data-testid="glory-tab">
                 {gloryHistory.length > 0 ? (
-                  <Card>
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto">
-                        <table className="w-full" data-testid="glory-history-table">
-                          <thead className="bg-muted">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Date
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Transaction
-                              </th>
-                              <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Amount
-                              </th>
-                              <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border">
-                            {gloryHistory.map((transaction: any, index: number) => (
-                              <tr key={transaction.id} data-testid={`glory-transaction-${index}`}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                                  {new Date(transaction.createdAt).toLocaleDateString()}
-                                </td>
-                                <td className="px-6 py-4">
-                                  <div className="font-medium" data-testid={`transaction-reason-${index}`}>
-                                    {transaction.reason}
-                                  </div>
-                                  {transaction.contestId && (
-                                    <div className="text-muted-foreground text-xs">
-                                      Contest reward
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                  <span 
-                                    className={`font-semibold font-mono ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
-                                    data-testid={`transaction-amount-${index}`}
-                                  >
-                                    {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} GLORY
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteGloryTransaction(transaction.id)}
-                                    data-testid={`button-delete-glory-${index}`}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
-                                </td>
+                  <>
+                    <div className="flex justify-end">
+                      <Button
+                        variant="destructive"
+                        onClick={handleClearGloryHistory}
+                        disabled={clearGloryHistoryMutation.isPending}
+                        data-testid="button-clear-glory-history"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Clear All History
+                      </Button>
+                    </div>
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <table className="w-full" data-testid="glory-history-table">
+                            <thead className="bg-muted">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Date
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Transaction
+                                </th>
+                                <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Amount
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </CardContent>
-                  </Card>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {gloryHistory.map((transaction: any, index: number) => (
+                                <tr key={transaction.id} data-testid={`glory-transaction-${index}`}>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                                    {new Date(transaction.createdAt).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="font-medium" data-testid={`transaction-reason-${index}`}>
+                                      {transaction.reason}
+                                    </div>
+                                    {transaction.contestId && (
+                                      <div className="text-muted-foreground text-xs">
+                                        Contest reward
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                                    <span 
+                                      className={`font-semibold font-mono ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
+                                      data-testid={`transaction-amount-${index}`}
+                                    >
+                                      {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} GLORY
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
                 ) : (
                   <div className="text-center py-12" data-testid="no-glory-history">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">

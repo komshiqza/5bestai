@@ -73,8 +73,7 @@ export interface IStorage {
   // Glory Ledger
   createGloryTransaction(transaction: InsertGloryLedger): Promise<GloryLedger>;
   getGloryTransactions(userId: string): Promise<GloryLedger[]>;
-  getGloryTransaction(id: string): Promise<GloryLedger | undefined>;
-  deleteGloryTransaction(id: string): Promise<void>;
+  clearGloryTransactions(userId: string): Promise<void>;
   updateUserGloryBalance(userId: string, delta: number): Promise<void>;
   
   // Audit Log
@@ -499,12 +498,14 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  async getGloryTransaction(id: string): Promise<GloryLedger | undefined> {
-    return this.gloryLedger.get(id);
-  }
-
-  async deleteGloryTransaction(id: string): Promise<void> {
-    this.gloryLedger.delete(id);
+  async clearGloryTransactions(userId: string): Promise<void> {
+    // Delete all transactions for this user
+    const userTransactions = Array.from(this.gloryLedger.entries())
+      .filter(([_, transaction]) => transaction.userId === userId);
+    
+    for (const [id, _] of userTransactions) {
+      this.gloryLedger.delete(id);
+    }
   }
 
   async updateUserGloryBalance(userId: string, delta: number): Promise<void> {
@@ -1067,15 +1068,8 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getGloryTransaction(id: string): Promise<GloryLedger | undefined> {
-    const result = await db.query.gloryLedger.findFirst({
-      where: eq(gloryLedger.id, id)
-    });
-    return result;
-  }
-
-  async deleteGloryTransaction(id: string): Promise<void> {
-    await db.delete(gloryLedger).where(eq(gloryLedger.id, id));
+  async clearGloryTransactions(userId: string): Promise<void> {
+    await db.delete(gloryLedger).where(eq(gloryLedger.userId, userId));
   }
 
   async updateUserGloryBalance(userId: string, delta: number): Promise<void> {
