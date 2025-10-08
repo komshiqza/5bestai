@@ -15,6 +15,7 @@ import {
   voteSubmissionSchema,
   updateUserStatusSchema,
   updateSubmissionStatusSchema,
+  bulkSubmissionIdsSchema,
   insertContestSchema,
   insertSubmissionSchema,
   connectWalletSchema,
@@ -734,6 +735,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error deleting submission:", error);
       res.status(500).json({ 
         error: "Failed to delete submission",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Bulk approve submissions
+  app.patch("/api/admin/submissions/bulk/approve", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { submissionIds } = bulkSubmissionIdsSchema.parse(req.body);
+      
+      let count = 0;
+      for (const id of submissionIds) {
+        const updated = await storage.updateSubmission(id, { status: "approved" });
+        if (updated) {
+          count++;
+          await storage.createAuditLog({
+            actorUserId: req.user!.id,
+            action: "UPDATE_SUBMISSION_STATUS",
+            meta: { submissionId: id, status: "approved", userId: updated.userId }
+          });
+        }
+      }
+      
+      res.json({ count, message: `${count} submission(s) approved` });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
+  // Bulk reject submissions
+  app.patch("/api/admin/submissions/bulk/reject", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { submissionIds } = bulkSubmissionIdsSchema.parse(req.body);
+      
+      let count = 0;
+      for (const id of submissionIds) {
+        const updated = await storage.updateSubmission(id, { status: "rejected" });
+        if (updated) {
+          count++;
+          await storage.createAuditLog({
+            actorUserId: req.user!.id,
+            action: "UPDATE_SUBMISSION_STATUS",
+            meta: { submissionId: id, status: "rejected", userId: updated.userId }
+          });
+        }
+      }
+      
+      res.json({ count, message: `${count} submission(s) rejected` });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
+  // Bulk delete submissions
+  app.delete("/api/admin/submissions/bulk", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { submissionIds } = bulkSubmissionIdsSchema.parse(req.body);
+      
+      let count = 0;
+      for (const id of submissionIds) {
+        const submission = await storage.getSubmission(id);
+        if (submission) {
+          // Delete files from storage
+          await deleteFile(submission.mediaUrl);
+          if (submission.thumbnailUrl) {
+            await deleteFile(submission.thumbnailUrl);
+          }
+          
+          // Delete from database
+          await storage.deleteSubmission(id);
+          
+          // Log admin action
+          await storage.createAuditLog({
+            actorUserId: req.user!.id,
+            action: "DELETE_SUBMISSION",
+            meta: { submissionId: id, userId: submission.userId }
+          });
+          
+          count++;
+        }
+      }
+      
+      res.json({ count, message: `${count} submission(s) deleted` });
+    } catch (error) {
+      console.error("Error deleting submissions:", error);
+      res.status(500).json({ 
+        error: "Failed to delete submissions",
         details: error instanceof Error ? error.message : "Unknown error"
       });
     }
