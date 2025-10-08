@@ -82,6 +82,13 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
   // Filter to only show current user's approved submissions
   const userSubmissions = allSubmissions.filter((sub: any) => sub.userId === user?.id && sub.status === "approved");
 
+  // Refresh submissions when modal opens to ensure fresh data
+  useEffect(() => {
+    if (isOpen) {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+    }
+  }, [isOpen, queryClient]);
+
   // Pre-select contest if provided
   useEffect(() => {
     if (preselectedContestId && activeContests.some((c: any) => c.id === preselectedContestId)) {

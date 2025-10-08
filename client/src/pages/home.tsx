@@ -25,6 +25,13 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<'all' | 'images' | 'videos'>('all');
 
+  // Clear submissions cache on mount to ensure fresh data
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+    setAllSubmissions([]);
+    setPage(1);
+  }, []);
+
   const { data: contests = [] } = useQuery({
     queryKey: ["/api/contests", { status: "active" }],
     queryFn: async () => {
