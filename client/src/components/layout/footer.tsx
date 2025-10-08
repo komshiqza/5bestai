@@ -3,9 +3,9 @@ import { Trophy } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border mt-16" data-testid="footer">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+    <footer className="border-t border-border mt-8 md:mt-16" data-testid="footer">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
           <div>
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 rounded-lg gradient-glory flex items-center justify-center">
@@ -48,11 +48,11 @@ export function Footer() {
           </div>
         </div>
         
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+        <div className="pt-6 md:pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             © 2024 5best. All rights reserved.
           </p>
-          <div className="flex items-center space-x-6 mt-4 md:mt-0">
+          <div className="flex items-center space-x-4 md:space-x-6">
             <a href="#" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-social-twitter">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />

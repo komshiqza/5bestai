@@ -75,17 +75,17 @@ export function ContestLightboxModal({
       </div>
 
       {/* Top Left - Vote and Share Icons */}
-      <div className="absolute top-6 left-6 flex gap-3 z-30">
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 flex gap-2 sm:gap-3 z-30">
         <button
           onClick={(e) => {
             e.stopPropagation();
             handleVote();
           }}
-          className="p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-primary/90 transition-all duration-300 border border-white/20"
+          className="p-2 sm:p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-primary/90 transition-all duration-300 border border-white/20"
           data-testid="button-vote-submission"
         >
           <Heart 
-            className={`h-6 w-6 ${submission.hasVoted ? 'fill-current text-red-500' : ''}`}
+            className={`h-5 w-5 sm:h-6 sm:w-6 ${submission.hasVoted ? 'fill-current text-red-500' : ''}`}
           />
         </button>
         
@@ -94,35 +94,35 @@ export function ContestLightboxModal({
             e.stopPropagation();
             handleShare();
           }}
-          className="p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-primary/90 transition-all duration-300 border border-white/20"
+          className="p-2 sm:p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-primary/90 transition-all duration-300 border border-white/20"
           data-testid="button-share-submission"
         >
-          <Share2 className="h-6 w-6" />
+          <Share2 className="h-5 w-5 sm:h-6 sm:w-6" />
         </button>
       </div>
 
       {/* Top Right - Close Icon */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-all duration-300 border border-white/20 z-30"
+        className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 sm:p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-all duration-300 border border-white/20 z-30"
         data-testid="button-close-lightbox"
       >
-        <X className="h-6 w-6" />
+        <X className="h-5 w-5 sm:h-6 sm:w-6" />
       </button>
 
       {/* Bottom Info Bar (Optional - can be toggled) */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 z-20">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 sm:p-6 z-20">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-white mb-2" data-testid="text-submission-title">
+          <h2 className="text-lg sm:text-2xl font-bold text-white mb-1 sm:mb-2" data-testid="text-submission-title">
             {submission.title}
           </h2>
           {submission.description && (
-            <p className="text-gray-300 text-sm mb-3" data-testid="text-submission-description">
+            <p className="text-gray-300 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2" data-testid="text-submission-description">
               {submission.description}
             </p>
           )}
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-3 sm:gap-0">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
                 <User className="h-4 w-4 text-violet-400" />

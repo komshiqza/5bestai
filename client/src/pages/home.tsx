@@ -218,18 +218,18 @@ export default function Home() {
   return (
     <div className="min-h-screen" data-testid="home-page">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 border-b border-border">
+      <section className="relative overflow-hidden py-10 md:py-20 border-b border-border">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600 rounded-full blur-3xl"></div>
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-6 leading-tight gradient-text" data-testid="hero-title">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight mb-4 md:mb-6 leading-tight gradient-text" data-testid="hero-title">
               Compete, Create, <br/>
               Win GLORY
             </h1>
-            <p className="text-xl text-muted-foreground mb-8" data-testid="hero-description">
+            <p className="text-lg sm:text-xl text-muted-foreground mb-6 md:mb-8" data-testid="hero-description">
               Join creative contests, showcase your talent, and win rewards. Top 5 submissions win GLORY rewards.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -257,22 +257,23 @@ export default function Home() {
       </section>
 
       {/* Latest Submissions */}
-      <section className="py-16">
+      <section className="py-8 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 md:mb-8 gap-4">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight mb-2" data-testid="submissions-section-title">
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1 md:mb-2" data-testid="submissions-section-title">
                 Latest Submissions
               </h2>
-              <p className="text-muted-foreground">Discover amazing work from our community</p>
+              <p className="text-sm md:text-base text-muted-foreground">Discover amazing work from our community</p>
             </div>
             
             {/* Media Type Filter */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Button 
                 variant={mediaFilter === 'all' ? 'default' : 'ghost'} 
                 size="sm" 
                 onClick={() => setMediaFilter('all')}
+                className="text-xs sm:text-sm"
                 data-testid="filter-all"
               >
                 All
@@ -281,19 +282,21 @@ export default function Home() {
                 variant={mediaFilter === 'images' ? 'default' : 'ghost'} 
                 size="sm" 
                 onClick={() => setMediaFilter('images')}
+                className="text-xs sm:text-sm"
                 data-testid="filter-images"
               >
-                <ImageIcon className="w-4 h-4 mr-1" />
-                Images
+                <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Images</span>
               </Button>
               <Button 
                 variant={mediaFilter === 'videos' ? 'default' : 'ghost'} 
                 size="sm" 
                 onClick={() => setMediaFilter('videos')}
+                className="text-xs sm:text-sm"
                 data-testid="filter-videos"
               >
-                <Play className="w-4 h-4 mr-1" />
-                Videos
+                <Play className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Videos</span>
               </Button>
             </div>
           </div>
