@@ -985,6 +985,21 @@ export default function AdminDashboard() {
                         <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Select value={submissionContestFilter} onValueChange={setSubmissionContestFilter} data-testid="submission-contest-filter">
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Contests</SelectItem>
+                        {contests
+                          .filter((contest: any) => contest.status === "active")
+                          .map((contest: any) => (
+                            <SelectItem key={contest.id} value={contest.id}>
+                              {contest.title}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
