@@ -32,18 +32,15 @@ export default function Profile() {
     return null;
   }
 
-  // Fetch user's submissions (API automatically returns user's own submissions when authenticated)
-  const { data: allSubmissions = [] } = useQuery({
-    queryKey: ["/api/submissions"],
+  // Fetch user's submissions using dedicated endpoint
+  const { data: submissions = [] } = useQuery({
+    queryKey: ["/api/me/submissions"],
     queryFn: async () => {
-      const response = await fetch(`/api/submissions`);
+      const response = await fetch(`/api/me/submissions`);
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
   });
-
-  // Filter to only the current user's submissions
-  const submissions = allSubmissions.filter((sub: any) => sub.userId === user.id);
 
   // Fetch active contests to filter submissions
   const { data: activeContests = [] } = useQuery({
