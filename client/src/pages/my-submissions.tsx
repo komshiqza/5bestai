@@ -33,6 +33,20 @@ export default function MySubmissions() {
       if (!response.ok) throw new Error("Failed to delete submission");
       return await response.json();
     },
+    onMutate: async (submissionId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/me/submissions"] });
+      
+      // Snapshot previous value
+      const previousSubmissions = queryClient.getQueryData(["/api/me/submissions"]);
+      
+      // Optimistically update - immediately remove from UI
+      queryClient.setQueryData<SubmissionWithUser[]>(["/api/me/submissions"], (old) => 
+        old?.filter(s => s.id !== submissionId) || []
+      );
+      
+      return { previousSubmissions };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
       toast({
@@ -40,7 +54,11 @@ export default function MySubmissions() {
         description: "Your submission has been permanently deleted.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      // Rollback on error
+      if (context?.previousSubmissions) {
+        queryClient.setQueryData(["/api/me/submissions"], context.previousSubmissions);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to delete submission.",
