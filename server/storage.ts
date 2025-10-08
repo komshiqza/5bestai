@@ -379,7 +379,7 @@ export class MemStorage implements IStorage {
         return {
           ...submission,
           user: { id: user.id, username: user.username },
-          contest: contest ? { id: contest.id, title: contest.title } : { id: '', title: 'Deleted Contest' }
+          contest: contest ? { id: contest.id, title: contest.title } : { id: '', title: submission.contestName || 'Deleted Contest' }
         };
       });
   }
@@ -392,6 +392,7 @@ export class MemStorage implements IStorage {
       status: insertSubmission.status || "pending",
       description: insertSubmission.description || null,
       contestId: insertSubmission.contestId || null,
+      contestName: insertSubmission.contestName || null,
       thumbnailUrl: insertSubmission.thumbnailUrl || null,
       votesCount: 0,
       createdAt: new Date()
@@ -909,7 +910,7 @@ export class DbStorage implements IStorage {
         result.push({
           ...submission,
           user,
-          contest: contest || { id: '', title: 'Deleted Contest' }
+          contest: contest || { id: '', title: submission.contestName || 'Deleted Contest' }
         });
       }
     }
