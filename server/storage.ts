@@ -640,7 +640,6 @@ export class DbStorage implements IStorage {
         status: "approved",
         gloryBalance: 0
       });
-      console.log("[DB] Created admin user");
     }
 
     const existingContest = await db.query.contests.findFirst({
@@ -659,7 +658,6 @@ export class DbStorage implements IStorage {
         startAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         endAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
       });
-      console.log("[DB] Created sample contest");
     }
   }
 
@@ -1127,7 +1125,6 @@ export class DbStorage implements IStorage {
     });
     
     if (topSubmissionsData.length === 0) {
-      console.log("No approved submissions found for contest", contestId);
       await db.update(contests)
         .set({ status: "ended" })
         .where(eq(contests.id, contestId));
@@ -1158,7 +1155,6 @@ export class DbStorage implements IStorage {
       });
 
       if (existingLedger) {
-        console.log(`Reward already distributed for submission ${submission.id}, skipping`);
         awardedCount++;
         continue;
       }
@@ -1190,7 +1186,6 @@ export class DbStorage implements IStorage {
       await db.update(contests)
         .set({ status: "ended" })
         .where(eq(contests.id, contestId));
-      console.log(`Contest ${contestId} ended. Awarded GLORY to ${awardedCount} winners.`);
     }
   }
 

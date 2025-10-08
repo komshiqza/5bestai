@@ -48,8 +48,7 @@ export function ContestLightboxModal({
           title: submission.title,
           text: `Check out this amazing submission: ${submission.title}`,
           url: shareUrl,
-        }).catch((error) => {
-          console.log('Error sharing:', error);
+        }).catch(() => {
           navigator.clipboard.writeText(shareUrl);
         });
       } else {

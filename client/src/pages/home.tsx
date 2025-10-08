@@ -145,8 +145,7 @@ export default function Home() {
           title: selectedSubmission.title,
           text: `Check out this amazing submission: ${selectedSubmission.title}`,
           url: shareUrl,
-        }).catch((error) => {
-          console.log('Error sharing:', error);
+        }).catch(() => {
           fallbackShare(shareUrl);
         });
       } else {

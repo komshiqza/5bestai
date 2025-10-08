@@ -1,4 +1,4 @@
-import { Heart, User, Trophy, Play, Eye, Share2, Expand } from "lucide-react";
+import { Heart, User, Trophy, Play, Share2, Expand } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -114,8 +114,7 @@ export function SubmissionCard({
         title: submission.title,
         text: `Check out this amazing submission: ${submission.title}`,
         url: shareUrl,
-      }).catch((error) => {
-        console.log('Error sharing:', error);
+      }).catch(() => {
         fallbackShare(shareUrl);
       });
     } else {

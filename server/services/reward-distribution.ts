@@ -46,30 +46,3 @@ export function calculateRewardDistribution(
   return distributions;
 }
 
-// Unit test for the reward distribution function
-export function testRewardDistribution() {
-  const submissions: SubmissionWithVotes[] = [
-    { id: "sub1", userId: "user1", votesCount: 100 },
-    { id: "sub2", userId: "user2", votesCount: 80 },
-    { id: "sub3", userId: "user3", votesCount: 60 },
-    { id: "sub4", userId: "user4", votesCount: 40 },
-    { id: "sub5", userId: "user5", votesCount: 20 },
-    { id: "sub6", userId: "user6", votesCount: 10 }, // Should not receive prize
-  ];
-
-  const distributions = calculateRewardDistribution(submissions, 1000);
-  
-  console.log("Reward Distribution Test:");
-  console.log("Expected: 400, 250, 150, 100, 100");
-  console.log("Actual:", distributions.map(d => d.amount).join(", "));
-  
-  const totalDistributed = distributions.reduce((sum, d) => sum + d.amount, 0);
-  console.log(`Total distributed: ${totalDistributed} out of 1000`);
-  
-  return distributions.length === 5 &&
-         distributions[0].amount === 400 &&
-         distributions[1].amount === 250 &&
-         distributions[2].amount === 150 &&
-         distributions[3].amount === 100 &&
-         distributions[4].amount === 100;
-}
