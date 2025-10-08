@@ -158,6 +158,20 @@ export default function Profile() {
   // Fetch wallet data for withdraw modal
   const { data: walletData } = useQuery<any>({ queryKey: ["/api/wallet/me"] });
 
+  // Clear all glory history mutation
+  const clearGloryHistoryMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", `/api/glory-ledger`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/glory-ledger"] });
+      toast({ title: "Success", description: "All GLORY history cleared successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to clear GLORY history", variant: "destructive" });
+    },
+  });
+
   // Handle edit submission
   const handleEdit = (submission: any) => {
     setSelectedSubmission(submission);
@@ -212,6 +226,13 @@ export default function Profile() {
       }).catch(() => {
         toast({ title: "Error", description: "Failed to copy wallet address", variant: "destructive" });
       });
+    }
+  };
+
+  // Handle clear all glory history with confirmation
+  const handleClearGloryHistory = () => {
+    if (confirm("Are you sure you want to clear all GLORY history? Your current balance will remain unchanged.")) {
+      clearGloryHistoryMutation.mutate();
     }
   };
 
@@ -436,7 +457,19 @@ export default function Profile() {
               {/* Glory History Tab */}
               <TabsContent value="glory" className="space-y-4" data-testid="glory-tab">
                 {gloryHistory.length > 0 ? (
-                  <Card>
+                  <>
+                    <div className="flex justify-end">
+                      <Button
+                        variant="destructive"
+                        onClick={handleClearGloryHistory}
+                        disabled={clearGloryHistoryMutation.isPending}
+                        data-testid="button-clear-glory-history"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Clear All History
+                      </Button>
+                    </div>
+                    <Card>
                       <CardContent className="p-0">
                         <div className="overflow-x-auto">
                           <table className="w-full" data-testid="glory-history-table">
@@ -484,6 +517,7 @@ export default function Profile() {
                         </div>
                       </CardContent>
                     </Card>
+                  </>
                 ) : (
                   <div className="text-center py-12" data-testid="no-glory-history">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
