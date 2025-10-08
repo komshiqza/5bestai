@@ -267,6 +267,24 @@ export const updateCashoutStatusSchema = z.object({
   txHash: z.string().optional()
 });
 
+export const approveCashoutSchema = z.object({
+  requestId: z.string()
+});
+
+export const rejectCashoutSchema = z.object({
+  requestId: z.string(),
+  rejectionReason: z.string().optional()
+});
+
+export const bulkCashoutIdsSchema = z.object({
+  requestIds: z.array(z.string()).min(1, "At least one request must be selected")
+});
+
+export const bulkRejectCashoutSchema = z.object({
+  requestIds: z.array(z.string()).min(1, "At least one request must be selected"),
+  rejectionReason: z.string().optional()
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

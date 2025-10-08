@@ -21,7 +21,11 @@ import {
   insertSubmissionSchema,
   connectWalletSchema,
   createCashoutRequestSchema,
-  updateCashoutStatusSchema
+  updateCashoutStatusSchema,
+  approveCashoutSchema,
+  rejectCashoutSchema,
+  bulkCashoutIdsSchema,
+  bulkRejectCashoutSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1585,6 +1589,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ request: updatedRequest });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update cashout request" });
+    }
+  });
+
+  app.post("/api/admin/cashout/approve", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { requestId } = approveCashoutSchema.parse(req.body);
+      const adminId = req.user!.id;
+
+      const request = await storage.getCashoutRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ error: "Cashout request not found" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({ error: "Only pending requests can be approved" });
+      }
+
+      const updatedRequest = await storage.updateCashoutRequest(requestId, {
+        status: "approved",
+        adminId
+      });
+
+      await storage.createCashoutEvent({
+        cashoutRequestId: requestId,
+        fromStatus: "pending",
+        toStatus: "approved",
+        actorUserId: adminId,
+        notes: "Request approved by admin"
+      });
+
+      await storage.updateUserGloryBalance(request.userId, -request.amountGlory);
+      
+      await storage.createGloryTransaction({
+        userId: request.userId,
+        delta: -request.amountGlory,
+        reason: `Cashout request approved (${request.tokenType})`,
+        contestId: null,
+        submissionId: null
+      });
+
+      await storage.createAuditLog({
+        actorUserId: adminId,
+        action: "APPROVE_CASHOUT",
+        meta: { 
+          cashoutRequestId: requestId,
+          userId: request.userId,
+          amountGlory: request.amountGlory
+        }
+      });
+
+      res.json({ request: updatedRequest });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to approve cashout request" });
+    }
+  });
+
+  app.post("/api/admin/cashout/reject", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { requestId, rejectionReason } = rejectCashoutSchema.parse(req.body);
+      const adminId = req.user!.id;
+
+      const request = await storage.getCashoutRequest(requestId);
+      if (!request) {
+        return res.status(404).json({ error: "Cashout request not found" });
+      }
+
+      if (request.status !== "pending") {
+        return res.status(400).json({ error: "Only pending requests can be rejected" });
+      }
+
+      const updatedRequest = await storage.updateCashoutRequest(requestId, {
+        status: "rejected",
+        adminId,
+        rejectionReason
+      });
+
+      await storage.createCashoutEvent({
+        cashoutRequestId: requestId,
+        fromStatus: "pending",
+        toStatus: "rejected",
+        actorUserId: adminId,
+        notes: rejectionReason || "Request rejected by admin"
+      });
+
+      await storage.createAuditLog({
+        actorUserId: adminId,
+        action: "REJECT_CASHOUT",
+        meta: { 
+          cashoutRequestId: requestId,
+          userId: request.userId,
+          amountGlory: request.amountGlory,
+          reason: rejectionReason
+        }
+      });
+
+      res.json({ request: updatedRequest });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to reject cashout request" });
+    }
+  });
+
+  app.post("/api/admin/cashout/bulk-approve", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { requestIds } = bulkCashoutIdsSchema.parse(req.body);
+      const adminId = req.user!.id;
+
+      let approvedCount = 0;
+      const errors: string[] = [];
+
+      for (const requestId of requestIds) {
+        try {
+          const request = await storage.getCashoutRequest(requestId);
+          if (!request) {
+            errors.push(`Request ${requestId} not found`);
+            continue;
+          }
+
+          if (request.status !== "pending") {
+            errors.push(`Request ${requestId} is not pending`);
+            continue;
+          }
+
+          await storage.updateCashoutRequest(requestId, {
+            status: "approved",
+            adminId
+          });
+
+          await storage.createCashoutEvent({
+            cashoutRequestId: requestId,
+            fromStatus: "pending",
+            toStatus: "approved",
+            actorUserId: adminId,
+            notes: "Request approved by admin (bulk operation)"
+          });
+
+          await storage.updateUserGloryBalance(request.userId, -request.amountGlory);
+          
+          await storage.createGloryTransaction({
+            userId: request.userId,
+            delta: -request.amountGlory,
+            reason: `Cashout request approved (${request.tokenType})`,
+            contestId: null,
+            submissionId: null
+          });
+
+          await storage.createAuditLog({
+            actorUserId: adminId,
+            action: "APPROVE_CASHOUT",
+            meta: { 
+              cashoutRequestId: requestId,
+              userId: request.userId,
+              amountGlory: request.amountGlory,
+              bulkOperation: true
+            }
+          });
+
+          approvedCount++;
+        } catch (error) {
+          errors.push(`Failed to approve request ${requestId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      res.json({ 
+        approvedCount,
+        totalRequested: requestIds.length,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to bulk approve cashout requests" });
+    }
+  });
+
+  app.post("/api/admin/cashout/bulk-reject", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { requestIds, rejectionReason } = bulkRejectCashoutSchema.parse(req.body);
+      const adminId = req.user!.id;
+
+      let rejectedCount = 0;
+      const errors: string[] = [];
+
+      for (const requestId of requestIds) {
+        try {
+          const request = await storage.getCashoutRequest(requestId);
+          if (!request) {
+            errors.push(`Request ${requestId} not found`);
+            continue;
+          }
+
+          if (request.status !== "pending") {
+            errors.push(`Request ${requestId} is not pending`);
+            continue;
+          }
+
+          await storage.updateCashoutRequest(requestId, {
+            status: "rejected",
+            adminId,
+            rejectionReason
+          });
+
+          await storage.createCashoutEvent({
+            cashoutRequestId: requestId,
+            fromStatus: "pending",
+            toStatus: "rejected",
+            actorUserId: adminId,
+            notes: rejectionReason || "Request rejected by admin (bulk operation)"
+          });
+
+          await storage.createAuditLog({
+            actorUserId: adminId,
+            action: "REJECT_CASHOUT",
+            meta: { 
+              cashoutRequestId: requestId,
+              userId: request.userId,
+              amountGlory: request.amountGlory,
+              reason: rejectionReason,
+              bulkOperation: true
+            }
+          });
+
+          rejectedCount++;
+        } catch (error) {
+          errors.push(`Failed to reject request ${requestId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      res.json({ 
+        rejectedCount,
+        totalRequested: requestIds.length,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to bulk reject cashout requests" });
     }
   });
 
