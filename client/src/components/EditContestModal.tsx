@@ -136,7 +136,19 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
   if (!isOpen) return null;
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updates: any = { [field]: value };
+      
+      // Sync contest end time with voting end time
+      if (field === 'endTime') {
+        updates.votingEndTime = value;
+      }
+      if (field === 'endDate') {
+        updates.votingEndDate = value;
+      }
+      
+      return { ...prev, ...updates };
+    });
   };
 
   const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
