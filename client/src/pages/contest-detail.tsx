@@ -214,6 +214,36 @@ export default function ContestDetailPage() {
     setShowUploadWizard(true);
   };
 
+  // Show loading state while contests are being fetched
+  if (contestsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-white mb-2">Loading contest...</div>
+          <div className="text-gray-400">Please wait</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show not found if contests loaded but slug doesn't match
+  if (!contest) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-white mb-2">Contest not found</div>
+          <div className="text-gray-400 mb-6">The contest you're looking for doesn't exist or has been removed.</div>
+          <Link href="/contests">
+            <GlassButton variant="primary">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Contests
+            </GlassButton>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex-1 px-4 py-8 sm:px-6 md:px-10 lg:px-20">
