@@ -919,8 +919,59 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Submission Management</CardTitle>
+                  <div className="flex items-center gap-4">
+                    <CardTitle>Submission Management</CardTitle>
+                    {filteredSubmissions.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isAllSubmissionsSelected}
+                          onCheckedChange={handleSelectAllSubmissions}
+                          data-testid="select-all-submissions"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {selectedSubmissionIds.length > 0 ? `${selectedSubmissionIds.length} selected` : 'Select all'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-center space-x-2">
+                    {selectedSubmissionIds.length > 0 && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-success/20 text-success hover:bg-success/30 border-success/30"
+                          onClick={() => bulkApproveSubmissionsMutation.mutate(selectedSubmissionIds)}
+                          disabled={bulkApproveSubmissionsMutation.isPending}
+                          data-testid="bulk-approve-submissions"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Approve ({selectedSubmissionIds.length})
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                          onClick={() => bulkRejectSubmissionsMutation.mutate(selectedSubmissionIds)}
+                          disabled={bulkRejectSubmissionsMutation.isPending}
+                          data-testid="bulk-reject-submissions"
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Reject ({selectedSubmissionIds.length})
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                          onClick={() => bulkDeleteSubmissionsMutation.mutate(selectedSubmissionIds)}
+                          disabled={bulkDeleteSubmissionsMutation.isPending}
+                          data-testid="bulk-delete-submissions"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete ({selectedSubmissionIds.length})
+                        </Button>
+                      </>
+                    )}
                     <Select value={submissionStatusFilter} onValueChange={setSubmissionStatusFilter} data-testid="submission-status-filter">
                       <SelectTrigger className="w-40">
                         <SelectValue />
@@ -960,6 +1011,13 @@ export default function AdminDashboard() {
                             target.onerror = null;
                           }}
                         />
+                        <div className="absolute top-3 left-3 bg-background/80 backdrop-blur-sm rounded p-1">
+                          <Checkbox
+                            checked={selectedSubmissionIds.includes(submission.id)}
+                            onCheckedChange={(checked) => handleSubmissionSelect(submission.id, checked as boolean)}
+                            data-testid={`select-submission-${submission.id}`}
+                          />
+                        </div>
                         <div className="absolute top-3 right-3">
                           <Badge variant="secondary" className="text-xs">
                             {submission.type === "image" ? (
