@@ -52,14 +52,11 @@ export default function Home() {
           const uniqueMap = new Map(submissions.map((s: any) => [s.id, s]));
           return Array.from(uniqueMap.values());
         } else {
-          // Page > 1: merge and deduplicate
-          const allMap = new Map(prev.map((s: any) => [s.id, s]));
-          submissions.forEach((s: any) => {
-            if (!allMap.has(s.id)) {
-              allMap.set(s.id, s);
-            }
-          });
-          return Array.from(allMap.values());
+          // Page > 1: append new submissions (already sorted by newest from API)
+          const existingIds = new Set(prev.map((s: any) => s.id));
+          const newSubmissions = submissions.filter((s: any) => !existingIds.has(s.id));
+          // Append older submissions to the end, maintaining chronological order
+          return [...prev, ...newSubmissions];
         }
       });
       setHasMore(submissions.length === 8); // If we got less than 8, no more pages
