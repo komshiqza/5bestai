@@ -9,6 +9,7 @@ import { authenticateToken, requireAdmin, requireApproved, generateToken, type A
 import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
+import { ContestScheduler } from "./contest-scheduler";
 import { z } from "zod";
 import { 
   loginSchema, 
@@ -28,8 +29,16 @@ import {
   bulkRejectCashoutSchema
 } from "@shared/schema";
 
+// Create contest scheduler instance
+export const contestScheduler = new ContestScheduler(storage);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
+  
+  // Initialize contest scheduler
+  contestScheduler.initialize().catch(err => {
+    console.error("Failed to initialize contest scheduler:", err);
+  });
   
   // Track recent GLORY balance requests to prevent duplicates
   const recentGloryRequests = new Map<string, number>();
@@ -483,6 +492,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Contest not found" });
       }
 
+      // Reschedule automatic end if endAt was updated and contest is active
+      if (updateData.endAt && updatedContest.status === "active") {
+        contestScheduler.rescheduleContest(updatedContest.id, updatedContest.endAt);
+      }
+
       // Log admin action
       await storage.createAuditLog({
         actorUserId: req.user!.id,
@@ -511,6 +525,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update contest status to active
       const updatedContest = await storage.updateContest(contest.id, { status: "active" });
 
+      // Schedule automatic end for this contest
+      if (updatedContest && updatedContest.endAt) {
+        contestScheduler.scheduleContestEnd(updatedContest.id, updatedContest.endAt);
+      }
+
       // Log admin action
       await storage.createAuditLog({
         actorUserId: req.user!.id,
@@ -538,6 +557,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (contest.status !== "active") {
         return res.status(400).json({ error: "Contest is not active" });
       }
+
+      // Cancel any scheduled automatic distribution
+      contestScheduler.cancelJob(contest.id);
 
       // Distribute rewards using transaction-like approach
       await storage.distributeContestRewards(contest.id);
@@ -600,6 +622,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (updated) {
             updatedCount++;
             updatedContests.push({ id: updated.id, title: updated.title });
+            // Schedule automatic end for each activated contest
+            if (updated.endAt) {
+              contestScheduler.scheduleContestEnd(updated.id, updated.endAt);
+            }
           }
         }
       }
@@ -630,6 +656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const contest = await storage.getContest(contestId);
           if (contest && contest.status === "active") {
+            // Cancel any scheduled automatic distribution
+            contestScheduler.cancelJob(contestId);
+            
             await storage.distributeContestRewards(contestId);
             endedCount++;
             endedContests.push({ id: contest.id, title: contest.title, prizeGlory: contest.prizeGlory });
