@@ -151,13 +151,32 @@ export default function ContestDetailPage() {
     window.scrollTo(0, 0);
   }, []);
 
+  // Show loading state while contests are being fetched
+  if (contestsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-white mb-2">Loading contest...</div>
+          <div className="text-gray-400">Please wait</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show not found if contests loaded but slug doesn't match
   if (!contest) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-4">
-        <h2 className="text-2xl font-bold text-white mb-4">Contest not found</h2>
-        <Link href="/contests">
-          <GlassButton>Back to Contests</GlassButton>
-        </Link>
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-white mb-2">Contest not found</div>
+          <div className="text-gray-400 mb-6">The contest you're looking for doesn't exist or has been removed.</div>
+          <Link href="/contests">
+            <GlassButton variant="primary">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Contests
+            </GlassButton>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -213,36 +232,6 @@ export default function ContestDetailPage() {
     }
     setShowUploadWizard(true);
   };
-
-  // Show loading state while contests are being fetched
-  if (contestsLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white mb-2">Loading contest...</div>
-          <div className="text-gray-400">Please wait</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show not found if contests loaded but slug doesn't match
-  if (!contest) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white mb-2">Contest not found</div>
-          <div className="text-gray-400 mb-6">The contest you're looking for doesn't exist or has been removed.</div>
-          <Link href="/contests">
-            <GlassButton variant="primary">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Contests
-            </GlassButton>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
