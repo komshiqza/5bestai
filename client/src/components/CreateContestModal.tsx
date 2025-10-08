@@ -188,35 +188,42 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     }));
   };
 
-
-  const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
-    // Validate required date fields
+  // Unified validation function for all form fields
+  const validateFormData = (dataToValidate: typeof formData): string[] => {
     const validationErrors: string[] = [];
     
+    // Validate basic fields
+    if (!dataToValidate.title.trim()) {
+      validationErrors.push('Contest title is required');
+    }
+    if (!dataToValidate.description.trim()) {
+      validationErrors.push('Description is required');
+    }
+    
     // Validate start date (if not "now")
-    if (dataToSubmit.startDateOption !== 'now' && !dataToSubmit.startDate) {
+    if (dataToValidate.startDateOption !== 'now' && !dataToValidate.startDate) {
       validationErrors.push('Start date is required');
     }
     
     // Validate end date (always required)
-    if (!dataToSubmit.votingEndDate) {
+    if (!dataToValidate.votingEndDate) {
       validationErrors.push('Contest end date is required');
     }
     
     // Validate submission deadline (only if enabled)
-    if (dataToSubmit.enableSubmissionDeadline && !dataToSubmit.submissionDeadline) {
+    if (dataToValidate.enableSubmissionDeadline && !dataToValidate.submissionDeadline) {
       validationErrors.push('Submission deadline is required when enabled');
     }
     
     // Validate voting start date (if not "now")
-    if (dataToSubmit.votingStartOption !== 'now' && !dataToSubmit.votingStartDate) {
+    if (dataToValidate.votingStartOption !== 'now' && !dataToValidate.votingStartDate) {
       validationErrors.push('Voting start date is required');
     }
     
-    if (validationErrors.length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+    return validationErrors;
+  };
+
+  const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
     
     // Generate unique slug from title
     const baseSlug = dataToSubmit.title
