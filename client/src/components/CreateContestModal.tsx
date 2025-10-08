@@ -161,20 +161,24 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
   };
 
   const addPrizePlace = () => {
-    setFormData(prev => ({
-      ...prev,
-      prizeDistribution: [
-        ...prev.prizeDistribution,
-        { place: prev.prizeDistribution.length + 1, value: 0 }
-      ]
-    }));
+    setFormData(prev => {
+      const currentDistribution = prev.prizeDistribution || [];
+      return {
+        ...prev,
+        prizeDistribution: [
+          ...currentDistribution,
+          { place: currentDistribution.length + 1, value: 0 }
+        ]
+      };
+    });
   };
 
   const removePrizePlace = (index: number) => {
-    if (formData.prizeDistribution.length > 1) {
+    const currentDistribution = formData.prizeDistribution || [];
+    if (currentDistribution.length > 1) {
       setFormData(prev => ({
         ...prev,
-        prizeDistribution: prev.prizeDistribution.filter((_, i) => i !== index)
+        prizeDistribution: (prev.prizeDistribution || []).filter((_, i) => i !== index)
       }));
     }
   };
@@ -182,7 +186,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
   const updatePrizeValue = (index: number, value: number) => {
     setFormData(prev => ({
       ...prev,
-      prizeDistribution: prev.prizeDistribution.map((prize, i) =>
+      prizeDistribution: (prev.prizeDistribution || []).map((prize, i) =>
         i === index ? { ...prize, value } : prize
       )
     }));
