@@ -30,6 +30,39 @@ export function EditSubmissionModal({ isOpen, onClose, onSubmit, submission }: E
     }
   }, [submission, isOpen]);
 
+  // Handle browser back button and Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const modalId = Date.now();
+
+    // Push unique history state when modal opens
+    window.history.pushState({ modal: 'editSubmission', modalId }, '');
+
+    // Handle Escape key
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    // Handle browser back button
+    const handlePopState = () => {
+      // Close modal when going back in history
+      if (window.history.state?.modalId !== modalId) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isOpen, onClose]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
