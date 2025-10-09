@@ -221,27 +221,34 @@ export default function ContestDetailPage() {
     hasVoted: userVotes.some((v: any) => v.submissionId === sub.id)
   }));
 
-  // Filter submissions
-  let filteredSubmissions = submissionsWithVotes;
+  // Top 5 submissions always sorted by votes (not affected by filters)
+  const topSubmissions = [...submissionsWithVotes]
+    .sort((a: any, b: any) => b.voteCount - a.voteCount)
+    .slice(0, 5);
+
+  // Other submissions (excluding top 5)
+  const topSubmissionIds = new Set(topSubmissions.map(s => s.id));
+  let otherSubmissions = submissionsWithVotes.filter((sub: any) => !topSubmissionIds.has(sub.id));
+
+  // Filter other submissions (search applies only to non-top-5)
   if (searchTerm) {
-    filteredSubmissions = filteredSubmissions.filter((sub: any) =>
+    otherSubmissions = otherSubmissions.filter((sub: any) =>
       sub.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sub.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sub.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }
 
-  // Sort submissions based on selected sort option
-  const sortedSubmissions = [...filteredSubmissions].sort((a: any, b: any) => {
+  // Sort other submissions based on selected sort option
+  const allSubmissions = [...otherSubmissions].sort((a: any, b: any) => {
     if (sortBy === "votes") return b.voteCount - a.voteCount;
     if (sortBy === "recent") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     if (sortBy === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     return 0;
   });
 
-  // Top 5 submissions for expanded layout
-  const topSubmissions = sortedSubmissions.slice(0, 5);
-  const allSubmissions = sortedSubmissions.slice(5);
+  // Combined filtered submissions for "no results" check
+  const filteredSubmissions = [...topSubmissions, ...allSubmissions];
 
   const handleVote = (submissionId: string) => {
     if (!user) {
@@ -455,56 +462,6 @@ export default function ContestDetailPage() {
             </div>
           </div>
 
-          {/* Sticky Toolbar - Always visible */}
-          {!submissionsLoading && submissionsWithVotes.length > 0 && (
-            <div className="sticky top-[100px] z-40 mt-12 rounded-lg bg-background-dark/80 px-4 py-4 backdrop-blur-sm glow-border">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-full sm:w-auto">
-                    <select 
-                      value={
-                        sortBy === "votes" ? "Most Voted" : 
-                        sortBy === "recent" ? "Newest" : 
-                        sortBy === "oldest" ? "Oldest" : "Most Voted"
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "Most Voted") setSortBy("votes");
-                        else if (value === "Newest") setSortBy("recent");
-                        else if (value === "Oldest") setSortBy("oldest");
-                      }}
-                      className="w-full appearance-none rounded-lg border-white/30 py-2 pl-3 pr-8 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white sm:w-auto"
-                      style={{ backgroundColor: '#171121' }}
-                    >
-                      <option style={{ backgroundColor: '#171121', color: 'white' }}>Most Voted</option>
-                      <option style={{ backgroundColor: '#171121', color: 'white' }}>Newest</option>
-                      <option style={{ backgroundColor: '#171121', color: 'white' }}>Oldest</option>
-                    </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60">
-                      <ChevronDown className="h-4 w-4" />
-                    </span>
-                  </div>
-                </div>
-                <div className="flex w-full items-center gap-4 sm:w-auto">
-                  <div className="relative w-full flex-1 max-w-xs sm:w-auto">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/60">
-                      <Search className="h-5 w-5" />
-                    </span>
-                    <input 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full rounded-lg border-white/30 py-2 pl-10 pr-4 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white" 
-                      placeholder="Search entries..." 
-                      type="search"
-                      data-testid="input-search"
-                      style={{ backgroundColor: '#171121' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {submissionsLoading ? (
             <div className="text-center text-white py-12">Loading submissions...</div>
           ) : submissionsWithVotes.length === 0 ? (
@@ -709,6 +666,56 @@ export default function ContestDetailPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Filter Toolbar - Applies only to All Submissions */}
+              {!submissionsLoading && allSubmissions.length > 0 && (
+                <div className="mt-8 rounded-lg bg-background-dark/80 px-4 py-4 backdrop-blur-sm glow-border">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-full sm:w-auto">
+                        <select 
+                          value={
+                            sortBy === "votes" ? "Most Voted" : 
+                            sortBy === "recent" ? "Newest" : 
+                            sortBy === "oldest" ? "Oldest" : "Most Voted"
+                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "Most Voted") setSortBy("votes");
+                            else if (value === "Newest") setSortBy("recent");
+                            else if (value === "Oldest") setSortBy("oldest");
+                          }}
+                          className="w-full appearance-none rounded-lg border-white/30 py-2 pl-3 pr-8 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white sm:w-auto"
+                          style={{ backgroundColor: '#171121' }}
+                        >
+                          <option style={{ backgroundColor: '#171121', color: 'white' }}>Most Voted</option>
+                          <option style={{ backgroundColor: '#171121', color: 'white' }}>Newest</option>
+                          <option style={{ backgroundColor: '#171121', color: 'white' }}>Oldest</option>
+                        </select>
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60">
+                          <ChevronDown className="h-4 w-4" />
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex w-full items-center gap-4 sm:w-auto">
+                      <div className="relative w-full flex-1 max-w-xs sm:w-auto">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/60">
+                          <Search className="h-5 w-5" />
+                        </span>
+                        <input 
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full rounded-lg border-white/30 py-2 pl-10 pr-4 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white" 
+                          placeholder="Search entries..." 
+                          type="search"
+                          data-testid="input-search"
+                          style={{ backgroundColor: '#171121' }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
