@@ -96,6 +96,30 @@ Preferred communication style: Simple, everyday language.
 - **Response Format**: Standard { data } success, { error } failure pattern
 - **Path Aliases**: `@/` for client, `@shared/` for shared code enabling clean imports
 
+### Submission Detail & Sharing System
+
+**Dedicated Submission Pages**:
+- Each submission has unique URL: `/submission/:id`
+- Public access for approved submissions, private for pending (owner/admin only)
+- Full submission details: image/video, author info, contest link, vote count, tags
+- Direct vote and share functionality on submission page
+
+**Share Functionality**:
+- Web Share API for native mobile sharing
+- Clipboard fallback for desktop browsers  
+- Share URLs point to dedicated submission detail pages (`/submission/:id`)
+- Prepared for future marketplace: dedicated pages enable product listings, pricing, licensing info
+
+**API Endpoint** (`GET /api/submissions/:id`):
+- Optional authentication (public access for approved, authenticated for own pending)
+- Enriched response includes user info, contest info, hasVoted status
+- Permission-based visibility: admin sees all, users see approved + own submissions
+
+**Future Marketplace Integration**:
+- Submission detail pages designed to support "Buy Now" buttons
+- URL structure ready for SEO and social media sharing
+- Foundation for adding price, license type, download management
+
 ## External Dependencies
 
 ### Core Services
