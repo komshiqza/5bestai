@@ -14,6 +14,7 @@ import { useUserBalance } from "@/hooks/useUserBalance";
 import { WalletConnect } from "@/components/wallet/WalletConnect";
 import { CashoutRequest } from "@/components/wallet/CashoutRequest";
 import { EditSubmissionModal } from "@/components/EditSubmissionModal";
+import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -28,6 +29,7 @@ export default function Profile() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState("");
 
@@ -393,12 +395,14 @@ export default function Profile() {
 
                 {/* Actions */}
                 <div className="space-y-2">
-                  <Link href="/upload" data-testid="upload-button">
-                    <Button className="w-full gradient-glory hover:opacity-90 transition-opacity">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload New Entry
-                    </Button>
-                  </Link>
+                  <Button 
+                    className="w-full gradient-glory hover:opacity-90 transition-opacity"
+                    onClick={() => setUploadModalOpen(true)}
+                    data-testid="upload-button"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload New Entry
+                  </Button>
                   <GlassButton
                     className="w-full"
                     onClick={() => setWithdrawModalOpen(true)}
@@ -739,6 +743,15 @@ export default function Profile() {
         onClose={() => setEditModalOpen(false)}
         onSubmit={handleSaveEdit}
         submission={selectedSubmission || { id: '', title: '', description: '', tags: [] }}
+      />
+
+      {/* Upload Wizard Modal */}
+      <UploadWizardModal
+        isOpen={uploadModalOpen}
+        onClose={() => {
+          setUploadModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['/api/me/submissions'] });
+        }}
       />
 
       {/* Withdraw Glory Modal */}
