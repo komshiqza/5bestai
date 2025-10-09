@@ -202,7 +202,8 @@ export default function ContestDetailPage() {
   if (searchTerm) {
     filteredSubmissions = filteredSubmissions.filter((sub: any) =>
       sub.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sub.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      sub.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sub.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }
 
@@ -430,11 +431,66 @@ export default function ContestDetailPage() {
             </div>
           </div>
 
+          {/* Sticky Toolbar - Always visible */}
+          {!submissionsLoading && submissionsWithVotes.length > 0 && (
+            <div className="sticky top-[100px] z-40 mt-12 rounded-lg bg-background-dark/80 px-4 py-4 backdrop-blur-sm glow-border">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-full sm:w-auto">
+                    <select 
+                      value={
+                        sortBy === "votes" ? "Most Voted" : 
+                        sortBy === "recent" ? "Newest" : 
+                        sortBy === "oldest" ? "Oldest" : "Most Voted"
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "Most Voted") setSortBy("votes");
+                        else if (value === "Newest") setSortBy("recent");
+                        else if (value === "Oldest") setSortBy("oldest");
+                      }}
+                      className="w-full appearance-none rounded-lg border-white/30 py-2 pl-3 pr-8 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white sm:w-auto"
+                      style={{ backgroundColor: '#171121' }}
+                    >
+                      <option style={{ backgroundColor: '#171121', color: 'white' }}>Most Voted</option>
+                      <option style={{ backgroundColor: '#171121', color: 'white' }}>Newest</option>
+                      <option style={{ backgroundColor: '#171121', color: 'white' }}>Oldest</option>
+                    </select>
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60">
+                      <ChevronDown className="h-4 w-4" />
+                    </span>
+                  </div>
+                </div>
+                <div className="flex w-full items-center gap-4 sm:w-auto">
+                  <div className="relative w-full flex-1 max-w-xs sm:w-auto">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/60">
+                      <Search className="h-5 w-5" />
+                    </span>
+                    <input 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full rounded-lg border-white/30 py-2 pl-10 pr-4 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white" 
+                      placeholder="Search entries..." 
+                      type="search"
+                      data-testid="input-search"
+                      style={{ backgroundColor: '#171121' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {submissionsLoading ? (
             <div className="text-center text-white py-12">Loading submissions...</div>
-          ) : filteredSubmissions.length === 0 ? (
-            <div className="text-center text-gray-400 py-12">
+          ) : submissionsWithVotes.length === 0 ? (
+            <div className="text-center text-gray-400 py-12 mt-12">
               <p>No submissions yet. Be the first to enter!</p>
+            </div>
+          ) : filteredSubmissions.length === 0 ? (
+            <div className="text-center text-gray-400 py-12 mt-8">
+              <p>No results found for "{searchTerm}"</p>
+              <p className="text-sm mt-2">Try a different search term</p>
             </div>
           ) : (
             <>
@@ -632,54 +688,6 @@ export default function ContestDetailPage() {
                   </div>
                 </div>
               )}
-
-              {/* Sticky Toolbar */}
-              <div className="sticky top-[100px] z-40 mt-12 rounded-lg bg-background-dark/80 px-4 py-4 backdrop-blur-sm glow-border">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="relative w-full sm:w-auto">
-                      <select 
-                        value={
-                          sortBy === "votes" ? "Most Voted" : 
-                          sortBy === "recent" ? "Newest" : 
-                          sortBy === "oldest" ? "Oldest" : "Most Voted"
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === "Most Voted") setSortBy("votes");
-                          else if (value === "Newest") setSortBy("recent");
-                          else if (value === "Oldest") setSortBy("oldest");
-                        }}
-                        className="w-full appearance-none rounded-lg border-white/30 py-2 pl-3 pr-8 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white sm:w-auto"
-                        style={{ backgroundColor: '#171121' }}
-                      >
-                        <option style={{ backgroundColor: '#171121', color: 'white' }}>Most Voted</option>
-                        <option style={{ backgroundColor: '#171121', color: 'white' }}>Newest</option>
-                        <option style={{ backgroundColor: '#171121', color: 'white' }}>Oldest</option>
-                      </select>
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60">
-                        <ChevronDown className="h-4 w-4" />
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex w-full items-center gap-4 sm:w-auto">
-                    <div className="relative w-full flex-1 max-w-xs sm:w-auto">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/60">
-                        <Search className="h-5 w-5" />
-                      </span>
-                      <input 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full rounded-lg border-white/30 py-2 pl-10 pr-4 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white" 
-                        placeholder="Search entries..." 
-                        type="search"
-                        data-testid="input-search"
-                        style={{ backgroundColor: '#171121' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* All Submissions */}
               {allSubmissions.length > 0 && (
