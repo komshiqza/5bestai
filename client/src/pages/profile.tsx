@@ -423,18 +423,18 @@ export default function Profile() {
           {/* Profile Content */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="submissions" className="space-y-4" data-testid="profile-tabs">
-              <TabsList className="inline-flex w-full md:grid md:grid-cols-3 overflow-x-auto">
-                <TabsTrigger value="submissions" className="flex-shrink-0 px-6 gap-2" data-testid="tab-submissions">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="submissions" className="gap-2" data-testid="tab-submissions">
                   <Upload className="w-4 h-4" />
-                  <span>My Submissions</span>
+                  <span className="hidden md:inline">My Submissions</span>
                 </TabsTrigger>
-                <TabsTrigger value="glory" className="flex-shrink-0 px-6 gap-2" data-testid="tab-glory">
+                <TabsTrigger value="glory" className="gap-2" data-testid="tab-glory">
                   <Medal className="w-4 h-4" />
-                  <span>GLORY History</span>
+                  <span className="hidden md:inline">GLORY History</span>
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="flex-shrink-0 px-6 gap-2" data-testid="tab-settings">
+                <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
                   <Settings className="w-4 h-4" />
-                  <span>Settings</span>
+                  <span className="hidden md:inline">Settings</span>
                 </TabsTrigger>
               </TabsList>
 
