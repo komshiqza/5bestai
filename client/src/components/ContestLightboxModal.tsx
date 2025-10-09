@@ -40,6 +40,8 @@ export function ContestLightboxModal({
     // Handle Escape key
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Remove focus/hover state to prevent visual artifacts
+        (document.activeElement as HTMLElement)?.blur();
         onClose();
       }
     };

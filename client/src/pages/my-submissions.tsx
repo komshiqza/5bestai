@@ -29,6 +29,8 @@ export default function MySubmissions() {
     // Handle Escape key
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Remove focus/hover state to prevent visual artifacts
+        (document.activeElement as HTMLElement)?.blur();
         setSelectedSubmission(null);
       }
     };
