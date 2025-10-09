@@ -56,7 +56,7 @@ export default function Contests() {
   }
 
   return (
-    <div className="min-h-screen py-8 pb-20 md:py-16 md:pb-16" data-testid="contests-page">
+    <div className="min-h-screen py-8 pb-24 md:py-16 md:pb-16" data-testid="contests-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
