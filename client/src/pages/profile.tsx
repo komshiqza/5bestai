@@ -423,10 +423,10 @@ export default function Profile() {
           {/* Profile Content */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="submissions" className="space-y-4" data-testid="profile-tabs">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="submissions" data-testid="tab-submissions">My Submissions</TabsTrigger>
-                <TabsTrigger value="glory" data-testid="tab-glory">GLORY History</TabsTrigger>
-                <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
+              <TabsList className="inline-flex w-full md:grid md:grid-cols-3 overflow-x-auto">
+                <TabsTrigger value="submissions" className="flex-shrink-0 px-6" data-testid="tab-submissions">My Submissions</TabsTrigger>
+                <TabsTrigger value="glory" className="flex-shrink-0 px-6" data-testid="tab-glory">GLORY History</TabsTrigger>
+                <TabsTrigger value="settings" className="flex-shrink-0 px-6" data-testid="tab-settings">Settings</TabsTrigger>
               </TabsList>
 
               {/* Submissions Tab */}
