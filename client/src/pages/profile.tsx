@@ -5,7 +5,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy, Camera, Save, X as XIcon } from "lucide-react";
+import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy, Camera, Save, X as XIcon, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
@@ -32,6 +32,7 @@ export default function Profile() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Redirect if not authenticated
   if (!isAuthenticated(user)) {
@@ -434,11 +435,38 @@ export default function Profile() {
                 </TabsTrigger>
               </TabsList>
 
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  type="text"
+                  placeholder="Search by title or tags..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search-submissions"
+                />
+              </div>
+
               {/* Submissions Tab */}
               <TabsContent value="submissions" className="space-y-4" data-testid="submissions-tab">
-                {submissionsWithRank.length > 0 ? (
+                {submissionsWithRank.filter((sub: any) => {
+                  if (!searchQuery.trim()) return true;
+                  const query = searchQuery.toLowerCase();
+                  return (
+                    sub.title?.toLowerCase().includes(query) ||
+                    sub.tags?.some((tag: string) => tag.toLowerCase().includes(query))
+                  );
+                }).length > 0 ? (
                   <div className="space-y-4">
-                    {submissionsWithRank.map((submission: any) => (
+                    {submissionsWithRank.filter((sub: any) => {
+                      if (!searchQuery.trim()) return true;
+                      const query = searchQuery.toLowerCase();
+                      return (
+                        sub.title?.toLowerCase().includes(query) ||
+                        sub.tags?.some((tag: string) => tag.toLowerCase().includes(query))
+                      );
+                    }).map((submission: any) => (
                       <Card key={submission.id} className={`hover:border-primary/50 transition-colors ${submission.status === "rejected" ? "opacity-75" : ""}`} data-testid={`submission-item-${submission.id}`}>
                         <CardContent className="p-6">
                           <div className="flex flex-col sm:flex-row gap-4">
@@ -541,18 +569,29 @@ export default function Profile() {
                 ) : (
                   <div className="text-center py-12" data-testid="no-submissions">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
-                      <Trophy className="w-12 h-12 text-muted-foreground" />
+                      {searchQuery ? (
+                        <Search className="w-12 h-12 text-muted-foreground" />
+                      ) : (
+                        <Trophy className="w-12 h-12 text-muted-foreground" />
+                      )}
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">No active contest submissions</h3>
+                    <h3 className="text-xl font-semibold mb-2">
+                      {searchQuery ? "No results found" : "No active contest submissions"}
+                    </h3>
                     <p className="text-muted-foreground mb-6">
-                      You don't have any submissions in active contests. Start competing!
+                      {searchQuery 
+                        ? `No submissions match "${searchQuery}". Try a different search term.`
+                        : "You don't have any submissions in active contests. Start competing!"
+                      }
                     </p>
-                    <Link href="/contests" data-testid="browse-contests-button">
-                      <GlassButton>
-                        Browse Active Contests
-                        <Trophy className="w-4 h-4 ml-2" />
-                      </GlassButton>
-                    </Link>
+                    {!searchQuery && (
+                      <Link href="/contests" data-testid="browse-contests-button">
+                        <GlassButton>
+                          Browse Active Contests
+                          <Trophy className="w-4 h-4 ml-2" />
+                        </GlassButton>
+                      </Link>
+                    )}
                   </div>
                 )}
               </TabsContent>
