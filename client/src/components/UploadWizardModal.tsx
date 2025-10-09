@@ -176,8 +176,11 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       if (!description.trim()) newErrors.push("Description is required.");
     }
     if (s === 3) {
-      if (!selectedContest) newErrors.push("Please select a contest.");
-      if (!agreedToRules) newErrors.push("You must agree to contest rules.");
+      if (!selectedContest) newErrors.push("Please select a destination.");
+      // Contest rules only required if submitting to a contest (not My Gallery)
+      if (selectedContest && selectedContest !== "my-gallery" && !agreedToRules) {
+        newErrors.push("You must agree to contest rules.");
+      }
       if (!agreedToTerms) newErrors.push("You must agree to the terms and conditions.");
     }
     setErrors(newErrors);
@@ -222,7 +225,10 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       if (uploadMode === 'new' && file) {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("contestId", selectedContest);
+        // Only add contestId if not uploading to My Gallery
+        if (selectedContest !== "my-gallery") {
+          formData.append("contestId", selectedContest);
+        }
         formData.append("title", title);
         formData.append("description", description);
         formData.append("type", file.type.startsWith("video/") ? "video" : "image");
@@ -238,21 +244,27 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
           throw new Error(error.error || "Failed to submit");
         }
       } else if (uploadMode === 'gallery' && selectedGalleryImage) {
+        const submissionData: any = {
+          title,
+          description,
+          type: selectedGalleryImage.type,
+          mediaUrl: selectedGalleryImage.url,
+          thumbnailUrl: selectedGalleryImage.thumbnailUrl,
+          status: "pending",
+        };
+        
+        // Only add contestId if not uploading to My Gallery
+        if (selectedContest !== "my-gallery") {
+          submissionData.contestId = selectedContest;
+        }
+
         const response = await fetch("/api/submissions", {
           method: "POST",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            contestId: selectedContest,
-            title,
-            description,
-            type: selectedGalleryImage.type,
-            mediaUrl: selectedGalleryImage.url,
-            thumbnailUrl: selectedGalleryImage.thumbnailUrl,
-            status: "pending",
-          }),
+          body: JSON.stringify(submissionData),
         });
 
         if (!response.ok) {
@@ -756,7 +768,7 @@ function StepContest({
 
       <div>
         <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-          Select Contest *
+          Destination *
         </label>
         <select
           value={selectedContest}
@@ -764,7 +776,8 @@ function StepContest({
           className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
           data-testid="select-contest"
         >
-          <option value="">Choose a contest</option>
+          <option value="">Choose destination</option>
+          <option value="my-gallery">Only in My Gallery</option>
           {contests.map((c) => (
             <option key={c.id} value={c.id}>
               {c.title} - {c.prizeGlory.toLocaleString()} GLORY
@@ -778,23 +791,25 @@ function StepContest({
           Agreements
         </h3>
 
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={agreedToRules}
-            onChange={(e) => setAgreedToRules(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 mt-0.5"
-            data-testid="checkbox-rules"
-          />
-          <div className="text-sm">
-            <span className="text-slate-800 dark:text-slate-200">
-              I agree to the contest rules and confirm I own the rights to this content *
-            </span>
-            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-              Top submissions receive GLORY rewards based on contest prize distribution
-            </p>
-          </div>
-        </label>
+        {selectedContest && selectedContest !== "my-gallery" && (
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agreedToRules}
+              onChange={(e) => setAgreedToRules(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 mt-0.5"
+              data-testid="checkbox-rules"
+            />
+            <div className="text-sm">
+              <span className="text-slate-800 dark:text-slate-200">
+                I agree to the contest rules and confirm I own the rights to this content *
+              </span>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                Top submissions receive GLORY rewards based on contest prize distribution
+              </p>
+            </div>
+          </label>
+        )}
 
         <label className="flex items-start gap-3">
           <input

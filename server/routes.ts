@@ -820,34 +820,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "File or mediaUrl is required" });
       }
 
-      if (!contestId || !title || !type) {
-        return res.status(400).json({ error: "Contest ID, title, and type are required" });
+      if (!title || !type) {
+        return res.status(400).json({ error: "Title and type are required" });
       }
 
-      // Check if contest exists and is active
-      const contest = await storage.getContest(contestId);
-      if (!contest) {
-        return res.status(404).json({ error: "Contest not found" });
-      }
+      // Contest validation only if contestId is provided
+      let contest = null;
+      if (contestId) {
+        contest = await storage.getContest(contestId);
+        if (!contest) {
+          return res.status(404).json({ error: "Contest not found" });
+        }
 
-      if (contest.status !== "active") {
-        return res.status(400).json({ error: "Contest is not accepting submissions" });
-      }
+        if (contest.status !== "active") {
+          return res.status(400).json({ error: "Contest is not accepting submissions" });
+        }
 
-      // Check contest timing for submissions
-      const now = new Date();
-      if (now < contest.startAt) {
-        return res.status(400).json({ error: "Contest has not started yet" });
-      }
-      if (now > contest.endAt) {
-        return res.status(400).json({ error: "Contest has ended" });
-      }
+        // Check contest timing for submissions
+        const now = new Date();
+        if (now < contest.startAt) {
+          return res.status(400).json({ error: "Contest has not started yet" });
+        }
+        if (now > contest.endAt) {
+          return res.status(400).json({ error: "Contest has ended" });
+        }
 
-      // Check submission deadline from contest config
-      const config = contest.config as any;
-      if (config && config.submissionEndAt) {
-        if (now > new Date(config.submissionEndAt)) {
-          return res.status(400).json({ error: "Submission deadline has passed" });
+        // Check submission deadline from contest config
+        const config = contest.config as any;
+        if (config && config.submissionEndAt) {
+          if (now > new Date(config.submissionEndAt)) {
+            return res.status(400).json({ error: "Submission deadline has passed" });
+          }
         }
       }
 
@@ -868,8 +871,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create submission
       const submission = await storage.createSubmission({
         userId: req.user!.id,
-        contestId,
-        contestName: contest.title, // Preserve contest name for historical reference
+        contestId: contestId || null,
+        contestName: contest ? contest.title : null, // Preserve contest name for historical reference
         type,
         title,
         description: description || "",
