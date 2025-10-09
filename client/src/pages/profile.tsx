@@ -364,12 +364,8 @@ export default function Profile() {
                 {/* GLORY Balance */}
                 <div className="gradient-glory rounded-xl p-6 text-center mb-6" data-testid="glory-balance">
                   <div className="text-white/80 text-sm mb-2">Your GLORY Balance</div>
-                  <div className="text-white text-4xl font-black mb-2">
+                  <div className="text-white text-4xl font-black">
                     {balance.toLocaleString()}
-                  </div>
-                  <div className="text-white/60 text-xs">
-                    {/* Mock rank calculation */}
-                    Rank #{Math.floor(Math.random() * 100) + 1} globally
                   </div>
                 </div>
 
