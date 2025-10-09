@@ -25,6 +25,7 @@ export default function ContestDetailPage() {
   const [showAllPrizesModal, setShowAllPrizesModal] = useState(false);
   const [sortBy, setSortBy] = useState("votes");
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   // Fetch contest by slug
   const { data: contests = [], isLoading: contestsLoading } = useQuery<any[]>({
@@ -114,6 +115,14 @@ export default function ContestDetailPage() {
         variant: "destructive",
       });
     });
+  };
+
+  const handleCardClick = (e: React.MouseEvent, submissionId: string) => {
+    // Only toggle on mobile (below lg breakpoint)
+    if (window.innerWidth < 1024) {
+      e.stopPropagation();
+      setActiveCardId(activeCardId === submissionId ? null : submissionId);
+    }
   };
 
   // Countdown timer
@@ -449,7 +458,7 @@ export default function ContestDetailPage() {
                           </div>
 
                           <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
-                            <div className="relative overflow-hidden aspect-square">
+                            <div className="relative overflow-hidden aspect-square" onClick={(e) => handleCardClick(e, topSubmissions[0].id)}>
                               <img
                                 src={topSubmissions[0].mediaUrl}
                                 alt={topSubmissions[0].title}
@@ -459,7 +468,7 @@ export default function ContestDetailPage() {
                               {/* Dark Overlay */}
                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
                                 {/* Action Buttons - Top Right */}
-                                <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                                <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 ${activeCardId === topSubmissions[0].id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300`}>
                                   {/* Vote Button */}
                                   <button
                                     onClick={(e) => {
@@ -543,7 +552,7 @@ export default function ContestDetailPage() {
                                   </div>
 
                                   <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
-                                    <div className="relative overflow-hidden aspect-square">
+                                    <div className="relative overflow-hidden aspect-square" onClick={(e) => handleCardClick(e, submission.id)}>
                                       <img
                                         src={submission.mediaUrl}
                                         alt={submission.title}
@@ -553,7 +562,7 @@ export default function ContestDetailPage() {
                                       {/* Dark Overlay */}
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
                                         {/* Action Buttons - Top Right */}
-                                        <div className="absolute top-2 right-2 flex flex-col items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                                        <div className={`absolute top-2 right-2 flex flex-col items-center gap-1 ${activeCardId === submission.id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300`}>
                                           {/* Vote Button */}
                                           <button
                                             onClick={(e) => {
@@ -684,7 +693,7 @@ export default function ContestDetailPage() {
                         data-testid={`card-submission-${submission.id}`}
                       >
                         <div className="rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1">
-                          <div className="relative overflow-hidden min-h-[240px]">
+                          <div className="relative overflow-hidden min-h-[240px]" onClick={(e) => handleCardClick(e, submission.id)}>
                             <img
                               src={submission.mediaUrl}
                               alt={submission.title}
@@ -694,7 +703,7 @@ export default function ContestDetailPage() {
                             {/* Hover Overlay */}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
                               {/* Action Buttons */}
-                              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                              <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-col items-center gap-1 sm:gap-2 ${activeCardId === submission.id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300`}>
                                 {/* Vote Button */}
                                 <button
                                   onClick={(e) => {

@@ -43,6 +43,7 @@ export function SubmissionCard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [hasVoted, setHasVoted] = useState(false);
+  const [showActionsMobile, setShowActionsMobile] = useState(false);
 
   // Pinterest-style height variations based on submission ID
   const getCardHeight = () => {
@@ -137,6 +138,14 @@ export function SubmissionCard({
     });
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Only toggle on mobile (below lg breakpoint)
+    if (window.innerWidth < 1024) {
+      e.stopPropagation();
+      setShowActionsMobile(!showActionsMobile);
+    }
+  };
+
   const displayUrl =
     submission.type === "video"
       ? submission.thumbnailUrl || submission.mediaUrl
@@ -147,7 +156,7 @@ export function SubmissionCard({
       className={`group relative overflow-hidden hover:border-primary/50 transition-all duration-300 rounded-2xl shadow-lg hover:shadow-xl ${className}`}
       data-testid={`submission-card-${submission.id}`}
     >
-      <div className={`relative overflow-hidden rounded-t-2xl ${getCardHeight()}`}>
+      <div className={`relative overflow-hidden rounded-t-2xl ${getCardHeight()}`} onClick={handleCardClick}>
         <img
           src={displayUrl}
           alt={submission.title}
@@ -156,12 +165,15 @@ export function SubmissionCard({
 
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+          <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 ${showActionsMobile ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300`}>
             <GlassButton 
               variant="ghost"
               size="icon"
               className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-              onClick={handleVote}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleVote();
+              }}
               disabled={voteMutation.isPending || hasVoted}
               data-testid={`button-vote-${submission.id}`}
             >
@@ -171,7 +183,10 @@ export function SubmissionCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-              onClick={handleShare}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare();
+              }}
               data-testid={`button-share-${submission.id}`}
             >
               <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -180,7 +195,10 @@ export function SubmissionCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-              onClick={onExpand}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onExpand) onExpand();
+              }}
               data-testid={`button-expand-${submission.id}`}
             >
               <Expand className="h-3 w-3 sm:h-4 sm:w-4" />

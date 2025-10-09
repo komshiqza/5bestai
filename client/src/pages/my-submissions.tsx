@@ -13,6 +13,7 @@ import { GlassButton } from "@/components/ui/glass-button";
 export default function MySubmissions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithUser | null>(null);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -111,6 +112,14 @@ export default function MySubmissions() {
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent, submissionId: string) => {
+    // Only toggle on mobile (below lg breakpoint)
+    if (window.innerWidth < 1024) {
+      e.stopPropagation();
+      setActiveCardId(activeCardId === submissionId ? null : submissionId);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
@@ -186,7 +195,7 @@ export default function MySubmissions() {
                 className="group relative overflow-hidden hover:border-primary/50 transition-all duration-300 rounded-2xl shadow-lg hover:shadow-xl"
                 data-testid={`submission-card-${submission.id}`}
               >
-                <div className="relative overflow-hidden rounded-t-2xl aspect-square">
+                <div className="relative overflow-hidden rounded-t-2xl aspect-square" onClick={(e) => handleCardClick(e, submission.id)}>
                   <img
                     src={submission.type === "video" ? submission.thumbnailUrl || submission.mediaUrl : submission.mediaUrl}
                     alt={submission.title}
@@ -200,12 +209,15 @@ export default function MySubmissions() {
 
                   {/* Hover Overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
-                    <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300">
+                    <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 ${activeCardId === submission.id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300`}>
                       <GlassButton 
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-                        onClick={() => handleShare(submission)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShare(submission);
+                        }}
                         data-testid={`button-share-${submission.id}`}
                       >
                         <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -214,7 +226,10 @@ export default function MySubmissions() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-                        onClick={() => handleExpand(submission)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExpand(submission);
+                        }}
                         data-testid={`button-expand-${submission.id}`}
                       >
                         <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -236,13 +251,16 @@ export default function MySubmissions() {
                     </div>
                   )}
 
-                  {/* Delete button - always visible at bottom right */}
-                  <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 z-10">
+                  {/* Delete button */}
+                  <div className={`absolute bottom-2 sm:bottom-3 right-2 sm:right-3 z-10 ${activeCardId === submission.id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300`}>
                     <GlassButton 
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-red-500/80 hover:bg-red-500"
-                      onClick={() => handleDelete(submission.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(submission.id);
+                      }}
                       disabled={deleteSubmissionMutation.isPending}
                       data-testid={`button-delete-${submission.id}`}
                     >
