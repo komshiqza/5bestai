@@ -125,6 +125,35 @@ export default function ContestDetailPage() {
     }
   };
 
+  // Handle browser back button for All Prizes Modal (Dialog handles Escape automatically)
+  useEffect(() => {
+    if (!showAllPrizesModal) return;
+
+    let historyPushed = false;
+    let closingViaBackButton = false;
+
+    // Always push unique history state when modal opens
+    window.history.pushState({ modal: 'allPrizes', id: Date.now() }, '');
+    historyPushed = true;
+
+    // Handle browser back button
+    const handlePopState = () => {
+      closingViaBackButton = true;
+      setShowAllPrizesModal(false);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      
+      // Only go back if we pushed history AND modal wasn't closed via back button
+      if (historyPushed && !closingViaBackButton) {
+        window.history.back();
+      }
+    };
+  }, [showAllPrizesModal]);
+
   // Countdown timer
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 

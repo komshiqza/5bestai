@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { X, Heart, User, Calendar, Share2 } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 
@@ -28,6 +29,50 @@ export function ContestLightboxModal({
   onVote,
   onShare
 }: ContestLightboxModalProps) {
+  const historyPushedRef = useRef(false);
+  const closingViaBackButtonRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      historyPushedRef.current = false;
+      closingViaBackButtonRef.current = false;
+      return;
+    }
+
+    // Push unique history state when modal opens
+    window.history.pushState({ modal: 'lightbox', id: Date.now() }, '');
+    historyPushedRef.current = true;
+    closingViaBackButtonRef.current = false;
+
+    // Handle Escape key
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    // Handle browser back button
+    const handlePopState = () => {
+      if (historyPushedRef.current) {
+        closingViaBackButtonRef.current = true;
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('popstate', handlePopState);
+      
+      // Only go back if we pushed history AND modal wasn't closed via back button
+      if (historyPushedRef.current && !closingViaBackButtonRef.current) {
+        window.history.back();
+      }
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !submission) return null;
 
   const handleVote = () => {

@@ -116,6 +116,44 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     }
   }, [isOpen, preselectedContestId]);
 
+  // Handle browser back button and Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let historyPushed = false;
+    let closingViaBackButton = false;
+
+    // Always push unique history state when modal opens
+    window.history.pushState({ modal: 'upload', id: Date.now() }, '');
+    historyPushed = true;
+
+    // Handle Escape key
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    // Handle browser back button
+    const handlePopState = () => {
+      closingViaBackButton = true;
+      onClose();
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('popstate', handlePopState);
+      
+      // Only go back if we pushed history AND modal wasn't closed via back button
+      if (historyPushed && !closingViaBackButton) {
+        window.history.back();
+      }
+    };
+  }, [isOpen, onClose]);
+
   const onDropFiles = useCallback((dropped: FileList | null) => {
     if (!dropped || dropped.length === 0) return;
     const f = dropped[0];
