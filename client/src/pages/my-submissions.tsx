@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,39 @@ export default function MySubmissions() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Handle browser back button and Escape key for lightbox modal
+  useEffect(() => {
+    if (!selectedSubmission) return;
+
+    const modalId = Date.now();
+
+    // Push unique history state when modal opens
+    window.history.pushState({ modal: 'galleryLightbox', modalId }, '');
+
+    // Handle Escape key
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedSubmission(null);
+      }
+    };
+
+    // Handle browser back button
+    const handlePopState = () => {
+      // Close modal when going back in history
+      if (window.history.state?.modalId !== modalId) {
+        setSelectedSubmission(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [selectedSubmission]);
 
   // Always fetch all submissions for accurate counts
   const { data: allSubmissions, isLoading } = useQuery<SubmissionWithUser[]>({
