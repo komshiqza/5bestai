@@ -46,9 +46,6 @@ export default function AdminDashboard() {
   const [submissionContestFilter, setSubmissionContestFilter] = useState("all");
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState("");
   const [isCreateContestModalOpen, setIsCreateContestModalOpen] = useState(false);
-  const [txHashDialogOpen, setTxHashDialogOpen] = useState(false);
-  const [selectedCashoutId, setSelectedCashoutId] = useState("");
-  const [txHashInput, setTxHashInput] = useState("");
   
   // Bulk deletion state
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -462,26 +459,6 @@ export default function AdminDashboard() {
     },
   });
 
-  const markCashoutSentMutation = useMutation({
-    mutationFn: async ({ requestId, txHash }: { requestId: string; txHash: string }) => {
-      return apiRequest("POST", "/api/admin/cashout/mark-sent", { requestId, txHash });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
-      toast({
-        title: "Cashout Marked as Sent",
-        description: "The transaction has been recorded successfully.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to mark cashout as sent.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Bulk cashout approval mutation
   const bulkApproveCashoutsMutation = useMutation({
     mutationFn: async (requestIds: string[]) => {
@@ -672,33 +649,6 @@ export default function AdminDashboard() {
       default:
         return <AlertTriangle className="w-4 h-4" />;
     }
-  };
-
-  // Helper for transaction hash submission
-  const handleMarkAsSent = () => {
-    if (!txHashInput.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a transaction hash",
-        variant: "destructive",
-      });
-      return;
-    }
-    markCashoutSentMutation.mutate(
-      { requestId: selectedCashoutId, txHash: txHashInput },
-      {
-        onSuccess: () => {
-          setTxHashDialogOpen(false);
-          setTxHashInput("");
-          setSelectedCashoutId("");
-        },
-      }
-    );
-  };
-
-  const openTxHashDialog = (requestId: string) => {
-    setSelectedCashoutId(requestId);
-    setTxHashDialogOpen(true);
   };
 
   // Stats calculations
@@ -1769,18 +1719,6 @@ export default function AdminDashboard() {
                                   </Button>
                                 </>
                               )}
-                              {request.status === "approved" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="bg-primary/20 text-primary hover:bg-primary/30 border-primary/30"
-                                  onClick={() => openTxHashDialog(request.id)}
-                                  data-testid={`mark-sent-${request.id}`}
-                                >
-                                  <DollarSign className="w-3 h-3 mr-1" />
-                                  Mark as Sent
-                                </Button>
-                              )}
                               {request.txHash && (
                                 <a
                                   href={`https://solscan.io/tx/${request.txHash}?cluster=devnet`}
@@ -1887,58 +1825,6 @@ export default function AdminDashboard() {
         onClose={() => setIsCreateContestModalOpen(false)}
         onSubmit={(formData) => createContestMutation.mutate(formData)}
       />
-
-      <Dialog open={txHashDialogOpen} onOpenChange={setTxHashDialogOpen}>
-        <DialogContent data-testid="tx-hash-dialog">
-          <DialogHeader>
-            <DialogTitle>Enter Transaction Hash</DialogTitle>
-            <DialogDescription>
-              Enter the Solana transaction hash after sending tokens to the user's wallet.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="txHash">Transaction Hash</Label>
-              <Input
-                id="txHash"
-                placeholder="Enter Solana transaction hash..."
-                value={txHashInput}
-                onChange={(e) => setTxHashInput(e.target.value)}
-                data-testid="input-tx-hash"
-              />
-              <p className="text-xs text-muted-foreground">
-                This will be recorded and displayed to the user
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setTxHashDialogOpen(false);
-                setTxHashInput("");
-              }}
-              data-testid="button-cancel-tx"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleMarkAsSent}
-              disabled={markCashoutSentMutation.isPending}
-              data-testid="button-confirm-tx"
-            >
-              {markCashoutSentMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Mark as Sent"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Bulk Delete Confirmation Dialog */}
       <Dialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
