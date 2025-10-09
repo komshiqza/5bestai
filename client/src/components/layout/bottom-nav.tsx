@@ -25,7 +25,7 @@ export function BottomNav() {
   };
 
   return (
-    <nav className={`${isAuthenticated(user) ? 'md:hidden' : ''} fixed bottom-0 left-0 right-0 z-50 glass-effect border-t border-border`} data-testid="bottom-nav">
+    <nav className={`${isAuthenticated(user) ? 'md:hidden' : ''} fixed bottom-0 left-0 right-0 z-50 bg-background-dark border-t border-white/10 shadow-lg`} data-testid="bottom-nav">
       <div className="flex items-center justify-around h-16 px-2">
         {/* Home */}
         <Link href="/" data-testid="bottom-link-home">
