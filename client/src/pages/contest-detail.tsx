@@ -26,6 +26,8 @@ export default function ContestDetailPage() {
   const [sortBy, setSortBy] = useState("votes");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [isToolbarSticky, setIsToolbarSticky] = useState(false);
+  const toolbarRef = React.useRef<HTMLDivElement>(null);
 
   // Fetch contest by slug
   const { data: contests = [], isLoading: contestsLoading } = useQuery<any[]>({
@@ -182,6 +184,26 @@ export default function ContestDetailPage() {
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, []);
+
+  // Sticky toolbar on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!toolbarRef.current) return;
+      
+      const toolbarTop = toolbarRef.current.getBoundingClientRect().top;
+      const navbarHeight = 100; // navbar height
+      
+      // When toolbar reaches the top (navbar bottom), make it sticky
+      if (toolbarTop <= navbarHeight) {
+        setIsToolbarSticky(true);
+      } else {
+        setIsToolbarSticky(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Show loading state while contests are being fetched
@@ -672,7 +694,12 @@ export default function ContestDetailPage() {
 
               {/* Filter Toolbar - Applies only to All Submissions */}
               {!submissionsLoading && allSubmissions.length > 0 && (
-                <div className="mt-8 rounded-lg bg-background-dark/80 px-4 py-4 backdrop-blur-sm glow-border">
+                <div 
+                  ref={toolbarRef}
+                  className={`mt-8 rounded-lg bg-background-dark/80 px-4 py-4 backdrop-blur-sm glow-border transition-all duration-200 ${
+                    isToolbarSticky ? 'sticky top-[100px] z-40' : ''
+                  }`}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className="relative w-full sm:w-auto">
