@@ -618,43 +618,48 @@ export default function Profile() {
                           <table className="w-full" data-testid="glory-history-table">
                             <thead className="bg-muted">
                               <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                <th className="px-2 md:px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                   Date
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                <th className="px-2 md:px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                   Transaction
                                 </th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                <th className="px-2 md:px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                   Amount
                                 </th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                              {gloryHistory.map((transaction: any, index: number) => (
-                                <tr key={transaction.id} data-testid={`glory-transaction-${index}`}>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                                    {new Date(transaction.createdAt).toLocaleDateString()}
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="font-medium" data-testid={`transaction-reason-${index}`}>
-                                      {transaction.reason}
-                                    </div>
-                                    {transaction.contestId && (
-                                      <div className="text-muted-foreground text-xs">
-                                        Contest reward
+                              {gloryHistory.map((transaction: any, index: number) => {
+                                const date = new Date(transaction.createdAt);
+                                const shortDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().slice(-2)}`;
+                                
+                                return (
+                                  <tr key={transaction.id} data-testid={`glory-transaction-${index}`}>
+                                    <td className="px-2 md:px-6 py-3 whitespace-nowrap text-xs md:text-sm text-muted-foreground">
+                                      {shortDate}
+                                    </td>
+                                    <td className="px-2 md:px-6 py-3">
+                                      <div className="font-medium text-sm md:text-base" data-testid={`transaction-reason-${index}`}>
+                                        {transaction.reason}
                                       </div>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                                    <span 
-                                      className={`font-semibold font-mono ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
-                                      data-testid={`transaction-amount-${index}`}
-                                    >
-                                      {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} GLORY
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
+                                      {transaction.contestId && (
+                                        <div className="text-muted-foreground text-xs">
+                                          Contest reward
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="px-2 md:px-6 py-3 whitespace-nowrap text-right">
+                                      <span 
+                                        className={`font-semibold font-mono text-xs md:text-sm ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
+                                        data-testid={`transaction-amount-${index}`}
+                                      >
+                                        {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} GLORY
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
