@@ -885,6 +885,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single submission by ID (public with optional auth)
+  app.get("/api/submissions/:id", async (req: AuthRequest, res) => {
+    try {
+      // Try to authenticate but don't require it
+      const authToken = req.cookies.authToken;
+      let isUserAdmin = false;
+      let currentUserId: string | undefined;
+      
+      if (authToken) {
+        try {
+          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
+          isUserAdmin = decoded.role === "admin";
+          currentUserId = decoded.userId;
+        } catch (error) {
+          // Token invalid, treat as unauthenticated
+        }
+      }
+
+      const submission = await storage.getSubmission(req.params.id);
+      
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Check access permissions
+      const isOwnSubmission = currentUserId === submission.userId;
+      const isApproved = submission.status === "approved";
+
+      // Allow access if: admin, own submission, or approved submission
+      if (!isUserAdmin && !isOwnSubmission && !isApproved) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Get user votes if authenticated
+      let hasVoted = false;
+      if (currentUserId) {
+        const vote = await storage.getVote(currentUserId, submission.id);
+        hasVoted = !!vote;
+      }
+
+      // Get user and contest info
+      const user = await storage.getUser(submission.userId);
+      let contest = null;
+      if (submission.contestId) {
+        contest = await storage.getContest(submission.contestId);
+      }
+
+      const enrichedSubmission = {
+        ...submission,
+        hasVoted,
+        voteCount: submission.votesCount,
+        user: user ? {
+          id: user.id,
+          username: user.username
+        } : null,
+        contest: contest ? {
+          id: contest.id,
+          title: contest.title,
+          slug: contest.slug
+        } : null
+      };
+
+      res.json(enrichedSubmission);
+    } catch (error) {
+      console.error("Error fetching submission:", error);
+      res.status(500).json({ error: "Failed to fetch submission" });
+    }
+  });
+
   // User update own submission
   app.patch("/api/submissions/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {

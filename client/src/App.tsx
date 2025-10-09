@@ -13,6 +13,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Contests from "@/pages/contests";
 import ContestDetail from "@/pages/contest-detail";
+import SubmissionDetail from "@/pages/submission-detail";
 import Upload from "@/pages/upload";
 import Profile from "@/pages/profile";
 import MySubmissions from "@/pages/my-submissions";
@@ -31,6 +32,7 @@ function Router() {
           <Route path="/register" component={Register} />
           <Route path="/contests" component={Contests} />
           <Route path="/contest/:slug" component={ContestDetail} />
+          <Route path="/submission/:id" component={SubmissionDetail} />
           <Route path="/upload" component={Upload} />
           <Route path="/profile" component={Profile} />
           <Route path="/my-submissions" component={MySubmissions} />
