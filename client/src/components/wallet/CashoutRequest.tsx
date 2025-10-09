@@ -5,9 +5,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { DollarSign, Loader2, Clock, CheckCircle, XCircle } from "lucide-react";
+import { DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -18,10 +16,6 @@ export function CashoutRequest() {
 
   const { data: userData } = useQuery<any>({ queryKey: ["/api/me"] });
   const { data: walletData } = useQuery<any>({ queryKey: ["/api/wallet/me"] });
-  const { data: requestsData } = useQuery<any>({ 
-    queryKey: ["/api/cashout/requests"],
-    enabled: !!walletData?.wallet,
-  });
 
   const createRequestMutation = useMutation({
     mutationFn: async () => {
@@ -66,39 +60,6 @@ export function CashoutRequest() {
 
   const gloryBalance = userData?.gloryBalance || 0;
   const hasWallet = !!walletData?.wallet;
-  const requests = requestsData?.requests || [];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
-      case "approved":
-      case "processing":
-      case "sent":
-        return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-      case "confirmed":
-        return "bg-green-500/10 text-green-500 border-green-500/20";
-      case "rejected":
-      case "failed":
-        return "bg-red-500/10 text-red-500 border-red-500/20";
-      default:
-        return "bg-gray-500/10 text-gray-500 border-gray-500/20";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="h-3 w-3" />;
-      case "confirmed":
-        return <CheckCircle className="h-3 w-3" />;
-      case "rejected":
-      case "failed":
-        return <XCircle className="h-3 w-3" />;
-      default:
-        return <Loader2 className="h-3 w-3 animate-spin" />;
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -163,49 +124,6 @@ export function CashoutRequest() {
         </CardContent>
       </Card>
 
-      {requests.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Cashout History</CardTitle>
-            <CardDescription>Track your cashout requests and their status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {requests.map((request: any) => (
-                <div
-                  key={request.id}
-                  className="flex items-center justify-between p-3 rounded-lg border"
-                  data-testid={`cashout-request-${request.id}`}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{request.amountGlory} GLORY</p>
-                      <Badge variant="outline" className={getStatusColor(request.status)}>
-                        {getStatusIcon(request.status)}
-                        <span className="ml-1">{request.status}</span>
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {request.amountToken} {request.tokenType} • {new Date(request.createdAt).toLocaleDateString()}
-                    </p>
-                    {request.txHash && (
-                      <a
-                        href={`https://solscan.io/tx/${request.txHash}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline"
-                        data-testid={`link-tx-${request.id}`}
-                      >
-                        View Transaction
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
