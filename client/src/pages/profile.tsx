@@ -407,10 +407,6 @@ export default function Profile() {
                     <DollarSign className="w-4 h-4 mr-2" />
                     Withdraw Glory
                   </GlassButton>
-                  <Button variant="outline" className="w-full" data-testid="settings-button">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </Button>
                 </div>
               </CardContent>
             </Card>
