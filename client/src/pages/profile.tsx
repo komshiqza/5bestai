@@ -435,21 +435,22 @@ export default function Profile() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="Search by title or tags..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  data-testid="input-search-submissions"
-                />
-              </div>
-
               {/* Submissions Tab */}
               <TabsContent value="submissions" className="space-y-4" data-testid="submissions-tab">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search by title or tags..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-search-submissions"
+                  />
+                </div>
+                
+
                 {submissionsWithRank.filter((sub: any) => {
                   if (!searchQuery.trim()) return true;
                   const query = searchQuery.toLowerCase();
