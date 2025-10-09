@@ -30,7 +30,7 @@ export default function Upload() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20 md:pb-0">
       <UploadWizardModal
         isOpen={isModalOpen}
         onClose={handleClose}

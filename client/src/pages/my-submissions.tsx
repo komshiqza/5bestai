@@ -145,7 +145,7 @@ export default function MySubmissions() {
     : allSubmissions?.filter(s => s.status === statusFilter))?.filter(s => s.mediaUrl);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/20 to-gray-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950/20 to-gray-950 pb-20 md:pb-0">
       <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
         <div className="mb-6 md:mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-1 md:mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent" data-testid="heading-my-submissions">
@@ -269,7 +269,7 @@ export default function MySubmissions() {
                   </div>
                 </div>
 
-                <CardContent className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-b-2xl">
+                <CardContent className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent ${activeCardId === submission.id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300 rounded-b-2xl`}>
                   <h3 className="font-semibold text-lg mb-2 line-clamp-1 text-white drop-shadow-lg">
                     {submission.title}
                   </h3>

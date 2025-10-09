@@ -10,6 +10,7 @@ import {
   Trophy,
   Info,
   CheckCircle2,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -798,6 +799,8 @@ function GallerySelector({
   selectedImage: {url: string, type: string, thumbnailUrl?: string} | null;
   onSelectImage: (img: {url: string, type: string, thumbnailUrl?: string} | null) => void;
 }) {
+  const [searchTerm, setSearchTerm] = useState("");
+
   if (userSubmissions.length === 0) {
     return (
       <div className="text-center py-12 bg-white/60 dark:bg-slate-900/60 rounded-xl border border-slate-300/60 dark:border-slate-700/60">
@@ -812,36 +815,67 @@ function GallerySelector({
     );
   }
 
+  // Filter submissions by search term (title and tags)
+  const filteredSubmissions = userSubmissions.filter((sub: any) => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    const matchesTitle = sub.title?.toLowerCase().includes(searchLower);
+    const matchesTags = sub.tags?.some((tag: string) => tag.toLowerCase().includes(searchLower));
+    return matchesTitle || matchesTags;
+  });
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-      {userSubmissions.map((sub: any) => (
-        <div
-          key={sub.id}
-          onClick={() => onSelectImage({
-            url: sub.mediaUrl,
-            type: sub.type,
-            thumbnailUrl: sub.thumbnailUrl
-          })}
-          className={[
-            "relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-all",
-            selectedImage?.url === sub.mediaUrl
-              ? "ring-4 ring-violet-500 scale-105"
-              : "hover:scale-105 border-2 border-slate-300/60 dark:border-slate-700/60"
-          ].join(" ")}
-          data-testid={`gallery-image-${sub.id}`}
-        >
-          <img
-            src={sub.thumbnailUrl || sub.mediaUrl}
-            alt={sub.title}
-            className="w-full h-full object-cover"
-          />
-          {selectedImage?.url === sub.mediaUrl && (
-            <div className="absolute inset-0 bg-violet-600/20 flex items-center justify-center">
-              <CheckCircle2 className="h-8 w-8 text-white" />
-            </div>
-          )}
+    <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Search by title or tags..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
+          data-testid="input-gallery-search"
+        />
+      </div>
+
+      {/* Gallery Grid */}
+      {filteredSubmissions.length === 0 ? (
+        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+          No submissions match your search.
         </div>
-      ))}
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {filteredSubmissions.map((sub: any) => (
+            <div
+              key={sub.id}
+              onClick={() => onSelectImage({
+                url: sub.mediaUrl,
+                type: sub.type,
+                thumbnailUrl: sub.thumbnailUrl
+              })}
+              className={[
+                "relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-all",
+                selectedImage?.url === sub.mediaUrl
+                  ? "ring-4 ring-violet-500 scale-105"
+                  : "hover:scale-105 border-2 border-slate-300/60 dark:border-slate-700/60"
+              ].join(" ")}
+              data-testid={`gallery-image-${sub.id}`}
+            >
+              <img
+                src={sub.thumbnailUrl || sub.mediaUrl}
+                alt={sub.title}
+                className="w-full h-full object-cover"
+              />
+              {selectedImage?.url === sub.mediaUrl && (
+                <div className="absolute inset-0 bg-violet-600/20 flex items-center justify-center">
+                  <CheckCircle2 className="h-8 w-8 text-white" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

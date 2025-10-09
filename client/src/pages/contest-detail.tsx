@@ -244,7 +244,7 @@ export default function ContestDetailPage() {
 
   return (
     <>
-      <div className="flex-1 px-4 py-6 sm:px-6 md:px-10 lg:px-20">
+      <div className="flex-1 px-4 py-6 pb-20 md:pb-6 sm:px-6 md:px-10 lg:px-20">
         <div className="mx-auto max-w-screen-xl">
           {/* Back Button */}
           <Link href="/contests" className="inline-flex items-center text-gray-400 hover:text-white mb-6 md:mb-8 transition-colors" data-testid="link-back-contests">
@@ -513,7 +513,7 @@ export default function ContestDetailPage() {
                               </div>
                               
                               {/* Bottom Info Overlay */}
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
+                              <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 ${activeCardId === topSubmissions[0].id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0`}>
                                 <h3 className="text-base sm:text-lg font-bold text-white mb-1">
                                   {topSubmissions[0].title}
                                 </h3>
@@ -607,7 +607,7 @@ export default function ContestDetailPage() {
                                       </div>
                                       
                                       {/* Bottom Info Overlay */}
-                                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-2 sm:p-3 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
+                                      <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-2 sm:p-3 ${activeCardId === submission.id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0`}>
                                         <h3 className="text-sm font-bold text-white mb-1 truncate">
                                           {submission.title}
                                         </h3>
@@ -748,7 +748,7 @@ export default function ContestDetailPage() {
                             </div>
                             
                             {/* Bottom Info Overlay */}
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0">
+                            <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 sm:p-4 ${activeCardId === submission.id ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 transform translate-y-0 lg:translate-y-2 lg:group-hover:translate-y-0`}>
                               <h3 className="text-base font-semibold text-white mb-1">
                                 {submission.title}
                               </h3>

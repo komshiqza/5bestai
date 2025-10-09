@@ -59,7 +59,7 @@ export function ContestLightboxModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black"
+      className="fixed inset-0 z-[100] bg-black"
       onClick={onClose}
       data-testid="lightbox-overlay"
     >
