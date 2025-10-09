@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -22,11 +22,6 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { refetch } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-
-  // Scroll to top when page loads
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
