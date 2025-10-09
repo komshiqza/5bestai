@@ -129,28 +129,23 @@ export default function ContestDetailPage() {
   useEffect(() => {
     if (!showAllPrizesModal) return;
 
-    let historyPushed = false;
-    let closingViaBackButton = false;
+    const modalId = Date.now();
 
-    // Always push unique history state when modal opens
-    window.history.pushState({ modal: 'allPrizes', id: Date.now() }, '');
-    historyPushed = true;
+    // Push unique history state when modal opens
+    window.history.pushState({ modal: 'allPrizes', modalId }, '');
 
     // Handle browser back button
     const handlePopState = () => {
-      closingViaBackButton = true;
-      setShowAllPrizesModal(false);
+      // Close modal when going back in history
+      if (window.history.state?.modalId !== modalId) {
+        setShowAllPrizesModal(false);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      
-      // Only go back if we pushed history AND modal wasn't closed via back button
-      if (historyPushed && !closingViaBackButton) {
-        window.history.back();
-      }
     };
   }, [showAllPrizesModal]);
 

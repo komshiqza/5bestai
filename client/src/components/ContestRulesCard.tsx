@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { X, Trophy, Calendar, Users, FileText, Award, CheckSquare, Image, Shield } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 
@@ -17,20 +17,13 @@ interface ContestRulesCardProps {
 }
 
 export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardProps) {
-  const historyPushedRef = useRef(false);
-  const closingViaBackButtonRef = useRef(false);
-
   useEffect(() => {
-    if (!isOpen) {
-      historyPushedRef.current = false;
-      closingViaBackButtonRef.current = false;
-      return;
-    }
+    if (!isOpen) return;
+
+    const modalId = Date.now();
 
     // Push unique history state when modal opens
-    window.history.pushState({ modal: 'rules', id: Date.now() }, '');
-    historyPushedRef.current = true;
-    closingViaBackButtonRef.current = false;
+    window.history.pushState({ modal: 'rules', modalId }, '');
 
     // Handle Escape key
     const handleEscape = (e: KeyboardEvent) => {
@@ -41,8 +34,8 @@ export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardP
 
     // Handle browser back button
     const handlePopState = () => {
-      if (historyPushedRef.current) {
-        closingViaBackButtonRef.current = true;
+      // Close modal when going back in history
+      if (window.history.state?.modalId !== modalId) {
         onClose();
       }
     };
@@ -53,11 +46,6 @@ export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardP
     return () => {
       window.removeEventListener('keydown', handleEscape);
       window.removeEventListener('popstate', handlePopState);
-      
-      // Only go back if we pushed history AND modal wasn't closed via back button
-      if (historyPushedRef.current && !closingViaBackButtonRef.current) {
-        window.history.back();
-      }
     };
   }, [isOpen, onClose]);
 

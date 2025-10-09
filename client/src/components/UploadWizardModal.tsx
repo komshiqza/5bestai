@@ -120,12 +120,10 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
   useEffect(() => {
     if (!isOpen) return;
 
-    let historyPushed = false;
-    let closingViaBackButton = false;
+    const modalId = Date.now();
 
-    // Always push unique history state when modal opens
-    window.history.pushState({ modal: 'upload', id: Date.now() }, '');
-    historyPushed = true;
+    // Push unique history state when modal opens
+    window.history.pushState({ modal: 'upload', modalId }, '');
 
     // Handle Escape key
     const handleEscape = (e: KeyboardEvent) => {
@@ -136,8 +134,10 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
 
     // Handle browser back button
     const handlePopState = () => {
-      closingViaBackButton = true;
-      onClose();
+      // Only close if the current state matches our modal
+      if (window.history.state?.modalId !== modalId) {
+        onClose();
+      }
     };
 
     window.addEventListener('keydown', handleEscape);
@@ -146,11 +146,6 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     return () => {
       window.removeEventListener('keydown', handleEscape);
       window.removeEventListener('popstate', handlePopState);
-      
-      // Only go back if we pushed history AND modal wasn't closed via back button
-      if (historyPushed && !closingViaBackButton) {
-        window.history.back();
-      }
     };
   }, [isOpen, onClose]);
 
