@@ -792,6 +792,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single submission by ID (public for sharing)
+  app.get("/api/submissions/:id", async (req: AuthRequest, res) => {
+    try {
+      const submissionId = req.params.id;
+      
+      // Try to authenticate but don't require it
+      const authToken = req.cookies.authToken;
+      let currentUserId: string | undefined;
+      
+      if (authToken) {
+        try {
+          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
+          currentUserId = decoded.userId;
+        } catch (error) {
+          // Token invalid, treat as unauthenticated
+        }
+      }
+
+      const submission = await storage.getSubmission(submissionId);
+      
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      // Check visibility: approved submissions are public, others only for owner
+      if (submission.status !== "approved" && submission.userId !== currentUserId) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      res.json(submission);
+    } catch (error) {
+      console.error("Error fetching submission:", error);
+      res.status(500).json({ error: "Failed to fetch submission" });
+    }
+  });
+
   // Simple file upload endpoint for cover images, etc.
   app.post("/api/upload", authenticateToken, upload.single("file"), async (req: AuthRequest, res) => {
     try {
