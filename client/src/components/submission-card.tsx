@@ -165,7 +165,7 @@ export function SubmissionCard({
 
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
-          <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 ${showActionsMobile ? 'opacity-100' : 'opacity-0'} lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300`}>
+          <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 ${showActionsMobile ? 'opacity-100 lg:opacity-0' : 'opacity-0'} lg:group-hover:opacity-100 transition-opacity duration-300`}>
             <GlassButton 
               variant="ghost"
               size="icon"
@@ -228,7 +228,7 @@ export function SubmissionCard({
         )}
       </div>
 
-      <CardContent className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-b-2xl">
+      <CardContent className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent ${showActionsMobile ? 'opacity-100 lg:opacity-0' : 'opacity-0'} lg:group-hover:opacity-100 transition-opacity duration-300 rounded-b-2xl`}>
         <h3
           className="font-semibold text-lg mb-2 line-clamp-1 text-white drop-shadow-lg"
           data-testid={`submission-title-${submission.id}`}

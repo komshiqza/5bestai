@@ -318,7 +318,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen py-16 pb-24 md:pb-16" data-testid="profile-page">
+    <div className="min-h-screen py-16 pb-32 md:pb-16" data-testid="profile-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-3 gap-8">
           

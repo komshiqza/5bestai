@@ -256,7 +256,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       onClick={onClose}
     >
       <div 
-        className="relative w-full mx-auto max-w-5xl max-h-[90vh] overflow-y-auto"
+        className="relative w-full mx-auto max-w-5xl max-h-[90vh] overflow-y-auto pb-24 md:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="rounded-2xl border border-violet-200/40 dark:border-violet-800/40 shadow-xl overflow-hidden bg-white/70 dark:bg-slate-900/60 backdrop-blur">

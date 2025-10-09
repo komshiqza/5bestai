@@ -244,7 +244,7 @@ export default function ContestDetailPage() {
 
   return (
     <>
-      <div className="flex-1 px-4 py-6 pb-24 md:pb-6 sm:px-6 md:px-10 lg:px-20">
+      <div className="flex-1 px-4 py-6 pb-32 md:pb-6 sm:px-6 md:px-10 lg:px-20">
         <div className="mx-auto max-w-screen-xl">
           {/* Back Button */}
           <Link href="/contests" className="inline-flex items-center text-gray-400 hover:text-white mb-6 md:mb-8 transition-colors" data-testid="link-back-contests">

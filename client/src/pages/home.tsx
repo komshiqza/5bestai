@@ -216,7 +216,7 @@ export default function Home() {
   }, [allSubmissions, mediaFilter]);
 
   return (
-    <div className="min-h-screen pb-24 md:pb-0" data-testid="home-page">
+    <div className="min-h-screen pb-32 md:pb-0" data-testid="home-page">
       {/* Hero Section */}
       <section className="relative overflow-hidden py-10 md:py-20 border-b border-border">
         <div className="absolute inset-0 opacity-10">
