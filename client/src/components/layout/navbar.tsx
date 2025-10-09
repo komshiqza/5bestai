@@ -37,19 +37,26 @@ export function Navbar() {
             <span className="text-2xl font-bold tracking-tight gradient-text">5BEST.ai</span>
           </Link>
 
-          {/* Main Navigation - Desktop */}
-          <div className="hidden md:flex items-center space-x-1">
+          {/* Center Navigation - Desktop */}
+          <div className="hidden md:flex items-center space-x-3 absolute left-1/2 transform -translate-x-1/2">
             <Link href="/contests" data-testid="link-contests">
               <Button variant="ghost" className="px-4 py-2">Contests</Button>
             </Link>
+            {isAuthenticated(user) && (
+              <Link href="/upload" data-testid="link-upload">
+                <GlassButton className="px-4 py-2">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </GlassButton>
+              </Link>
+            )}
           </div>
 
-          {/* Upload Button - Mobile & Desktop */}
+          {/* Upload Button - Mobile Only */}
           {isAuthenticated(user) && (
-            <Link href="/upload" data-testid="link-upload" className="ml-auto mr-3 md:mr-0">
+            <Link href="/upload" data-testid="link-upload-mobile" className="ml-auto mr-3 md:hidden">
               <GlassButton className="px-4 py-2">
-                <Upload className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">Upload</span>
+                <Upload className="w-4 h-4" />
               </GlassButton>
             </Link>
           )}
