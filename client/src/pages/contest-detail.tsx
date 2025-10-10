@@ -522,6 +522,7 @@ export default function ContestDetailPage() {
                                 src={topSubmissions[0].mediaUrl}
                                 alt={topSubmissions[0].title}
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                loading="lazy"
                               />
                               
                               {/* Dark Overlay */}
@@ -616,6 +617,7 @@ export default function ContestDetailPage() {
                                         src={submission.mediaUrl}
                                         alt={submission.title}
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                        loading="lazy"
                                       />
                                       
                                       {/* Dark Overlay */}
@@ -764,6 +766,7 @@ export default function ContestDetailPage() {
                               src={submission.mediaUrl}
                               alt={submission.title}
                               className="w-full h-auto min-h-[240px] object-cover transition-transform duration-500 group-hover:scale-110"
+                              loading="lazy"
                             />
                             
                             {/* Hover Overlay */}

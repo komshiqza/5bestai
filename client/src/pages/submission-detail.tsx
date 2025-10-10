@@ -152,6 +152,7 @@ export default function SubmissionDetailPage() {
                   src={submission.mediaUrl}
                   alt={submission.title}
                   className="w-full h-auto max-h-[70vh] object-contain bg-black"
+                  loading="lazy"
                   data-testid="img-submission"
                 />
               )}

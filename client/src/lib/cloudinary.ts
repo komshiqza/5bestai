@@ -24,9 +24,9 @@ export function transformCloudinaryUrl(
   }
 
   // Check if URL already has transformations (avoid double transformation)
-  // Pattern: /upload/[anything]/v[version] where [anything] is not directly v[digits]
-  // This catches: /upload/w_400,c_fill/v123, /upload/t_thumb/v123, /upload/e_sharpen/v123, etc.
-  const hasTransformations = /\/upload\/(?!v\d+\/)(.+?)\//.test(url);
+  // Look for transformation prefixes: w_, h_, c_, q_, f_, t_, e_, g_, ar_, dpr_, fl_, bo_, if_
+  // This catches parameter-based and named transforms but allows folders (e.g., /upload/user_assets/)
+  const hasTransformations = /\/upload\/[^/]*(?:w_|h_|c_|q_|f_|t_|e_|g_|ar_|dpr_|fl_|bo_|if_)/.test(url);
   if (hasTransformations) {
     return url; // Already transformed, return as-is
   }
