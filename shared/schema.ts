@@ -50,6 +50,8 @@ export const submissions = pgTable("submissions", {
   description: text("description"),
   mediaUrl: text("media_url").notNull(),
   thumbnailUrl: text("thumbnail_url"),
+  cloudinaryPublicId: varchar("cloudinary_public_id", { length: 255 }), // Store Cloudinary public_id for easy deletion
+  cloudinaryResourceType: varchar("cloudinary_resource_type", { length: 20 }), // Store resource type (image/video) for deletion
   tags: text("tags").array(),
   status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, rejected
   votesCount: integer("votes_count").notNull().default(0),

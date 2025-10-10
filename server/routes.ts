@@ -856,16 +856,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let finalMediaUrl: string;
       let finalThumbnailUrl: string | null = null;
+      let cloudinaryPublicId: string | null = null;
+      let cloudinaryResourceType: string | null = null;
+      let isGalleryReuse = false;
 
       // Upload new file or use existing mediaUrl from gallery
       if (req.file) {
         const uploadResult = await uploadFile(req.file);
         finalMediaUrl = uploadResult.url;
         finalThumbnailUrl = uploadResult.thumbnailUrl || null;
+        cloudinaryPublicId = uploadResult.cloudinaryPublicId || null;
+        cloudinaryResourceType = uploadResult.cloudinaryResourceType || null;
       } else {
-        // Using existing image from gallery
+        // Using existing image from gallery - don't delete shared asset
         finalMediaUrl = mediaUrl;
         finalThumbnailUrl = thumbnailUrl || null;
+        isGalleryReuse = true;
+        // Note: cloudinaryPublicId stays null to prevent deletion of shared asset
       }
 
       // Create submission
@@ -878,6 +885,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: description || "",
         mediaUrl: finalMediaUrl,
         thumbnailUrl: finalThumbnailUrl,
+        cloudinaryPublicId,
+        cloudinaryResourceType,
         status: "pending" // Requires admin approval
       });
 
@@ -1004,10 +1013,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Delete the submission media files if they exist
       if (submission.mediaUrl) {
-        await deleteFile(submission.mediaUrl).catch(err => console.error("Failed to delete media:", err));
-      }
-      if (submission.thumbnailUrl) {
-        await deleteFile(submission.thumbnailUrl).catch(err => console.error("Failed to delete thumbnail:", err));
+        // Check if legacy submission (Cloudinary URL but no stored publicId)
+        const isLegacy = submission.mediaUrl.includes('cloudinary.com') && !submission.cloudinaryPublicId;
+        
+        await deleteFile(
+          submission.mediaUrl, 
+          submission.cloudinaryPublicId || undefined,
+          submission.cloudinaryResourceType || undefined,
+          isLegacy
+        ).catch(err => console.error("Failed to delete media:", err));
       }
 
       await storage.deleteSubmission(req.params.id);
@@ -1067,11 +1081,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Submission not found" });
       }
 
-      // Delete the file from storage (Supabase or local)
-      await deleteFile(submission.mediaUrl);
-      if (submission.thumbnailUrl) {
-        await deleteFile(submission.thumbnailUrl);
-      }
+      // Delete the file from storage (Cloudinary or local)
+      const isLegacy = submission.mediaUrl.includes('cloudinary.com') && !submission.cloudinaryPublicId;
+      
+      await deleteFile(
+        submission.mediaUrl,
+        submission.cloudinaryPublicId || undefined,
+        submission.cloudinaryResourceType || undefined,
+        isLegacy
+      );
 
       // Delete from database
       await storage.deleteSubmission(req.params.id);
@@ -1150,11 +1168,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const id of submissionIds) {
         const submission = await storage.getSubmission(id);
         if (submission) {
-          // Delete files from storage
-          await deleteFile(submission.mediaUrl);
-          if (submission.thumbnailUrl) {
-            await deleteFile(submission.thumbnailUrl);
-          }
+          // Delete files from storage (Cloudinary or local)
+          const isLegacy = submission.mediaUrl.includes('cloudinary.com') && !submission.cloudinaryPublicId;
+          
+          await deleteFile(
+            submission.mediaUrl,
+            submission.cloudinaryPublicId || undefined,
+            submission.cloudinaryResourceType || undefined,
+            isLegacy
+          );
           
           // Delete from database
           await storage.deleteSubmission(id);
@@ -1242,11 +1264,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "You can only delete your own submissions" });
       }
 
-      // Delete the file from storage (Supabase or local)
-      await deleteFile(submission.mediaUrl);
-      if (submission.thumbnailUrl) {
-        await deleteFile(submission.thumbnailUrl);
-      }
+      // Delete the file from storage (Cloudinary or local)
+      const isLegacy = submission.mediaUrl.includes('cloudinary.com') && !submission.cloudinaryPublicId;
+      
+      await deleteFile(
+        submission.mediaUrl,
+        submission.cloudinaryPublicId || undefined,
+        submission.cloudinaryResourceType || undefined,
+        isLegacy
+      );
 
       // Delete from database
       await storage.deleteSubmission(req.params.id);

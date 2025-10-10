@@ -56,30 +56,19 @@ export async function uploadToCloudinary(file: Express.Multer.File): Promise<{
   url: string;
   publicId: string;
   thumbnailUrl?: string;
+  resourceType: string;
 }> {
   try {
     const isVideo = file.mimetype.startsWith("video/");
+    const resourceType = isVideo ? "video" : "image";
     
     // Upload to Cloudinary with optimization
     const result = await cloudinary.uploader.upload(file.path, {
-      resource_type: isVideo ? "video" : "image",
+      resource_type: resourceType,
       folder: "5best-submissions",
       // Auto-optimization settings
       quality: "auto:good", // Automatic quality optimization
       fetch_format: "auto", // Automatic format selection (WebP, AVIF when supported)
-      // For images, enable responsive breakpoints
-      ...(isVideo ? {} : {
-        responsive_breakpoints: {
-          create_derived: true,
-          bytes_step: 20000,
-          min_width: 400,
-          max_width: 1920,
-          transformation: {
-            quality: "auto:good",
-            fetch_format: "auto"
-          }
-        }
-      })
     });
 
     let thumbnailUrl: string | undefined;
@@ -100,6 +89,7 @@ export async function uploadToCloudinary(file: Express.Multer.File): Promise<{
       url: result.secure_url,
       publicId: result.public_id,
       thumbnailUrl,
+      resourceType,
     };
   } catch (error) {
     throw new Error(`Cloudinary upload failed: ${error}`);
@@ -109,6 +99,8 @@ export async function uploadToCloudinary(file: Express.Multer.File): Promise<{
 export async function uploadFile(file: Express.Multer.File): Promise<{
   url: string;
   thumbnailUrl?: string;
+  cloudinaryPublicId?: string;
+  cloudinaryResourceType?: string;
 }> {
   if (isCloudinaryConfigured()) {
     try {
@@ -120,6 +112,8 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
       return {
         url: result.url,
         thumbnailUrl: result.thumbnailUrl,
+        cloudinaryPublicId: result.publicId,
+        cloudinaryResourceType: result.resourceType,
       };
     } catch (error) {
       console.error("Cloudinary upload failed, falling back to local:", error);
@@ -138,29 +132,62 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
   return { url, thumbnailUrl };
 }
 
-export async function deleteFile(mediaUrl: string): Promise<void> {
+export async function deleteFile(
+  mediaUrl: string, 
+  cloudinaryPublicId?: string | null,
+  cloudinaryResourceType?: string,
+  isLegacySubmission: boolean = false
+): Promise<void> {
   try {
-    // Check if it's a Cloudinary URL
+    // Handle Cloudinary URLs
     if (mediaUrl.includes('cloudinary.com')) {
-      // Extract public_id from Cloudinary URL
-      // URL format: https://res.cloudinary.com/[cloud]/image/upload/v[version]/[folder]/[public_id].[ext]
-      const urlParts = mediaUrl.split('/');
-      const uploadIndex = urlParts.indexOf('upload');
+      let publicIdToDelete = cloudinaryPublicId;
+      let resourceType = cloudinaryResourceType || 'image';
       
-      if (uploadIndex !== -1 && uploadIndex + 2 < urlParts.length) {
-        // Get everything after 'upload/v{version}/' as the public_id
-        const pathAfterUpload = urlParts.slice(uploadIndex + 2).join('/');
-        // Remove file extension
-        const publicId = pathAfterUpload.replace(/\.[^/.]+$/, '');
-        
-        if (publicId) {
-          // Determine resource type from URL
-          const resourceType = urlParts.includes('video') ? 'video' : 'image';
+      // If no publicId stored, check if this is legacy or gallery reuse
+      if (!publicIdToDelete) {
+        if (isLegacySubmission) {
+          // Legacy submission: parse URL to extract publicId
+          console.log('Legacy Cloudinary submission - parsing URL for deletion');
           
-          await cloudinary.uploader.destroy(publicId, {
-            resource_type: resourceType
-          });
+          const urlParts = mediaUrl.split('/');
+          const uploadIndex = urlParts.indexOf('upload');
+          
+          // Determine resource type from URL
+          const resourceTypeIndex = uploadIndex - 1;
+          if (resourceTypeIndex >= 0) {
+            resourceType = urlParts[resourceTypeIndex] === 'video' ? 'video' : 'image';
+          }
+          
+          if (uploadIndex !== -1) {
+            // Find the version part (starts with 'v' followed by numbers)
+            let versionIndex = -1;
+            for (let i = uploadIndex + 1; i < urlParts.length; i++) {
+              if (urlParts[i].match(/^v\d+$/)) {
+                versionIndex = i;
+                break;
+              }
+            }
+            
+            if (versionIndex !== -1 && versionIndex + 1 < urlParts.length) {
+              // Get everything after version as the public_id path
+              const pathAfterVersion = urlParts.slice(versionIndex + 1).join('/');
+              // Remove file extension
+              publicIdToDelete = pathAfterVersion.replace(/\.[^/.]+$/, '');
+            }
+          }
+        } else {
+          // No publicId and not legacy = gallery reuse, don't delete
+          console.log(`Skipping Cloudinary deletion - no publicId stored (likely gallery reuse): ${mediaUrl}`);
+          return;
         }
+      }
+      
+      if (publicIdToDelete) {
+        await cloudinary.uploader.destroy(publicIdToDelete, {
+          resource_type: resourceType
+        });
+        console.log(`Deleted Cloudinary asset: ${publicIdToDelete} (${resourceType})`);
       }
     } else if (mediaUrl.startsWith('/uploads/')) {
       // Local file - extract filename and delete
@@ -169,6 +196,7 @@ export async function deleteFile(mediaUrl: string): Promise<void> {
       
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        console.log(`Deleted local file: ${fileName}`);
       }
     }
   } catch (error) {
