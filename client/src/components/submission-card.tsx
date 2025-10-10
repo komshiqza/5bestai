@@ -8,6 +8,7 @@ import { apiRequest } from "../lib/queryClient";
 import { useAuth, isAuthenticated, isApproved } from "../lib/auth";
 import { useToast } from "../hooks/use-toast";
 import { useState } from "react";
+import { cloudinaryPresets } from "../lib/cloudinary";
 
 interface SubmissionCardProps {
   submission: {
@@ -146,10 +147,18 @@ export function SubmissionCard({
     }
   };
 
-  const displayUrl =
-    submission.type === "video"
-      ? submission.thumbnailUrl || submission.mediaUrl
-      : submission.mediaUrl;
+  // Apply Cloudinary transformations for responsive images
+  let displayUrl = submission.type === "video"
+    ? submission.thumbnailUrl || submission.mediaUrl
+    : submission.mediaUrl;
+  
+  // Only apply thumbnail preset for images or video thumbnails (not raw video URLs)
+  const isImage = submission.type === "image" || 
+    (submission.type === "video" && submission.thumbnailUrl);
+  
+  if (isImage) {
+    displayUrl = cloudinaryPresets.thumbnail(displayUrl);
+  }
 
   return (
     <Card
@@ -161,6 +170,7 @@ export function SubmissionCard({
           src={displayUrl}
           alt={submission.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
         />
 
         {/* Hover Overlay */}

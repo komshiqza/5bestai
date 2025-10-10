@@ -914,6 +914,7 @@ function GallerySelector({
                 src={sub.thumbnailUrl || sub.mediaUrl}
                 alt={sub.title}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
               {selectedImage?.url === sub.mediaUrl && (
                 <div className="absolute inset-0 bg-violet-600/20 flex items-center justify-center">
