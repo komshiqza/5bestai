@@ -1,21 +1,22 @@
-import { createClient } from "@supabase/supabase-js";
+import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Configure Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-let supabaseClient: ReturnType<typeof createClient> | null = null;
-
-if (supabaseUrl && supabaseServiceKey) {
-  supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
-}
-
-// Check if Supabase Storage is configured
-const isSupabaseConfigured = () => {
-  return !!(supabaseUrl && supabaseServiceKey && supabaseClient);
+// Check if Cloudinary is configured
+const isCloudinaryConfigured = () => {
+  return !!(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
 };
 
 // Local upload configuration
@@ -51,53 +52,57 @@ export const upload = multer({
   },
 });
 
-export async function uploadToSupabase(file: Express.Multer.File): Promise<{
+export async function uploadToCloudinary(file: Express.Multer.File): Promise<{
   url: string;
   publicId: string;
   thumbnailUrl?: string;
 }> {
-  if (!supabaseClient) {
-    throw new Error("Supabase client not initialized");
-  }
-
   try {
-    const fileBuffer = fs.readFileSync(file.path);
-    const ext = path.extname(file.originalname);
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const isVideo = file.mimetype.startsWith("video/");
     
-    // Upload to Supabase Storage bucket
-    const { data, error } = await supabaseClient.storage
-      .from("5best-uploads")
-      .upload(fileName, fileBuffer, {
-        contentType: file.mimetype,
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (error) {
-      throw new Error(`Supabase upload error: ${error.message}`);
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabaseClient.storage
-      .from("5best-uploads")
-      .getPublicUrl(fileName);
+    // Upload to Cloudinary with optimization
+    const result = await cloudinary.uploader.upload(file.path, {
+      resource_type: isVideo ? "video" : "image",
+      folder: "5best-submissions",
+      // Auto-optimization settings
+      quality: "auto:good", // Automatic quality optimization
+      fetch_format: "auto", // Automatic format selection (WebP, AVIF when supported)
+      // For images, enable responsive breakpoints
+      ...(isVideo ? {} : {
+        responsive_breakpoints: {
+          create_derived: true,
+          bytes_step: 20000,
+          min_width: 400,
+          max_width: 1920,
+          transformation: {
+            quality: "auto:good",
+            fetch_format: "auto"
+          }
+        }
+      })
+    });
 
     let thumbnailUrl: string | undefined;
     
-    if (file.mimetype.startsWith("video/")) {
-      // For videos, we'll use a placeholder for now
-      // Supabase doesn't auto-generate video thumbnails like Cloudinary
-      thumbnailUrl = undefined;
+    if (isVideo) {
+      // Generate video thumbnail using Cloudinary transformation
+      thumbnailUrl = cloudinary.url(result.public_id, {
+        resource_type: "video",
+        format: "jpg",
+        transformation: [
+          { width: 400, height: 400, crop: "fill", quality: "auto:good" },
+          { fetch_format: "auto" }
+        ]
+      });
     }
 
     return {
-      url: publicUrl,
-      publicId: fileName,
+      url: result.secure_url,
+      publicId: result.public_id,
       thumbnailUrl,
     };
   } catch (error) {
-    throw new Error(`Supabase upload failed: ${error}`);
+    throw new Error(`Cloudinary upload failed: ${error}`);
   }
 }
 
@@ -105,9 +110,9 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
   url: string;
   thumbnailUrl?: string;
 }> {
-  if (isSupabaseConfigured()) {
+  if (isCloudinaryConfigured()) {
     try {
-      const result = await uploadToSupabase(file);
+      const result = await uploadToCloudinary(file);
       
       // Clean up local file
       fs.unlinkSync(file.path);
@@ -117,7 +122,7 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
         thumbnailUrl: result.thumbnailUrl,
       };
     } catch (error) {
-      console.error("Supabase upload failed, falling back to local:", error);
+      console.error("Cloudinary upload failed, falling back to local:", error);
     }
   }
 
@@ -135,20 +140,26 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
 
 export async function deleteFile(mediaUrl: string): Promise<void> {
   try {
-    // Check if it's a Supabase Storage URL
-    if (supabaseClient && mediaUrl.includes('supabase.co/storage')) {
-      // Extract filename from Supabase URL
-      // URL format: https://[project].supabase.co/storage/v1/object/public/5best-uploads/[filename]
+    // Check if it's a Cloudinary URL
+    if (mediaUrl.includes('cloudinary.com')) {
+      // Extract public_id from Cloudinary URL
+      // URL format: https://res.cloudinary.com/[cloud]/image/upload/v[version]/[folder]/[public_id].[ext]
       const urlParts = mediaUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1];
+      const uploadIndex = urlParts.indexOf('upload');
       
-      if (fileName) {
-        const { error } = await supabaseClient.storage
-          .from("5best-uploads")
-          .remove([fileName]);
+      if (uploadIndex !== -1 && uploadIndex + 2 < urlParts.length) {
+        // Get everything after 'upload/v{version}/' as the public_id
+        const pathAfterUpload = urlParts.slice(uploadIndex + 2).join('/');
+        // Remove file extension
+        const publicId = pathAfterUpload.replace(/\.[^/.]+$/, '');
         
-        if (error) {
-          console.error(`Supabase file deletion error: ${error.message}`);
+        if (publicId) {
+          // Determine resource type from URL
+          const resourceType = urlParts.includes('video') ? 'video' : 'image';
+          
+          await cloudinary.uploader.destroy(publicId, {
+            resource_type: resourceType
+          });
         }
       }
     } else if (mediaUrl.startsWith('/uploads/')) {
