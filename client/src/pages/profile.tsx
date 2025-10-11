@@ -12,13 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
 import { useUserBalance } from "@/hooks/useUserBalance";
-import { WalletConnect } from "@/components/wallet/WalletConnect";
 import { CashoutRequest } from "@/components/wallet/CashoutRequest";
 import { EditSubmissionModal } from "@/components/EditSubmissionModal";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Profile() {
   const { data: user } = useAuth();
@@ -35,6 +34,15 @@ export default function Profile() {
   const [newUsername, setNewUsername] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState<"all" | "GLORY" | "SOL" | "USDC">("all");
+  const [withdrawalAddress, setWithdrawalAddress] = useState(user?.withdrawalAddress || "");
+  const [editingWithdrawalAddress, setEditingWithdrawalAddress] = useState(false);
+
+  // Sync withdrawal address state with user data
+  useEffect(() => {
+    if (user?.withdrawalAddress !== undefined) {
+      setWithdrawalAddress(user.withdrawalAddress || "");
+    }
+  }, [user?.withdrawalAddress]);
 
   // Redirect if not authenticated
   if (!isAuthenticated(user)) {
@@ -166,9 +174,6 @@ export default function Profile() {
     },
   });
 
-  // Fetch wallet data for withdraw modal
-  const { data: walletData } = useQuery<any>({ queryKey: ["/api/wallet/me"] });
-
   // Clear all glory history mutation
   const clearGloryHistoryMutation = useMutation({
     mutationFn: async () => {
@@ -229,17 +234,6 @@ export default function Profile() {
     });
   };
 
-  // Handle copy wallet address
-  const handleCopyWallet = () => {
-    if (walletData?.wallet?.address) {
-      navigator.clipboard.writeText(walletData.wallet.address).then(() => {
-        toast({ title: "Copied!", description: "Wallet address copied to clipboard" });
-      }).catch(() => {
-        toast({ title: "Error", description: "Failed to copy wallet address", variant: "destructive" });
-      });
-    }
-  };
-
   // Handle clear all glory history with confirmation
   const handleClearGloryHistory = () => {
     if (confirm("Are you sure you want to clear all GLORY history? Your current balance will remain unchanged.")) {
@@ -297,6 +291,21 @@ export default function Profile() {
     },
   });
 
+  // Update withdrawal address mutation
+  const updateWithdrawalAddressMutation = useMutation({
+    mutationFn: async (address: string) => {
+      return await apiRequest("PATCH", "/api/users/withdrawal-address", { address });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      setEditingWithdrawalAddress(false);
+      toast({ title: "Success", description: "Withdrawal address saved successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to save withdrawal address", variant: "destructive" });
+    },
+  });
+
   // Handle username save
   const handleSaveUsername = () => {
     if (!newUsername.trim() || newUsername.trim().length < 3) {
@@ -304,6 +313,19 @@ export default function Profile() {
       return;
     }
     updateUsernameMutation.mutate(newUsername);
+  };
+
+  // Handle withdrawal address save
+  const handleSaveWithdrawalAddress = () => {
+    if (!withdrawalAddress.trim()) {
+      toast({ title: "Error", description: "Please enter a withdrawal address", variant: "destructive" });
+      return;
+    }
+    if (withdrawalAddress.trim().length < 32 || withdrawalAddress.trim().length > 44) {
+      toast({ title: "Error", description: "Invalid Solana address (must be 32-44 characters)", variant: "destructive" });
+      return;
+    }
+    updateWithdrawalAddressMutation.mutate(withdrawalAddress.trim());
   };
 
   // Handle avatar upload
@@ -797,7 +819,66 @@ export default function Profile() {
                   </CardContent>
                 </Card>
 
-                <WalletConnect />
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Withdrawal Address</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Enter your Solana wallet address where you want to receive withdrawals
+                    </p>
+                    {editingWithdrawalAddress ? (
+                      <div className="space-y-4">
+                        <Input
+                          placeholder="Enter Solana wallet address (32-44 characters)"
+                          value={withdrawalAddress}
+                          onChange={(e) => setWithdrawalAddress(e.target.value)}
+                          data-testid="input-withdrawal-address"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleSaveWithdrawalAddress}
+                            disabled={updateWithdrawalAddressMutation.isPending}
+                            data-testid="button-save-withdrawal-address"
+                          >
+                            <Save className="w-4 h-4 mr-2" />
+                            Save Address
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setEditingWithdrawalAddress(false);
+                              setWithdrawalAddress(user?.withdrawalAddress || "");
+                            }}
+                            data-testid="button-cancel-withdrawal-address"
+                          >
+                            <XIcon className="w-4 h-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {user?.withdrawalAddress ? (
+                          <p className="text-muted-foreground font-mono text-sm truncate flex-1">
+                            {user.withdrawalAddress}
+                          </p>
+                        ) : (
+                          <p className="text-muted-foreground italic">No withdrawal address set</p>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingWithdrawalAddress(true);
+                            setWithdrawalAddress(user?.withdrawalAddress || "");
+                          }}
+                          data-testid="button-edit-withdrawal-address"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
                 <Card className="border-destructive">
                   <CardContent className="p-6">
@@ -853,25 +934,6 @@ export default function Profile() {
           </DialogHeader>
           
           <div className="space-y-6 mt-4">
-            {walletData?.wallet && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Wallet Address</label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 p-3 rounded-lg bg-muted/50">
-                    <p className="font-mono text-sm break-all">{walletData.wallet.address}</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleCopyWallet}
-                    data-testid="button-copy-wallet"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-            
             <CashoutRequest />
           </div>
         </DialogContent>
