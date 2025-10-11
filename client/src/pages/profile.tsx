@@ -675,7 +675,8 @@ export default function Profile() {
                 {gloryHistory.length > 0 ? (
                   <Card>
                       <CardContent className="p-0">
-                        <div className="overflow-x-auto">
+                        {/* Desktop Table View */}
+                        <div className="overflow-x-auto hidden md:block">
                           <table className="w-full" data-testid="glory-history-table">
                             <thead className="bg-muted">
                               <tr>
@@ -723,6 +724,39 @@ export default function Profile() {
                               })}
                             </tbody>
                           </table>
+                        </div>
+
+                        {/* Mobile Card View */}
+                        <div className="md:hidden divide-y divide-border">
+                          {gloryHistory.map((transaction: any, index: number) => {
+                            const date = new Date(transaction.createdAt);
+                            const shortDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().slice(-2)}`;
+                            
+                            return (
+                              <div key={transaction.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`glory-transaction-card-${index}`}>
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-sm mb-1">
+                                      {transaction.reason}
+                                    </div>
+                                    {transaction.contestId && (
+                                      <div className="text-muted-foreground text-xs">
+                                        Contest reward
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span 
+                                    className={`font-semibold font-mono text-sm ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
+                                  >
+                                    {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} {transaction.currency || "GLORY"}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {shortDate}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
