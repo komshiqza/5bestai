@@ -154,6 +154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       role: user.role,
       status: user.status,
       gloryBalance: user.gloryBalance,
+      solBalance: user.solBalance,
+      usdcBalance: user.usdcBalance,
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt
     });
