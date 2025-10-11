@@ -72,11 +72,11 @@ export interface IStorage {
   getVoteCountForSubmissionInPeriod(userId: string, submissionId: string, since: Date): Promise<number>;
   getUserTotalVotesInContest(userId: string, contestId: string): Promise<number>;
   
-  // Glory Ledger
+  // Glory Ledger (now handles all currencies)
   createGloryTransaction(transaction: InsertGloryLedger): Promise<GloryLedger>;
-  getGloryTransactions(userId: string): Promise<GloryLedger[]>;
+  getGloryTransactions(userId: string, currency?: string): Promise<GloryLedger[]>;
   clearGloryTransactions(userId: string): Promise<void>;
-  updateUserGloryBalance(userId: string, delta: number): Promise<void>;
+  updateUserBalance(userId: string, delta: number, currency: string): Promise<void>;
   
   // Audit Log
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
@@ -127,6 +127,8 @@ export class MemStorage implements IStorage {
       role: "admin",
       status: "approved",
       gloryBalance: 0,
+      solBalance: 0,
+      usdcBalance: 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -153,6 +155,8 @@ export class MemStorage implements IStorage {
         role: "user",
         status: "approved",
         gloryBalance: userData.gloryBalance,
+        solBalance: 0,
+        usdcBalance: 0,
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
         updatedAt: new Date()
       };
@@ -203,6 +207,8 @@ export class MemStorage implements IStorage {
       role: insertUser.role || "user",
       status: insertUser.status || "pending",
       gloryBalance: 0,
+      solBalance: 0,
+      usdcBalance: 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -510,6 +516,7 @@ export class MemStorage implements IStorage {
     const transaction: GloryLedger = {
       ...insertTransaction,
       id,
+      currency: insertTransaction.currency || "GLORY",
       contestId: insertTransaction.contestId || null,
       submissionId: insertTransaction.submissionId || null,
       createdAt: new Date()
@@ -517,14 +524,17 @@ export class MemStorage implements IStorage {
     this.gloryLedger.set(id, transaction);
     
     // Update user balance
-    await this.updateUserGloryBalance(transaction.userId, transaction.delta);
+    await this.updateUserBalance(transaction.userId, transaction.delta, transaction.currency);
     
     return transaction;
   }
 
-  async getGloryTransactions(userId: string): Promise<GloryLedger[]> {
+  async getGloryTransactions(userId: string, currency?: string): Promise<GloryLedger[]> {
     return Array.from(this.gloryLedger.values())
-      .filter(transaction => transaction.userId === userId)
+      .filter(transaction => 
+        transaction.userId === userId && 
+        (!currency || transaction.currency === currency)
+      )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
@@ -538,10 +548,16 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateUserGloryBalance(userId: string, delta: number): Promise<void> {
+  async updateUserBalance(userId: string, delta: number, currency: string): Promise<void> {
     const user = this.users.get(userId);
     if (user) {
-      user.gloryBalance += delta;
+      if (currency === "GLORY") {
+        user.gloryBalance += delta;
+      } else if (currency === "SOL") {
+        user.solBalance = (user.solBalance || 0) + delta;
+      } else if (currency === "USDC") {
+        user.usdcBalance = (user.usdcBalance || 0) + delta;
+      }
       user.updatedAt = new Date();
       this.users.set(userId, user);
     }
@@ -1076,14 +1092,16 @@ export class DbStorage implements IStorage {
   async createGloryTransaction(insertTransaction: InsertGloryLedger): Promise<GloryLedger> {
     const [transaction] = await db.insert(gloryLedger).values(insertTransaction).returning();
     
-    await this.updateUserGloryBalance(transaction.userId, transaction.delta);
+    await this.updateUserBalance(transaction.userId, transaction.delta, transaction.currency || "GLORY");
     
     return transaction as GloryLedger;
   }
 
-  async getGloryTransactions(userId: string): Promise<GloryLedger[]> {
+  async getGloryTransactions(userId: string, currency?: string): Promise<GloryLedger[]> {
     const result = await db.query.gloryLedger.findMany({
-      where: eq(gloryLedger.userId, userId),
+      where: currency 
+        ? and(eq(gloryLedger.userId, userId), eq(gloryLedger.currency, currency))
+        : eq(gloryLedger.userId, userId),
       orderBy: [desc(gloryLedger.createdAt)]
     });
     return result;
@@ -1093,13 +1111,29 @@ export class DbStorage implements IStorage {
     await db.delete(gloryLedger).where(eq(gloryLedger.userId, userId));
   }
 
-  async updateUserGloryBalance(userId: string, delta: number): Promise<void> {
-    await db.update(users)
-      .set({ 
-        gloryBalance: sql`${users.gloryBalance} + ${delta}`,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId));
+  async updateUserBalance(userId: string, delta: number, currency: string): Promise<void> {
+    if (currency === "GLORY") {
+      await db.update(users)
+        .set({ 
+          gloryBalance: sql`${users.gloryBalance} + ${delta}`,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
+    } else if (currency === "SOL") {
+      await db.update(users)
+        .set({ 
+          solBalance: sql`${users.solBalance} + ${delta}`,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
+    } else if (currency === "USDC") {
+      await db.update(users)
+        .set({ 
+          usdcBalance: sql`${users.usdcBalance} + ${delta}`,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
+    }
   }
 
   async createAuditLog(insertLog: InsertAuditLog): Promise<AuditLog> {
