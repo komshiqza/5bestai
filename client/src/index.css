@@ -5,8 +5,8 @@
 
 :root {
   --pg-primary: #7c3cec;
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(240, 10%, 3.9%);
   --card: hsl(0, 0%, 100%);
   --card-foreground: hsl(240, 10%, 3.9%);
   --popover: hsl(0, 0%, 100%);
@@ -15,7 +15,7 @@
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(240, 4.8%, 95.9%);
   --secondary-foreground: hsl(240, 5.9%, 10%);
-  --muted: 240 4.8% 95.9%;
+  --muted: hsl(240, 4.8%, 95.9%);
   --muted-foreground: hsl(240, 3.8%, 46.1%);
   --accent: hsl(270, 80%, 58%);
   --accent-foreground: hsl(0, 0%, 100%);
@@ -34,7 +34,7 @@
 
 .dark {
   --background: 268 43% 10%;
-  --foreground: 0 0% 98%;
+  --foreground: hsl(0, 0%, 98%);
   --card: hsl(240, 4%, 9%);
   --card-foreground: hsl(0, 0%, 98%);
   --popover: hsl(240, 4%, 9%);
@@ -43,7 +43,7 @@
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(240, 5%, 26%);
   --secondary-foreground: hsl(0, 0%, 98%);
-  --muted: 240 5% 16%;
+  --muted: hsl(240, 5%, 16%);
   --muted-foreground: hsl(240, 5%, 64%);
   --accent: hsl(270, 80%, 58%);
   --accent-foreground: hsl(0, 0%, 100%);
@@ -74,18 +74,6 @@
   #root {
     background-color: #171121;
     min-height: 100vh;
-  }
-
-  /* Fix select dropdown option styling */
-  select option {
-    background-color: hsl(var(--background)) !important;
-    color: hsl(var(--foreground)) !important;
-  }
-
-  select option:checked,
-  select option:hover {
-    background-color: hsl(var(--muted)) !important;
-    color: hsl(var(--foreground)) !important;
   }
 }
 
