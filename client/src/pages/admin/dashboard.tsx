@@ -2196,7 +2196,8 @@ export default function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
                   <table className="w-full" data-testid="audit-logs-table">
                     <thead className="bg-muted">
                       <tr>
@@ -2236,6 +2237,31 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-border">
+                  {auditLogs.map((log: any, index: number) => (
+                    <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`audit-log-card-${index}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {new Date(log.createdAt).toLocaleDateString()} {new Date(log.createdAt).toLocaleTimeString()}
+                          </div>
+                          <div className="font-medium text-sm">
+                            Admin #{log.actorUserId.substring(0, 8)}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {log.action.replace(/_/g, " ").toLowerCase()}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {log.meta ? JSON.stringify(log.meta).substring(0, 100) + "..." : "No details"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 {auditLogs.length === 0 && (
                   <div className="text-center py-12" data-testid="no-audit-logs">
                     <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
