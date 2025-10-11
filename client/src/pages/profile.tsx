@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy, Camera, Save, X as XIcon, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
 import { useUserBalance } from "@/hooks/useUserBalance";
@@ -623,18 +624,18 @@ export default function Profile() {
                 {/* Always show filter */}
                 <div className="flex justify-between items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-muted-foreground">Currency:</label>
-                    <select
-                      value={currencyFilter}
-                      onChange={(e) => setCurrencyFilter(e.target.value as "all" | "GLORY" | "SOL" | "USDC")}
-                      className="px-3 py-1.5 bg-background text-foreground border border-input rounded-lg text-sm [&>option]:bg-background [&>option]:text-foreground"
-                      data-testid="select-currency-filter"
-                    >
-                      <option value="all">All Currencies</option>
-                      <option value="GLORY">GLORY</option>
-                      <option value="SOL">SOL</option>
-                      <option value="USDC">USDC</option>
-                    </select>
+                    <label htmlFor="currency-filter" className="text-sm font-medium text-muted-foreground">Currency:</label>
+                    <Select value={currencyFilter} onValueChange={(value) => setCurrencyFilter(value as "all" | "GLORY" | "SOL" | "USDC")}>
+                      <SelectTrigger id="currency-filter" className="w-[180px]" data-testid="select-currency-filter">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Currencies</SelectItem>
+                        <SelectItem value="GLORY">GLORY</SelectItem>
+                        <SelectItem value="SOL">SOL</SelectItem>
+                        <SelectItem value="USDC">USDC</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   {gloryHistory.length > 0 && (
                     <Button

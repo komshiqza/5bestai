@@ -5,6 +5,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -100,17 +101,16 @@ export function CashoutRequest() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency</Label>
-                <select
-                  id="currency"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value as "GLORY" | "SOL" | "USDC")}
-                  className="w-full px-3 py-2 bg-background text-foreground border border-input rounded-lg text-sm [&>option]:bg-background [&>option]:text-foreground"
-                  data-testid="select-withdraw-currency"
-                >
-                  <option value="GLORY">GLORY</option>
-                  <option value="SOL">SOL</option>
-                  <option value="USDC">USDC</option>
-                </select>
+                <Select value={currency} onValueChange={(value) => setCurrency(value as "GLORY" | "SOL" | "USDC")}>
+                  <SelectTrigger id="currency" data-testid="select-withdraw-currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GLORY">GLORY</SelectItem>
+                    <SelectItem value="SOL">SOL</SelectItem>
+                    <SelectItem value="USDC">USDC</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

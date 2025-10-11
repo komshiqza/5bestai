@@ -2107,17 +2107,16 @@ export default function AdminDashboard() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <select
-                id="currency"
-                value={selectedCurrency}
-                onChange={(e) => setSelectedCurrency(e.target.value as "GLORY" | "SOL" | "USDC")}
-                className="w-full px-3 py-2 bg-background text-foreground border border-input rounded-lg text-sm [&>option]:bg-background [&>option]:text-foreground"
-                data-testid="select-balance-currency"
-              >
-                <option value="GLORY">GLORY</option>
-                <option value="SOL">SOL</option>
-                <option value="USDC">USDC</option>
-              </select>
+              <Select value={selectedCurrency} onValueChange={(value) => setSelectedCurrency(value as "GLORY" | "SOL" | "USDC")}>
+                <SelectTrigger id="currency" data-testid="select-balance-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GLORY">GLORY</SelectItem>
+                  <SelectItem value="SOL">SOL</SelectItem>
+                  <SelectItem value="USDC">USDC</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             {selectedUserId && (
               <div className="bg-muted p-3 rounded-md">
