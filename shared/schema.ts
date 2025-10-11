@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   gloryBalance: integer("glory_balance").notNull().default(0),
   solBalance: integer("sol_balance").notNull().default(0),
   usdcBalance: integer("usdc_balance").notNull().default(0),
+  withdrawalAddress: varchar("withdrawal_address", { length: 255 }), // Solana withdrawal address
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 }, (table) => ({

@@ -46,6 +46,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  updateWithdrawalAddress(userId: string, address: string): Promise<User | undefined>;
   deleteUser(id: string): Promise<void>;
   getUsersWithFilters(filters: { status?: string; role?: string }): Promise<UserWithStats[]>;
   getUsersByIds(ids: string[]): Promise<User[]>;
@@ -136,6 +137,7 @@ export class MemStorage implements IStorage {
       gloryBalance: 0,
       solBalance: 0,
       usdcBalance: 0,
+      withdrawalAddress: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -164,6 +166,7 @@ export class MemStorage implements IStorage {
         gloryBalance: userData.gloryBalance,
         solBalance: 0,
         usdcBalance: 0,
+        withdrawalAddress: null,
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
         updatedAt: new Date()
       };
@@ -216,6 +219,7 @@ export class MemStorage implements IStorage {
       gloryBalance: 0,
       solBalance: 0,
       usdcBalance: 0,
+      withdrawalAddress: insertUser.withdrawalAddress || null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -230,6 +234,10 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...user, ...updates, updatedAt: new Date() };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+
+  async updateWithdrawalAddress(userId: string, address: string): Promise<User | undefined> {
+    return this.updateUser(userId, { withdrawalAddress: address });
   }
 
   async deleteUser(id: string): Promise<void> {
@@ -749,6 +757,10 @@ export class DbStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateWithdrawalAddress(userId: string, address: string): Promise<User | undefined> {
+    return this.updateUser(userId, { withdrawalAddress: address });
   }
 
   async deleteUser(id: string): Promise<void> {
