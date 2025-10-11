@@ -17,6 +17,7 @@ import {
   voteSubmissionSchema,
   updateUserStatusSchema,
   updateSubmissionStatusSchema,
+  updateWithdrawalAddressSchema,
   bulkSubmissionIdsSchema,
   insertContestSchema,
   insertSubmissionSchema,
@@ -255,6 +256,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Profile deleted successfully" });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : "Failed to delete profile" });
+    }
+  });
+
+  // Update withdrawal address
+  app.patch("/api/users/withdrawal-address", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { address } = updateWithdrawalAddressSchema.parse(req.body);
+      const userId = req.user!.id;
+
+      const updatedUser = await storage.updateWithdrawalAddress(userId, address);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({ 
+        success: true, 
+        withdrawalAddress: updatedUser.withdrawalAddress 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid withdrawal address format" });
+      }
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to update withdrawal address" });
     }
   });
 

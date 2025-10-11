@@ -251,6 +251,10 @@ export const updateSubmissionStatusSchema = z.object({
   status: z.enum(["pending", "approved", "rejected"])
 });
 
+export const updateWithdrawalAddressSchema = z.object({
+  address: z.string().min(32).max(44) // Solana wallet address (32-44 chars)
+});
+
 export const bulkSubmissionIdsSchema = z.object({
   submissionIds: z.array(z.string()).min(1, "At least one submission must be selected")
 });
