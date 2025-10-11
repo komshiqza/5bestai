@@ -1091,7 +1091,8 @@ export default function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full" data-testid="users-table">
                     <thead className="bg-muted">
                       <tr>
@@ -1219,6 +1220,119 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden">
+                  {/* Mobile Select All Header */}
+                  {filteredUsers.length > 0 && (
+                    <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/50">
+                      <Checkbox
+                        checked={isSomeSelected ? "indeterminate" : isAllSelected}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        data-testid="select-all-checkbox-mobile"
+                      />
+                      <span className="text-sm font-medium">
+                        {selectedUserIds.length > 0 
+                          ? `${selectedUserIds.length} selected` 
+                          : 'Select all'}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="divide-y divide-border">
+                    {filteredUsers.map((user: any) => (
+                    <div key={user.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`user-card-${user.id}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            checked={selectedUserIds.includes(user.id)}
+                            onCheckedChange={(checked) => handleUserSelect(user.id, !!checked)}
+                            data-testid={`select-user-mobile-${user.id}`}
+                          />
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className={user.status === "banned" ? "bg-destructive/20 text-destructive" : "bg-secondary text-secondary-foreground"}>
+                              {getInitials(user.username)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className={`font-semibold truncate ${user.status === "banned" ? "line-through opacity-60" : ""}`}>
+                              {user.username}
+                            </div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {user.email}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge className={getStatusColor(user.status)}>
+                          {getStatusIcon(user.status)}
+                          <span className="ml-1">{user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span>
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground text-xs">GLORY Balance</div>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="font-semibold font-mono">{user.gloryBalance.toLocaleString()}</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 hover:bg-primary/20"
+                              onClick={() => openGloryEditDialog(user.id)}
+                              title="Edit balance"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Joined</div>
+                          <div className="mt-1">{new Date(user.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 flex-wrap">
+                        {user.status === "pending" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 bg-success/20 text-success hover:bg-success/30 border-success/30"
+                            onClick={() => updateUserStatusMutation.mutate({ userId: user.id, status: "approved" })}
+                            disabled={updateUserStatusMutation.isPending}
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Approve
+                          </Button>
+                        )}
+                        {user.status !== "banned" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                            onClick={() => updateUserStatusMutation.mutate({ userId: user.id, status: "banned" })}
+                            disabled={updateUserStatusMutation.isPending}
+                          >
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Ban
+                          </Button>
+                        )}
+                        {user.status === "banned" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 bg-success/20 text-success hover:bg-success/30 border-success/30"
+                            onClick={() => updateUserStatusMutation.mutate({ userId: user.id, status: "approved" })}
+                            disabled={updateUserStatusMutation.isPending}
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Unban
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
