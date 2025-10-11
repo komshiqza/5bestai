@@ -57,6 +57,11 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
   const [coverImagePreview, setCoverImagePreview] = useState<string>('');
   const [showImageSelector, setShowImageSelector] = useState(false);
 
+  // Fetch approved users for jury selection
+  const { data: approvedUsers = [] } = useQuery<any[]>({
+    queryKey: ['/api/admin/users', { status: 'approved' }]
+  });
+
   const { data: submissions = [] } = useQuery({
     queryKey: ['/api/submissions', { forGallery: true }],
     queryFn: async () => {
@@ -910,6 +915,50 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                     ))}
                   </div>
                 </div>
+
+                {/* Jury Members Selection - shown only when jury voting is enabled */}
+                {formData.votingMethods.includes('jury') && (
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
+                    <h4 className="text-md font-medium text-slate-800 dark:text-slate-200 mb-2">
+                      Jury Members
+                    </h4>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Select users who can vote as jury members. {formData.votingMethods.length === 1 ? 'Only jury members can vote.' : 'Jury members can vote alongside public voters.'}
+                    </p>
+                    
+                    {approvedUsers.length === 0 ? (
+                      <p className="text-sm text-slate-500 italic">No approved users available for jury selection.</p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto border border-slate-300/60 dark:border-slate-700/60 rounded-xl p-3 space-y-2">
+                        {approvedUsers.map((user: any) => (
+                          <label key={user.id} className="flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-lg cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.juryMembers.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  handleInputChange('juryMembers', [...formData.juryMembers, user.id]);
+                                } else {
+                                  handleInputChange('juryMembers', formData.juryMembers.filter(id => id !== user.id));
+                                }
+                              }}
+                              className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                              data-testid={`checkbox-jury-${user.id}`}
+                            />
+                            <span className="text-sm text-slate-800 dark:text-slate-200">{user.username}</span>
+                            <span className="text-xs text-slate-500">({user.email})</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {formData.juryMembers.length > 0 && (
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                        Selected: {formData.juryMembers.length} jury member(s)
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
                   <h4 className="text-md font-medium text-slate-800 dark:text-slate-200 mb-3">Voting Frequency</h4>

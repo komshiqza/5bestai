@@ -85,10 +85,39 @@ Preferred communication style: Simple, everyday language.
 - Atomic transaction: Creates GloryLedger entries and updates user balances
 - Remainder from rounding goes to first place winner
 
-**Vote Integrity**:
-- Unique constraint prevents double voting
-- Rate limiting prevents vote manipulation (30/hour)
-- Only approved users can vote (prevents banned/pending abuse)
+**Vote Integrity & Flexibility**:
+- **Voting Frequency Control**: Contests can configure `votesPerUserPerPeriod` and `periodDurationHours` to allow multiple votes per submission within time windows (e.g., 3 votes per 24 hours)
+- **Total Vote Limits**: Optional `totalVotesPerUser` caps total votes across entire contest
+- **Rate Limiting**: System-wide 30 votes per hour per user prevents abuse
+- **Access Control**: Only approved users can vote (prevents banned/pending abuse)
+
+**Contest Type Validation**:
+- Contests specify `contestType` (image/video) in config
+- Submissions validated against contest type during upload
+- File type enforcement ensures only matching media types accepted
+
+**Entry Fee System**:
+- Contests can require entry fees (paid in GLORY, Solana, or USDC)
+- Entry fee deducted AFTER submission creation (atomic operation)
+- Creates `glory_ledger` entry for transparency
+- Prevents GLORY loss if upload fails
+
+**Jury Voting**:
+- Contests can enable `votingMethods`: ['public'], ['jury'], or ['public', 'jury']
+- When ONLY 'jury' voting: restricted to users in `juryMembers` array
+- Hybrid mode (public+jury): all approved users can vote
+- Jury members specified by user IDs in contest config
+
+**Contest Status Workflow**:
+- **Draft**: Requires admin approval, not publicly visible
+- **Active** (via "Publish"): Live immediately, users can submit/vote
+- **Ended**: Voting closed, ready for reward distribution
+- **Archived**: Historical storage, no longer active
+
+**Submission Rules**:
+- `maxSubmissions`: Limit submissions per user (validated at submission time)
+- `fileSizeLimit`: Max file size in MB (validated during upload)
+- `submissionEndAt`: Optional deadline separate from voting end
 
 ### API Design Patterns
 - **Validation**: Zod schemas shared between client and server (`@shared/schema`)
