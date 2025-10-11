@@ -676,24 +676,6 @@ export class DbStorage implements IStorage {
         gloryBalance: 0
       });
     }
-
-    const existingContest = await db.query.contests.findFirst({
-      where: eq(contests.slug, "weekly-top-5")
-    });
-
-    if (!existingContest) {
-      await db.insert(contests).values({
-        title: "Weekly Top 5 Challenge",
-        slug: "weekly-top-5",
-        description: "Submit your best creative work this week! Top 5 submissions share a prize pool of 1,000 GLORY points.",
-        rules: "Submit original artwork only (images or videos up to 100MB). One submission per user per contest. Voting ends when the contest timer reaches zero. Top 5 submissions win GLORY: 40%, 25%, 15%, 10%, 10%. Admin approval required before submissions are visible.",
-        coverImageUrl: null,
-        status: "active",
-        prizeGlory: 1000,
-        startAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        endAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-      });
-    }
   }
 
   async getUser(id: string): Promise<User | undefined> {
