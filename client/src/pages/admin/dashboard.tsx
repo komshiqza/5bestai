@@ -28,7 +28,9 @@ import {
   DollarSign,
   Loader2,
   Trash2,
-  Edit3
+  Edit3,
+  Copy,
+  Download
 } from "lucide-react";
 import { useAuth, isAdmin } from "@/lib/auth";
 import { useLocation } from "wouter";
@@ -1046,6 +1048,45 @@ export default function AdminDashboard() {
                         data-testid="user-search"
                       />
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const csvData = filteredUsers.map((user: any) => ({
+                          Username: user.username,
+                          Email: user.email,
+                          Status: user.status,
+                          'GLORY Balance': user.gloryBalance || 0,
+                          'SOL Balance': user.solBalance || 0,
+                          'USDC Balance': user.usdcBalance || 0,
+                          'Withdrawal Address': user.withdrawalAddress || 'Not set',
+                          'Joined': new Date(user.createdAt).toLocaleDateString(),
+                        }));
+                        
+                        const headers = Object.keys(csvData[0] || {});
+                        const csv = [
+                          headers.join(','),
+                          ...csvData.map((row: any) => headers.map(h => `"${row[h]}"`).join(','))
+                        ].join('\n');
+                        
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        
+                        toast({
+                          title: "CSV Downloaded",
+                          description: `${filteredUsers.length} users exported successfully`,
+                        });
+                      }}
+                      data-testid="export-users-csv"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -1612,7 +1653,49 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Cashout Requests Management</CardTitle>
+                  <div className="flex items-center gap-4">
+                    <CardTitle>Cashout Requests Management</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const csvData = cashoutRequests.map((request: any) => ({
+                          ID: request.id,
+                          User: request.user.username,
+                          Email: request.user.email,
+                          Amount: request.amountGlory,
+                          Token: request.tokenType,
+                          'Token Amount': request.amountToken,
+                          'Withdrawal Address': request.withdrawalAddress,
+                          Status: request.status,
+                          'Created At': new Date(request.createdAt).toLocaleString(),
+                        }));
+                        
+                        const headers = Object.keys(csvData[0] || {});
+                        const csv = [
+                          headers.join(','),
+                          ...csvData.map((row: any) => headers.map(h => `"${row[h]}"`).join(','))
+                        ].join('\n');
+                        
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `cashout-requests-${new Date().toISOString().split('T')[0]}.csv`;
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        
+                        toast({
+                          title: "CSV Downloaded",
+                          description: `${cashoutRequests.length} cashout requests exported successfully`,
+                        });
+                      }}
+                      data-testid="export-cashouts-csv"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
                   {selectedCashoutIds.length > 0 && (
                     <div className="flex items-center space-x-2">
                       <span className="text-sm text-muted-foreground">
@@ -1736,8 +1819,25 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="font-mono text-xs max-w-[200px] truncate" data-testid={`cashout-wallet-${request.id}`}>
-                              {request.withdrawalAddress}
+                            <div className="flex items-center gap-2">
+                              <div className="font-mono text-xs max-w-[200px] truncate" data-testid={`cashout-wallet-${request.id}`}>
+                                {request.withdrawalAddress}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(request.withdrawalAddress);
+                                  toast({
+                                    title: "Address Copied",
+                                    description: "Withdrawal address copied to clipboard",
+                                  });
+                                }}
+                                data-testid={`copy-address-${request.id}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
