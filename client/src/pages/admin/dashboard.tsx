@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { 
   Shield, 
   Users, 
@@ -125,6 +126,16 @@ export default function AdminDashboard() {
       return data.requests;
     },
     refetchInterval: 10000,
+  });
+
+  // Site Settings
+  const { data: siteSettings } = useQuery<{ privateMode: boolean }>({
+    queryKey: ["/api/admin/settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/settings", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch site settings");
+      return response.json();
+    },
   });
 
   // Mutations
@@ -617,6 +628,28 @@ export default function AdminDashboard() {
     },
   });
 
+  // Update Private Mode mutation
+  const updatePrivateModeMutation = useMutation({
+    mutationFn: async (privateMode: boolean) => {
+      const response = await apiRequest("PATCH", "/api/admin/settings", { privateMode });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
+      toast({
+        title: "Settings Updated",
+        description: `Private mode is now ${!siteSettings?.privateMode ? "enabled" : "disabled"}.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update private mode setting.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Helper functions
   const getInitials = (username: string) => {
     return username.substring(0, 2).toUpperCase();
@@ -861,7 +894,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card data-testid="stat-pending-users">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Users</CardTitle>
@@ -910,6 +943,29 @@ export default function AdminDashboard() {
               <div className="text-2xl font-bold">{totalGloryDistributed.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 Distributed to users
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="stat-private-mode">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Private Mode</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium">
+                  {siteSettings?.privateMode ? "Enabled" : "Disabled"}
+                </div>
+                <Switch
+                  checked={siteSettings?.privateMode || false}
+                  onCheckedChange={(checked) => updatePrivateModeMutation.mutate(checked)}
+                  disabled={updatePrivateModeMutation.isPending}
+                  data-testid="switch-private-mode"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {siteSettings?.privateMode ? "Login required" : "Public access"}
               </p>
             </CardContent>
           </Card>

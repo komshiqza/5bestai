@@ -9,6 +9,7 @@ import { SolanaWalletProvider } from "@/lib/wallet-provider";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { PrivateModeGuard } from "@/components/PrivateModeGuard";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -39,19 +40,25 @@ function Router() {
       <main className="flex-1 pb-16">
         <ScrollToTop />
         <Switch>
-          <Route path="/" component={Home} />
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
-          <Route path="/contests" component={Contests} />
-          <Route path="/contest/:slug" component={ContestDetail} />
-          <Route path="/submission/:id" component={SubmissionDetail} />
-          <Route path="/upload" component={Upload} />
-          <Route path="/profile" component={Profile} />
-          <Route path="/my-submissions" component={MySubmissions} />
-          <Route path="/admin" component={AdminDashboard} />
-          <Route path="/admin/dashboard" component={AdminDashboard} />
-          <Route path="/admin/contest/:id" component={AdminContestDetail} />
-          <Route component={NotFound} />
+          <Route>
+            <PrivateModeGuard>
+              <Switch>
+                <Route path="/" component={Home} />
+                <Route path="/contests" component={Contests} />
+                <Route path="/contest/:slug" component={ContestDetail} />
+                <Route path="/submission/:id" component={SubmissionDetail} />
+                <Route path="/upload" component={Upload} />
+                <Route path="/profile" component={Profile} />
+                <Route path="/my-submissions" component={MySubmissions} />
+                <Route path="/admin" component={AdminDashboard} />
+                <Route path="/admin/dashboard" component={AdminDashboard} />
+                <Route path="/admin/contest/:id" component={AdminContestDetail} />
+                <Route component={NotFound} />
+              </Switch>
+            </PrivateModeGuard>
+          </Route>
         </Switch>
       </main>
       <Footer />

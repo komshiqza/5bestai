@@ -335,3 +335,18 @@ export type CashoutRequestWithRelations = CashoutRequest & {
   user: Pick<User, 'id' | 'username' | 'email' | 'gloryBalance'>;
   wallet: Pick<UserWallet, 'id' | 'address' | 'provider'>;
 };
+
+// Site Settings table (global settings - should have only one row)
+export const siteSettings = pgTable("site_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  privateMode: boolean("private_mode").notNull().default(false), // When true, only logged-in users can access the site
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+});
+
+export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({
+  id: true,
+  updatedAt: true
+});
+
+export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;
+export type SiteSettings = typeof siteSettings.$inferSelect;

@@ -2283,6 +2283,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Site Settings routes (Admin only)
+  app.get("/api/admin/settings", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const settings = await storage.getSiteSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch site settings" });
+    }
+  });
+
+  app.patch("/api/admin/settings", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      // Validate the request body using partial schema for updates
+      const updateSchema = insertSiteSettingsSchema.partial();
+      const updates = updateSchema.parse(req.body);
+      
+      const settings = await storage.updateSiteSettings(updates);
+      
+      // Log the change in audit log
+      await storage.createAuditLog({
+        actorUserId: req.user!.id,
+        action: "UPDATE_SITE_SETTINGS",
+        meta: { updates }
+      });
+      
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update site settings" });
+    }
+  });
+
+  // Public endpoint to check if site is in private mode (no auth required)
+  app.get("/api/settings/private-mode", async (req, res) => {
+    try {
+      const settings = await storage.getSiteSettings();
+      res.json({ privateMode: settings.privateMode });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch private mode status" });
+    }
+  });
+
   // Placeholder for video thumbnails in local mode
   app.get("/api/placeholder/video-thumbnail", (req, res) => {
     // Return a simple SVG placeholder for video thumbnails

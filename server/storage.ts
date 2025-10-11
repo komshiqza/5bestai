@@ -18,6 +18,8 @@ import {
   type CashoutRequestWithRelations,
   type CashoutEvent,
   type InsertCashoutEvent,
+  type SiteSettings,
+  type InsertSiteSettings,
   type SubmissionWithUser,
   type ContestWithStats,
   type UserWithStats,
@@ -29,7 +31,8 @@ import {
   auditLog,
   userWallets,
   cashoutRequests,
-  cashoutEvents
+  cashoutEvents,
+  siteSettings
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -101,6 +104,10 @@ export interface IStorage {
   // Cashout Events
   createCashoutEvent(event: InsertCashoutEvent): Promise<CashoutEvent>;
   getCashoutEvents(cashoutRequestId: string): Promise<CashoutEvent[]>;
+  
+  // Site Settings
+  getSiteSettings(): Promise<SiteSettings>;
+  updateSiteSettings(updates: Partial<SiteSettings>): Promise<SiteSettings>;
 }
 
 export class MemStorage implements IStorage {
@@ -673,6 +680,15 @@ export class MemStorage implements IStorage {
 
   async getCashoutEvents(cashoutRequestId: string): Promise<CashoutEvent[]> {
     throw new Error("MemStorage cashout methods not implemented");
+  }
+
+  // Site Settings (MemStorage - not used in production)
+  async getSiteSettings(): Promise<SiteSettings> {
+    throw new Error("MemStorage site settings methods not implemented");
+  }
+
+  async updateSiteSettings(updates: Partial<SiteSettings>): Promise<SiteSettings> {
+    throw new Error("MemStorage site settings methods not implemented");
   }
 }
 
@@ -1355,6 +1371,36 @@ export class DbStorage implements IStorage {
       orderBy: [desc(cashoutEvents.createdAt)]
     });
     return result;
+  }
+
+  // Site Settings
+  async getSiteSettings(): Promise<SiteSettings> {
+    // Try to get existing settings
+    const existing = await db.query.siteSettings.findFirst();
+    
+    if (existing) {
+      return existing;
+    }
+    
+    // Create default settings if none exist
+    const [newSettings] = await db.insert(siteSettings)
+      .values({ privateMode: false })
+      .returning();
+    
+    return newSettings as SiteSettings;
+  }
+
+  async updateSiteSettings(updates: Partial<SiteSettings>): Promise<SiteSettings> {
+    // Get existing settings to get the ID
+    const existing = await this.getSiteSettings();
+    
+    // Update settings
+    const [updated] = await db.update(siteSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(siteSettings.id, existing.id))
+      .returning();
+    
+    return updated as SiteSettings;
   }
 }
 
