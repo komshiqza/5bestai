@@ -10,6 +10,8 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { PrivateModeGuard } from "@/components/PrivateModeGuard";
+import { PrivateModeProvider, usePrivateMode } from "@/lib/private-mode-context";
+import { useAuth } from "@/lib/auth";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -34,6 +36,12 @@ function ScrollToTop() {
 }
 
 function Router() {
+  const { data: user } = useAuth();
+  const { privateMode } = usePrivateMode();
+
+  // Show Footer and BottomNav when: Private Mode is OFF OR user is logged in
+  const showFooterAndBottomNav = !privateMode || !!user;
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -61,8 +69,8 @@ function Router() {
           </Route>
         </Switch>
       </main>
-      <Footer />
-      <BottomNav />
+      {showFooterAndBottomNav && <Footer />}
+      {showFooterAndBottomNav && <BottomNav />}
     </div>
   );
 }
@@ -72,10 +80,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <SolanaWalletProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <PrivateModeProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </PrivateModeProvider>
         </SolanaWalletProvider>
       </ThemeProvider>
     </QueryClientProvider>

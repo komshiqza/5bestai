@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { usePrivateMode } from "@/lib/private-mode-context";
 
 interface PrivateModeGuardProps {
   children: React.ReactNode;
@@ -9,27 +9,18 @@ interface PrivateModeGuardProps {
 
 export function PrivateModeGuard({ children }: PrivateModeGuardProps) {
   const { data: user, isLoading: authLoading } = useAuth();
+  const { privateMode, isLoading: privateModeLoading } = usePrivateMode();
   const [, setLocation] = useLocation();
-
-  // Check private mode status (public endpoint, no auth required)
-  const { data: privateModeStatus, isLoading: privateModeLoading } = useQuery<{ privateMode: boolean }>({
-    queryKey: ["/api/settings/private-mode"],
-    queryFn: async () => {
-      const response = await fetch("/api/settings/private-mode");
-      if (!response.ok) throw new Error("Failed to fetch private mode status");
-      return response.json();
-    },
-  });
 
   useEffect(() => {
     // Wait for both queries to load
     if (authLoading || privateModeLoading) return;
 
     // If private mode is enabled and user is not authenticated, redirect to login
-    if (privateModeStatus?.privateMode && !user) {
+    if (privateMode && !user) {
       setLocation("/login");
     }
-  }, [privateModeStatus, user, authLoading, privateModeLoading, setLocation]);
+  }, [privateMode, user, authLoading, privateModeLoading, setLocation]);
 
   // Show loading state while checking
   if (authLoading || privateModeLoading) {
@@ -41,7 +32,7 @@ export function PrivateModeGuard({ children }: PrivateModeGuardProps) {
   }
 
   // If private mode is enabled and no user, don't render (redirect will happen)
-  if (privateModeStatus?.privateMode && !user) {
+  if (privateMode && !user) {
     return null;
   }
 
