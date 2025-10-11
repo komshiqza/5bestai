@@ -45,6 +45,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     nsfwAllowed: false,
     agreeToRules: true,
     votingMethods: ['public'],
+    juryMembers: [] as string[],
     votesPerUserPerPeriod: 1,
     periodDurationHours: 24,
     totalVotesPerUser: 0,
@@ -120,6 +121,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         nsfwAllowed: config.nsfwAllowed || false,
         agreeToRules: config.agreeToRules !== false,
         votingMethods: config.votingMethods || ['public'],
+        juryMembers: config.juryMembers || [],
         votesPerUserPerPeriod: config.votesPerUserPerPeriod || 1,
         periodDurationHours: config.periodDurationHours || 24,
         totalVotesPerUser: config.totalVotesPerUser || 0,
@@ -203,18 +205,90 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     }));
   };
 
+  // Unified validation function for all form fields
+  const validateFormData = (dataToValidate: typeof formData): string[] => {
+    const validationErrors: string[] = [];
+    
+    // Validate basic fields
+    if (!dataToValidate.title.trim()) {
+      validationErrors.push('Contest title is required');
+    }
+    if (!dataToValidate.description.trim()) {
+      validationErrors.push('Description is required');
+    }
+    
+    // Validate start date (if not "now")
+    if (dataToValidate.startDateOption !== 'now' && !dataToValidate.startDate) {
+      validationErrors.push('Start date is required');
+    }
+    
+    // Validate end date (always required)
+    if (!dataToValidate.votingEndDate) {
+      validationErrors.push('Contest end date is required');
+    }
+    
+    // Validate submission deadline (only if enabled)
+    if (dataToValidate.enableSubmissionDeadline && !dataToValidate.submissionDeadline) {
+      validationErrors.push('Submission deadline is required when enabled');
+    }
+    
+    // Validate voting start date (if not "now")
+    if (dataToValidate.votingStartOption !== 'now' && !dataToValidate.votingStartDate) {
+      validationErrors.push('Voting start date is required');
+    }
+    
+    // Chronological validation - only if all required dates are present
+    if (validationErrors.length === 0) {
+      // Build date objects for comparison
+      const startAt = dataToValidate.startDateOption === 'now' 
+        ? new Date() 
+        : new Date(`${dataToValidate.startDate}T${dataToValidate.startTime || '00:00'}`);
+      
+      const votingEndAt = new Date(
+        `${dataToValidate.votingEndDate}T${dataToValidate.votingEndTime || '23:59'}`
+      );
+      
+      const votingStartAt = dataToValidate.votingStartOption === 'now'
+        ? new Date()
+        : new Date(`${dataToValidate.votingStartDate}T00:00`);
+      
+      // Check: Contest start must be before voting end
+      if (startAt >= votingEndAt) {
+        validationErrors.push('Contest start time must be before voting end time');
+      }
+      
+      // Check: Voting start must be after or equal to contest start
+      if (votingStartAt < startAt) {
+        validationErrors.push('Voting cannot start before the contest starts');
+      }
+      
+      // Check: Voting start must be before voting end
+      if (votingStartAt >= votingEndAt) {
+        validationErrors.push('Voting start time must be before voting end time');
+      }
+      
+      // Check submission deadline if enabled
+      if (dataToValidate.enableSubmissionDeadline && dataToValidate.submissionDeadline) {
+        const submissionEndAt = new Date(
+          `${dataToValidate.submissionDeadline}T${dataToValidate.submissionDeadlineTime || '23:59'}`
+        );
+        
+        // Submission deadline must be after contest start
+        if (submissionEndAt <= startAt) {
+          validationErrors.push('Submission deadline must be after contest start time');
+        }
+        
+        // Submission deadline must be before or equal to voting end
+        if (submissionEndAt > votingEndAt) {
+          validationErrors.push('Submission deadline cannot be after voting end time');
+        }
+      }
+    }
+    
+    return validationErrors;
+  };
+
   const handleSubmitWithData = async (dataToSubmit: typeof formData) => {
-    // Validate required fields
-    if (!dataToSubmit.startDate) {
-      setErrors(['Contest start date is required']);
-      return;
-    }
-    
-    if (!dataToSubmit.endDate && !dataToSubmit.votingEndDate) {
-      setErrors(['Contest end date is required']);
-      return;
-    }
-    
     // Calculate total prize from distribution
     const totalPrize = dataToSubmit.prizeDistribution.reduce((sum, prize) => sum + prize.value, 0);
     
@@ -281,6 +355,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       periodDurationHours: dataToSubmit.periodDurationHours,
       totalVotesPerUser: dataToSubmit.totalVotesPerUser,
       votingMethods: dataToSubmit.votingMethods,
+      juryMembers: dataToSubmit.juryMembers || [],
       
       // Time settings
       submissionEndAt,
@@ -900,14 +975,28 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                     Contest Status
                   </label>
                   <select
-                    value={formData.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
+                    value={
+                      formData.status === 'active' ? 'publish' : 
+                      formData.status === 'archived' ? 'archive' : 
+                      formData.status === 'ended' ? 'ended' : 
+                      'draft'
+                    }
+                    onChange={(e) => {
+                      const statusMap: Record<string, string> = {
+                        'draft': 'draft',
+                        'publish': 'active',
+                        'ended': 'ended',
+                        'archive': 'archived'
+                      };
+                      handleInputChange('status', statusMap[e.target.value]);
+                    }}
                     className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                     data-testid="select-status"
                   >
-                    <option value="draft">Draft</option>
-                    <option value="active">Active</option>
+                    <option value="draft">Draft (requires admin approval)</option>
+                    <option value="publish">Publish (live immediately)</option>
                     <option value="ended">Ended</option>
+                    <option value="archive">Archive</option>
                   </select>
                 </div>
 
@@ -939,9 +1028,8 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
 
           <button
             onClick={async () => {
-              const validationErrors: string[] = [];
-              if (!formData.title.trim()) validationErrors.push('Contest title is required');
-              if (!formData.description.trim()) validationErrors.push('Description is required');
+              // Use unified validation function
+              const validationErrors = validateFormData(formData);
               
               setErrors(validationErrors);
               
