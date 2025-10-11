@@ -1842,7 +1842,8 @@ export default function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
                   <table className="w-full" data-testid="cashouts-table">
                     <thead className="bg-muted">
                       <tr>
@@ -2009,6 +2010,162 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden">
+                  {/* Mobile Select All Header */}
+                  {cashoutRequests.filter((r: any) => r.status === "pending").length > 0 && (
+                    <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/50">
+                      <Checkbox
+                        checked={
+                          cashoutRequests.filter((r: any) => r.status === "pending").length > 0 &&
+                          cashoutRequests
+                            .filter((r: any) => r.status === "pending")
+                            .every((r: any) => selectedCashoutIds.includes(r.id))
+                        }
+                        onCheckedChange={(checked) => {
+                          const pendingRequests = cashoutRequests.filter((r: any) => r.status === "pending");
+                          if (checked) {
+                            setSelectedCashoutIds(pendingRequests.map((r: any) => r.id));
+                          } else {
+                            setSelectedCashoutIds([]);
+                          }
+                        }}
+                        data-testid="select-all-cashouts-mobile"
+                      />
+                      <span className="text-sm font-medium">
+                        {selectedCashoutIds.length > 0 
+                          ? `${selectedCashoutIds.length} selected` 
+                          : 'Select all pending'}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="divide-y divide-border">
+                    {cashoutRequests.map((request: any) => (
+                      <div key={request.id} className="p-4 hover:bg-muted/30 transition-colors" data-testid={`cashout-card-${request.id}`}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            {request.status === "pending" && (
+                              <Checkbox
+                                checked={selectedCashoutIds.includes(request.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedCashoutIds([...selectedCashoutIds, request.id]);
+                                  } else {
+                                    setSelectedCashoutIds(selectedCashoutIds.filter(id => id !== request.id));
+                                  }
+                                }}
+                                data-testid={`select-cashout-mobile-${request.id}`}
+                              />
+                            )}
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback>
+                                {getInitials(request.user.username)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold truncate">
+                                {request.user.username}
+                              </div>
+                              <div className="text-sm text-muted-foreground truncate">
+                                {request.user.email}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge className={getStatusColor(request.status)}>
+                            {getStatusIcon(request.status)}
+                            <span className="ml-1">{request.status.charAt(0).toUpperCase() + request.status.slice(1)}</span>
+                          </Badge>
+                        </div>
+                        
+                        <div className="space-y-3 mb-3 text-sm">
+                          <div>
+                            <div className="text-muted-foreground text-xs">Amount</div>
+                            <div className="font-semibold font-mono mt-1">
+                              {request.amountGlory.toLocaleString()} GLORY
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              → {request.amountToken} {request.tokenType}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div className="text-muted-foreground text-xs">Withdrawal Address</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="font-mono text-xs truncate flex-1">
+                                {request.withdrawalAddress}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 flex-shrink-0"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(request.withdrawalAddress);
+                                  toast({
+                                    title: "Address Copied",
+                                    description: "Withdrawal address copied to clipboard",
+                                  });
+                                }}
+                                data-testid={`copy-address-mobile-${request.id}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div className="text-muted-foreground text-xs">Date</div>
+                            <div className="mt-1">
+                              {new Date(request.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 flex-wrap">
+                          {request.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 bg-success/20 text-success hover:bg-success/30 border-success/30"
+                                onClick={() => approveCashoutMutation.mutate(request.id)}
+                                disabled={approveCashoutMutation.isPending}
+                                data-testid={`approve-cashout-mobile-${request.id}`}
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/30"
+                                onClick={() => rejectCashoutMutation.mutate(request.id)}
+                                disabled={rejectCashoutMutation.isPending}
+                                data-testid={`reject-cashout-mobile-${request.id}`}
+                              >
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {request.txHash && (
+                            <a
+                              href={`https://solscan.io/tx/${request.txHash}?cluster=devnet`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline flex items-center"
+                              data-testid={`view-tx-mobile-${request.id}`}
+                            >
+                              View TX
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {cashoutRequests.length === 0 && (
                   <div className="text-center py-12" data-testid="no-cashouts">
                     <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
