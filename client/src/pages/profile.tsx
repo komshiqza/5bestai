@@ -411,10 +411,10 @@ export default function Profile() {
                   <GlassButton
                     className="w-full"
                     onClick={() => setWithdrawModalOpen(true)}
-                    data-testid="button-withdraw-glory"
+                    data-testid="button-withdraw"
                   >
                     <DollarSign className="w-4 h-4 mr-2" />
-                    Withdraw Glory
+                    Withdraw
                   </GlassButton>
                 </div>
               </CardContent>
@@ -603,34 +603,37 @@ export default function Profile() {
 
               {/* Transaction History Tab */}
               <TabsContent value="glory" className="space-y-4" data-testid="transactions-tab">
+                {/* Always show filter */}
+                <div className="flex justify-between items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-muted-foreground">Currency:</label>
+                    <select
+                      value={currencyFilter}
+                      onChange={(e) => setCurrencyFilter(e.target.value as "all" | "GLORY" | "SOL" | "USDC")}
+                      className="px-3 py-1.5 bg-background text-foreground border border-input rounded-lg text-sm [&>option]:bg-background [&>option]:text-foreground"
+                      data-testid="select-currency-filter"
+                    >
+                      <option value="all">All Currencies</option>
+                      <option value="GLORY">GLORY</option>
+                      <option value="SOL">SOL</option>
+                      <option value="USDC">USDC</option>
+                    </select>
+                  </div>
+                  {gloryHistory.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      onClick={handleClearGloryHistory}
+                      disabled={clearGloryHistoryMutation.isPending}
+                      data-testid="button-clear-history"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clear All History
+                    </Button>
+                  )}
+                </div>
+                
                 {gloryHistory.length > 0 ? (
-                  <>
-                    <div className="flex justify-between items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-muted-foreground">Currency:</label>
-                        <select
-                          value={currencyFilter}
-                          onChange={(e) => setCurrencyFilter(e.target.value as "all" | "GLORY" | "SOL" | "USDC")}
-                          className="px-3 py-1.5 bg-background border border-input rounded-lg text-sm"
-                          data-testid="select-currency-filter"
-                        >
-                          <option value="all">All Currencies</option>
-                          <option value="GLORY">GLORY</option>
-                          <option value="SOL">SOL</option>
-                          <option value="USDC">USDC</option>
-                        </select>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        onClick={handleClearGloryHistory}
-                        disabled={clearGloryHistoryMutation.isPending}
-                        data-testid="button-clear-history"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Clear All History
-                      </Button>
-                    </div>
-                    <Card>
+                  <Card>
                       <CardContent className="p-0">
                         <div className="overflow-x-auto">
                           <table className="w-full" data-testid="glory-history-table">
@@ -683,7 +686,6 @@ export default function Profile() {
                         </div>
                       </CardContent>
                     </Card>
-                  </>
                 ) : (
                   <div className="text-center py-12" data-testid="no-transactions">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">

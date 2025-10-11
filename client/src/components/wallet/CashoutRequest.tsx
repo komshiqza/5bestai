@@ -12,6 +12,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 export function CashoutRequest() {
   const { toast } = useToast();
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState<"GLORY" | "SOL" | "USDC">("GLORY");
   const [tokenType, setTokenType] = useState("USDC");
 
   const { data: userData } = useQuery<any>({ queryKey: ["/api/me"] });
@@ -23,16 +24,18 @@ export function CashoutRequest() {
         throw new Error("No wallet connected");
       }
 
-      const amountGlory = parseInt(amount);
-      if (isNaN(amountGlory) || amountGlory < 1000) {
-        throw new Error("Minimum cashout amount is 1000 GLORY");
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum < 1000) {
+        throw new Error(`Minimum cashout amount is 1000 ${currency}`);
       }
 
       // apiRequest expects (method, url, data)
       return apiRequest("POST", "/api/cashout/request", {
         walletId: walletData.wallet.id,
-        amountGlory,
+        amountGlory: currency === "GLORY" ? amountNum : 0,
         tokenType,
+        currency,
+        amount: amountNum,
       });
     },
     onSuccess: () => {
@@ -59,7 +62,20 @@ export function CashoutRequest() {
   };
 
   const gloryBalance = userData?.gloryBalance || 0;
+  const solBalance = userData?.solBalance || 0;
+  const usdcBalance = userData?.usdcBalance || 0;
   const hasWallet = !!walletData?.wallet;
+
+  const getCurrentBalance = () => {
+    switch (currency) {
+      case "SOL":
+        return solBalance;
+      case "USDC":
+        return usdcBalance;
+      default:
+        return gloryBalance;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -67,23 +83,38 @@ export function CashoutRequest() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5" />
-            Cash Out GLORY
+            Withdraw
           </CardTitle>
           <CardDescription>
-            Convert your GLORY points to USDC/SOL on Solana (minimum 1000 GLORY)
+            Request to withdraw your funds (minimum 1000)
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!hasWallet ? (
             <div className="p-4 rounded-lg bg-muted/50 text-center">
               <p className="text-sm text-muted-foreground">
-                Please connect your Solana wallet first to enable cashouts
+                Please connect your Solana wallet first to enable withdrawals
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount (GLORY)</Label>
+                <Label htmlFor="currency">Currency</Label>
+                <select
+                  id="currency"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as "GLORY" | "SOL" | "USDC")}
+                  className="w-full px-3 py-2 bg-background text-foreground border border-input rounded-lg text-sm [&>option]:bg-background [&>option]:text-foreground"
+                  data-testid="select-withdraw-currency"
+                >
+                  <option value="GLORY">GLORY</option>
+                  <option value="SOL">SOL</option>
+                  <option value="USDC">USDC</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount ({currency})</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="amount"
@@ -92,17 +123,15 @@ export function CashoutRequest() {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     min="1000"
-                    step="1"
+                    step="0.01"
                     required
                     data-testid="input-cashout-amount"
                   />
                   <p className="text-sm text-muted-foreground whitespace-nowrap">
-                    of {gloryBalance}
+                    of {getCurrentBalance().toLocaleString()}
                   </p>
                 </div>
               </div>
-
-              {/* Receive As section removed */}
 
               <GlassButton
                 type="submit"
@@ -116,7 +145,7 @@ export function CashoutRequest() {
                     Submitting...
                   </>
                 ) : (
-                  "Request Cashout"
+                  "Request Withdrawal"
                 )}
               </GlassButton>
             </form>
