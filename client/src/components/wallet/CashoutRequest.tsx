@@ -17,12 +17,11 @@ export function CashoutRequest() {
   const [tokenType, setTokenType] = useState("USDC");
 
   const { data: userData } = useQuery<any>({ queryKey: ["/api/me"] });
-  const { data: walletData } = useQuery<any>({ queryKey: ["/api/wallet/me"] });
 
   const createRequestMutation = useMutation({
     mutationFn: async () => {
-      if (!walletData?.wallet?.id) {
-        throw new Error("No wallet connected");
+      if (!userData?.withdrawalAddress) {
+        throw new Error("Please set your withdrawal address in your profile first");
       }
 
       const amountNum = parseFloat(amount);
@@ -32,7 +31,7 @@ export function CashoutRequest() {
 
       // apiRequest expects (method, url, data)
       return apiRequest("POST", "/api/cashout/request", {
-        walletId: walletData.wallet.id,
+        withdrawalAddress: userData.withdrawalAddress,
         amountGlory: currency === "GLORY" ? amountNum : 0,
         tokenType,
         currency,
@@ -65,7 +64,7 @@ export function CashoutRequest() {
   const gloryBalance = userData?.gloryBalance || 0;
   const solBalance = userData?.solBalance || 0;
   const usdcBalance = userData?.usdcBalance || 0;
-  const hasWallet = !!walletData?.wallet;
+  const hasWithdrawalAddress = !!userData?.withdrawalAddress;
 
   const getCurrentBalance = () => {
     switch (currency) {
@@ -91,10 +90,10 @@ export function CashoutRequest() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!hasWallet ? (
+          {!hasWithdrawalAddress ? (
             <div className="p-4 rounded-lg bg-muted/50 text-center">
               <p className="text-sm text-muted-foreground">
-                Please connect your Solana wallet first to enable withdrawals
+                Please set your withdrawal address in your profile first to enable withdrawals
               </p>
             </div>
           ) : (
@@ -136,7 +135,7 @@ export function CashoutRequest() {
               <GlassButton
                 type="submit"
                 className="w-full"
-                disabled={createRequestMutation.isPending || !hasWallet}
+                disabled={createRequestMutation.isPending || !hasWithdrawalAddress}
                 data-testid="button-submit-cashout"
               >
                 {createRequestMutation.isPending ? (

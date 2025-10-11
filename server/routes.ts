@@ -159,6 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       solBalance: user.solBalance,
       usdcBalance: user.usdcBalance,
       avatarUrl: user.avatarUrl,
+      withdrawalAddress: user.withdrawalAddress,
       createdAt: user.createdAt
     });
   });
@@ -343,14 +344,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cashout routes
   app.post("/api/cashout/request", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
-      const { walletId, amountGlory, tokenType } = createCashoutRequestSchema.parse(req.body);
+      const { withdrawalAddress, amountGlory, tokenType } = createCashoutRequestSchema.parse(req.body);
       const userId = req.user!.id;
-
-      // Verify wallet belongs to user
-      const wallet = await storage.getUserWallet(userId);
-      if (!wallet || wallet.id !== walletId) {
-        return res.status(400).json({ error: "Invalid wallet" });
-      }
 
       // Check user balance
       const user = await storage.getUser(userId);
@@ -365,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create cashout request
       const request = await storage.createCashoutRequest({
         userId,
-        walletId,
+        withdrawalAddress,
         amountGlory,
         amountToken,
         tokenType: tokenType || "USDC",

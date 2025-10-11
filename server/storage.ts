@@ -1345,13 +1345,6 @@ export class DbStorage implements IStorage {
             email: true,
             gloryBalance: true
           }
-        },
-        wallet: {
-          columns: {
-            id: true,
-            address: true,
-            provider: true
-          }
         }
       }
     });

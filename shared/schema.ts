@@ -125,7 +125,7 @@ export const userWallets = pgTable("user_wallets", {
 export const cashoutRequests = pgTable("cashout_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  walletId: varchar("wallet_id").notNull().references(() => userWallets.id, { onDelete: "restrict" }),
+  withdrawalAddress: varchar("withdrawal_address", { length: 255 }).notNull(), // Solana withdrawal address
   amountGlory: integer("amount_glory").notNull(), // GLORY points to cash out
   amountToken: text("amount_token").notNull(), // Token amount (as string for precision)
   tokenType: varchar("token_type", { length: 50 }).notNull().default("USDC"), // USDC, SOL, GLORY
@@ -161,10 +161,6 @@ export const cashoutRequestsRelations = relations(cashoutRequests, ({ one }) => 
   user: one(users, {
     fields: [cashoutRequests.userId],
     references: [users.id],
-  }),
-  wallet: one(userWallets, {
-    fields: [cashoutRequests.walletId],
-    references: [userWallets.id],
   }),
 }));
 
@@ -268,7 +264,7 @@ export const connectWalletSchema = z.object({
 });
 
 export const createCashoutRequestSchema = z.object({
-  walletId: z.string(),
+  withdrawalAddress: z.string().min(32).max(44), // Solana address
   amountGlory: z.number().int().min(1000), // Minimum 1000 GLORY
   tokenType: z.enum(["USDC", "SOL", "GLORY"]).default("USDC")
 });
@@ -338,7 +334,6 @@ export type UserWithStats = User & {
 
 export type CashoutRequestWithRelations = CashoutRequest & {
   user: Pick<User, 'id' | 'username' | 'email' | 'gloryBalance'>;
-  wallet: Pick<UserWallet, 'id' | 'address' | 'provider'>;
 };
 
 // Site Settings table (global settings - should have only one row)
