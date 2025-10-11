@@ -18,6 +18,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     coverImage: null as File | string | null,
     entryFee: false,
     entryFeeAmount: undefined as number | undefined,
+    entryFeeCurrency: 'GLORY' as 'GLORY' | 'SOL' | 'USDC',
     startDateOption: 'later' as 'now' | 'later',
     startDate: '',
     startTime: '',
@@ -99,6 +100,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         coverImage: contest.coverImageUrl || null,
         entryFee: config.entryFee || false,
         entryFeeAmount: config.entryFeeAmount,
+        entryFeeCurrency: config.entryFeeCurrency || 'GLORY',
         startDateOption: 'later',
         startDate: isValidStartDate ? startDate.toISOString().split('T')[0] : '',
         startTime: isValidStartDate ? startDate.toTimeString().slice(0, 5) : '',
@@ -382,6 +384,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       // Entry fee
       entryFee: dataToSubmit.entryFee,
       entryFeeAmount: dataToSubmit.entryFeeAmount,
+      entryFeeCurrency: dataToSubmit.entryFeeCurrency || 'GLORY',
       
       // Contest metadata
       contestType: dataToSubmit.contestType,
@@ -621,20 +624,37 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                 </div>
 
                 {formData.entryFee && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
-                      Entry Fee Amount *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.entryFeeAmount ?? ""}
-                      onChange={(e) => handleInputChange('entryFeeAmount', e.target.value ? Number(e.target.value) : undefined)}
-                      placeholder="e.g. 5.00"
-                      className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
-                      data-testid="input-entry-fee-amount"
-                    />
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                        Entry Fee Currency
+                      </label>
+                      <select
+                        value={formData.entryFeeCurrency}
+                        onChange={(e) => handleInputChange('entryFeeCurrency', e.target.value as 'GLORY' | 'SOL' | 'USDC')}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100"
+                        data-testid="select-entry-fee-currency"
+                      >
+                        <option value="GLORY">GLORY</option>
+                        <option value="SOL">SOL</option>
+                        <option value="USDC">USDC</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                        Entry Fee Amount *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.entryFeeAmount ?? ""}
+                        onChange={(e) => handleInputChange('entryFeeAmount', e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="e.g. 5.00"
+                        className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
+                        data-testid="input-entry-fee-amount"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
