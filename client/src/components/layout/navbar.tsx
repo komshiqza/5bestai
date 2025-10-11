@@ -6,11 +6,11 @@ import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, LogOut, User, Shield, Image } from "lucide-react";
+import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown } from "lucide-react";
 
 export function Navbar() {
   const { data: user } = useAuth();
-  const { balance } = useUserBalance();
+  useUserBalance(); // Keep for auto-refresh functionality
   const logout = useLogout();
   const [, setLocation] = useLocation();
 
@@ -64,10 +64,37 @@ export function Navbar() {
           {/* User Actions - Desktop Only */}
           <div className="hidden md:flex items-center space-x-3">
             {isAuthenticated(user) && (
-              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-muted" data-testid="glory-balance">
-                <Trophy className="text-primary w-4 h-4" />
-                <span className="text-sm font-semibold">{balance.toLocaleString()} GLORY</span>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="px-3 py-1.5 h-auto rounded-full bg-muted hover:bg-muted/80" data-testid="balance-dropdown">
+                    <Trophy className="text-primary w-4 h-4 mr-2" />
+                    <span className="text-sm font-semibold">{(user?.gloryBalance || 0).toLocaleString()} GLORY</span>
+                    <ChevronDown className="w-4 h-4 ml-1 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-3 py-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">GLORY</span>
+                      <span className="text-sm font-semibold" data-testid="balance-glory">
+                        {(user?.gloryBalance || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">SOL</span>
+                      <span className="text-sm font-semibold" data-testid="balance-sol">
+                        {(user?.solBalance || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">USDC</span>
+                      <span className="text-sm font-semibold" data-testid="balance-usdc">
+                        {(user?.usdcBalance || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
             {isAuthenticated(user) ? (

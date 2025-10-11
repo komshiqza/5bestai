@@ -8,6 +8,8 @@ export interface User {
   role: string;
   status: string;
   gloryBalance: number;
+  solBalance: number;
+  usdcBalance: number;
   createdAt: string;
   updatedAt: string;
 }
