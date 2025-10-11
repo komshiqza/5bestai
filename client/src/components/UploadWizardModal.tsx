@@ -422,6 +422,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
                 setAgreedToRules={setAgreedToRules}
                 agreedToTerms={agreedToTerms}
                 setAgreedToTerms={setAgreedToTerms}
+                user={user}
               />
             )}
           </div>
@@ -743,6 +744,7 @@ function StepContest({
   setAgreedToRules,
   agreedToTerms,
   setAgreedToTerms,
+  user,
 }: {
   contests: any[];
   selectedContest: string;
@@ -751,7 +753,30 @@ function StepContest({
   setAgreedToRules: (b: boolean) => void;
   agreedToTerms: boolean;
   setAgreedToTerms: (b: boolean) => void;
+  user: any;
 }) {
+  const selectedContestData = contests.find((c) => c.id === selectedContest);
+  const contestConfig = selectedContestData?.config || {};
+  const hasEntryFee = contestConfig.entryFee && contestConfig.entryFeeAmount;
+  const entryFeeCurrency = contestConfig.entryFeeCurrency || 'GLORY';
+  const entryFeeAmount = contestConfig.entryFeeAmount || 0;
+  
+  // Get user's balance for the entry fee currency
+  const getUserBalance = () => {
+    if (!user) return 0;
+    switch (entryFeeCurrency) {
+      case 'SOL':
+        return user.solBalance || 0;
+      case 'USDC':
+        return user.usdcBalance || 0;
+      case 'GLORY':
+      default:
+        return user.gloryBalance || 0;
+    }
+  };
+  
+  const userBalance = getUserBalance();
+  const hasInsufficientBalance = hasEntryFee && userBalance < entryFeeAmount;
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 rounded-xl border border-violet-300/60 dark:border-violet-700/60 bg-violet-50/70 dark:bg-violet-950/20 p-4">
@@ -785,6 +810,39 @@ function StepContest({
           ))}
         </select>
       </div>
+
+      {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && (
+        <div className={`flex items-start gap-3 rounded-xl border p-4 ${
+          hasInsufficientBalance
+            ? 'border-red-300/60 dark:border-red-700/60 bg-red-50/70 dark:bg-red-950/20'
+            : 'border-blue-300/60 dark:border-blue-700/60 bg-blue-50/70 dark:bg-blue-950/20'
+        }`}>
+          <Info className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+            hasInsufficientBalance
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-blue-600 dark:text-blue-400'
+          }`} />
+          <div className="flex-1">
+            <h4 className={`text-sm font-medium ${
+              hasInsufficientBalance
+                ? 'text-red-900 dark:text-red-100'
+                : 'text-blue-900 dark:text-blue-100'
+            }`}>
+              {hasInsufficientBalance ? 'Insufficient Balance' : 'Entry Fee Required'}
+            </h4>
+            <p className={`text-xs mt-1 ${
+              hasInsufficientBalance
+                ? 'text-red-700 dark:text-red-300'
+                : 'text-blue-700 dark:text-blue-300'
+            }`}>
+              {hasInsufficientBalance
+                ? `You need ${entryFeeAmount.toLocaleString()} ${entryFeeCurrency} to enter this contest. Your balance: ${userBalance.toLocaleString()} ${entryFeeCurrency}`
+                : `${entryFeeAmount.toLocaleString()} ${entryFeeCurrency} will be deducted from your balance upon submission.`
+              }
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
         <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200">
