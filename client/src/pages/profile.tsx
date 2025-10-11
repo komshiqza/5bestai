@@ -368,11 +368,28 @@ export default function Profile() {
                   </Badge>
                 </div>
 
-                {/* GLORY Balance */}
-                <div className="gradient-glory rounded-xl p-6 text-center mb-6" data-testid="glory-balance">
-                  <div className="text-white/80 text-sm mb-2">Your GLORY Balance</div>
-                  <div className="text-white text-4xl font-black">
-                    {balance.toLocaleString()}
+                {/* Balance Display */}
+                <div className="gradient-glory rounded-xl p-6 mb-6" data-testid="balance-display">
+                  <div className="text-white/80 text-sm mb-3 text-center">Your Balances</div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/80 text-sm">GLORY</span>
+                      <span className="text-white text-xl font-bold" data-testid="balance-glory-profile">
+                        {user.gloryBalance.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/80 text-sm">SOL</span>
+                      <span className="text-white text-xl font-bold" data-testid="balance-sol-profile">
+                        {(user.solBalance || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-white/80 text-sm">USDC</span>
+                      <span className="text-white text-xl font-bold" data-testid="balance-usdc-profile">
+                        {(user.usdcBalance || 0).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

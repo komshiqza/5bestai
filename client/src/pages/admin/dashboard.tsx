@@ -2111,7 +2111,7 @@ export default function AdminDashboard() {
                 id="currency"
                 value={selectedCurrency}
                 onChange={(e) => setSelectedCurrency(e.target.value as "GLORY" | "SOL" | "USDC")}
-                className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm"
+                className="w-full px-3 py-2 bg-background text-foreground border border-input rounded-lg text-sm [&>option]:bg-background [&>option]:text-foreground"
                 data-testid="select-balance-currency"
               >
                 <option value="GLORY">GLORY</option>
