@@ -852,6 +852,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(400).json({ error: "Submission deadline has passed" });
           }
         }
+
+        // Validate contest type - check if submission type matches contest allowed type
+        if (config && config.contestType) {
+          const contestType = config.contestType.toLowerCase();
+          const submissionType = type.toLowerCase();
+          
+          if (contestType === 'image' && submissionType !== 'image') {
+            return res.status(400).json({ error: "This contest only accepts image submissions" });
+          }
+          if (contestType === 'video' && submissionType !== 'video') {
+            return res.status(400).json({ error: "This contest only accepts video submissions" });
+          }
+        }
+
+        // Validate max submissions per user
+        if (config && config.maxSubmissions) {
+          const userSubmissionsCount = await storage.getUserSubmissionsInContest(req.user!.id, contestId);
+          if (userSubmissionsCount >= config.maxSubmissions) {
+            return res.status(400).json({ 
+              error: `You have reached the maximum of ${config.maxSubmissions} submission(s) for this contest` 
+            });
+          }
+        }
+
+        // Validate file size limit (if uploading new file)
+        if (req.file && config && config.fileSizeLimit) {
+          const fileSizeMB = req.file.size / (1024 * 1024);
+          if (fileSizeMB > config.fileSizeLimit) {
+            return res.status(400).json({ 
+              error: `File size exceeds the limit of ${config.fileSizeLimit}MB for this contest` 
+            });
+          }
+        }
+
+        // Check if user has sufficient balance for entry fee (but don't deduct yet)
+        if (config && config.entryFee && config.entryFeeAmount) {
+          const user = await storage.getUser(req.user!.id);
+          if (!user) {
+            return res.status(404).json({ error: "User not found" });
+          }
+
+          if (user.gloryBalance < config.entryFeeAmount) {
+            return res.status(400).json({ 
+              error: `Insufficient GLORY balance. Entry fee is ${config.entryFeeAmount} GLORY, you have ${user.gloryBalance} GLORY` 
+            });
+          }
+        }
       }
 
       let finalMediaUrl: string;
@@ -889,6 +936,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cloudinaryResourceType,
         status: "pending" // Requires admin approval
       });
+
+      // Deduct entry fee AFTER submission is successfully created
+      if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount) {
+        await storage.updateUserGloryBalance(req.user!.id, -(contest.config as any).entryFeeAmount);
+        
+        await storage.createGloryTransaction({
+          userId: req.user!.id,
+          delta: -(contest.config as any).entryFeeAmount,
+          reason: `Entry fee for contest: ${contest.title}`,
+          contestId: contestId || null,
+          submissionId: submission.id
+        });
+      }
 
       res.status(201).json(submission);
     } catch (error) {
@@ -1342,6 +1402,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (config.submissionEndAt && config.submissionEndAt !== config.votingEndAt && now > new Date(config.submissionEndAt)) {
             // Allow voting even after submission deadline if voting end is different
           }
+
+          // Check jury voting restrictions (only if jury is the ONLY voting method)
+          if (config.votingMethods && config.votingMethods.length === 1 && config.votingMethods.includes('jury')) {
+            // If ONLY jury voting is enabled, check if user is in jury list
+            if (config.juryMembers && Array.isArray(config.juryMembers)) {
+              if (!config.juryMembers.includes(userId)) {
+                return res.status(403).json({ 
+                  error: "Only jury members can vote in this contest" 
+                });
+              }
+            }
+          }
         }
 
         // Check contest-specific voting frequency rules
@@ -1369,11 +1441,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Check if user already voted for this submission (exact duplicate check)
-      const existingVote = await storage.getVote(userId, submissionId);
-      if (existingVote) {
-        return res.status(400).json({ error: "You have already voted for this submission" });
-      }
+      // Note: Multiple votes per submission are now allowed based on contest votesPerUserPerPeriod config
+      // The period-based check above enforces the voting frequency rules
 
       // Check general rate limit (30 votes per hour per user) - keeping as backup
       const rateLimitKey = `vote:${userId}`;

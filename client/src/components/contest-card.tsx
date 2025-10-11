@@ -136,7 +136,9 @@ export function ContestCard({ contest }: ContestCardProps) {
           <div className="glassmorphism px-3 py-1 rounded-lg">
             <div className="flex items-center gap-1 text-yellow-400">
               <Trophy size={14} />
-              <span className="text-xs sm:text-sm font-bold text-white">{contest.prizeGlory.toLocaleString()} $GLORY</span>
+              <span className="text-xs sm:text-sm font-bold text-white">
+                {contest.prizeGlory.toLocaleString()} {((contest as any).config?.currency) || 'GLORY'}
+              </span>
             </div>
           </div>
         </div>

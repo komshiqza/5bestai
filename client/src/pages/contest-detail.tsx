@@ -413,7 +413,7 @@ export default function ContestDetailPage() {
                                 : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
                               }
                             </p>
-                            <p className="text-xs text-primary font-medium">GLORY</p>
+                            <p className="text-xs text-primary font-medium">{((contest as any).config?.currency) || 'GLORY'}</p>
                           </div>
                         );
                       })}
@@ -908,7 +908,7 @@ export default function ContestDetailPage() {
                         : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
                       }
                     </p>
-                    <p className="text-xs text-primary font-medium">GLORY</p>
+                    <p className="text-xs text-primary font-medium">{((contest as any).config?.currency) || 'GLORY'}</p>
                   </div>
                 </div>
               );
@@ -917,7 +917,7 @@ export default function ContestDetailPage() {
 
           <div className="pt-3 border-t border-primary/20 text-center">
             <p className="text-sm text-gray-300">
-              Total Pool: <span className="font-bold text-white">{contest?.prizeGlory?.toLocaleString()}</span> GLORY
+              Total Pool: <span className="font-bold text-white">{contest?.prizeGlory?.toLocaleString()}</span> {((contest as any).config?.currency) || 'GLORY'}
             </p>
           </div>
         </DialogContent>

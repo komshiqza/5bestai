@@ -63,6 +63,7 @@ export interface IStorage {
   updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission | undefined>;
   deleteSubmission(id: string): Promise<boolean>;
   getTopSubmissionsByContest(contestId: string, limit?: number): Promise<SubmissionWithUser[]>;
+  getUserSubmissionsInContest(userId: string, contestId: string): Promise<number>;
   
   // Votes
   getVote(userId: string, submissionId: string): Promise<Vote | undefined>;
@@ -446,6 +447,12 @@ export class MemStorage implements IStorage {
     return submissions
       .sort((a, b) => b.votesCount - a.votesCount)
       .slice(0, limit);
+  }
+
+  async getUserSubmissionsInContest(userId: string, contestId: string): Promise<number> {
+    return Array.from(this.submissions.values()).filter(
+      submission => submission.userId === userId && submission.contestId === contestId
+    ).length;
   }
 
   // Votes
@@ -1000,6 +1007,17 @@ export class DbStorage implements IStorage {
     return result;
   }
 
+  async getUserSubmissionsInContest(userId: string, contestId: string): Promise<number> {
+    const result = await db.select({ count: count() })
+      .from(submissions)
+      .where(and(
+        eq(submissions.userId, userId),
+        eq(submissions.contestId, contestId)
+      ));
+    
+    return result[0]?.count || 0;
+  }
+
   async getVote(userId: string, submissionId: string): Promise<Vote | undefined> {
     const result = await db.query.votes.findFirst({
       where: and(
@@ -1011,20 +1029,13 @@ export class DbStorage implements IStorage {
   }
 
   async createVote(insertVote: InsertVote): Promise<Vote> {
-    try {
-      const [vote] = await db.insert(votes).values(insertVote).returning();
-      
-      await db.update(submissions)
-        .set({ votesCount: sql`${submissions.votesCount} + 1` })
-        .where(eq(submissions.id, insertVote.submissionId));
+    const [vote] = await db.insert(votes).values(insertVote).returning();
+    
+    await db.update(submissions)
+      .set({ votesCount: sql`${submissions.votesCount} + 1` })
+      .where(eq(submissions.id, insertVote.submissionId));
 
-      return vote;
-    } catch (error: any) {
-      if (error.code === '23505') {
-        throw new Error("You have already voted for this submission");
-      }
-      throw error;
-    }
+    return vote;
   }
 
   async getVoteCountByUser(userId: string, since: Date): Promise<number> {

@@ -28,7 +28,7 @@ export const contests = pgTable("contests", {
   description: text("description").notNull(),
   rules: text("rules").notNull(),
   coverImageUrl: text("cover_image_url"),
-  status: varchar("status", { length: 50 }).notNull().default("draft"), // draft, active, ended
+  status: varchar("status", { length: 50 }).notNull().default("draft"), // draft, active, ended, archived
   prizeGlory: integer("prize_glory").notNull().default(0),
   startAt: timestamp("start_at").notNull(),
   endAt: timestamp("end_at").notNull(),
@@ -69,9 +69,9 @@ export const votes = pgTable("votes", {
   submissionId: varchar("submission_id").notNull().references(() => submissions.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
-  userSubmissionUnique: unique("votes_user_submission_unique").on(table.userId, table.submissionId),
   userIdx: index("votes_user_idx").on(table.userId),
-  submissionIdx: index("votes_submission_idx").on(table.submissionId)
+  submissionIdx: index("votes_submission_idx").on(table.submissionId),
+  createdAtIdx: index("votes_created_at_idx").on(table.createdAt)
 }));
 
 // Glory Ledger table

@@ -56,6 +56,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
 
     // Voting
     votingMethods: ['public'],
+    juryMembers: [] as string[],
 
     // Voting frequency
     votesPerUserPerPeriod: 1,
@@ -63,7 +64,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     totalVotesPerUser: 0,
 
     // Admin settings
-    status: 'active',
+    status: 'draft',
     featured: false
   });
 
@@ -119,10 +120,11 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
         nsfwAllowed: false,
         agreeToRules: true,
         votingMethods: ['public'],
+        juryMembers: [] as string[],
         votesPerUserPerPeriod: 1,
         periodDurationHours: 24,
         totalVotesPerUser: 0,
-        status: 'active',
+        status: 'draft',
         featured: false
       });
       setCoverImagePreview('');
@@ -333,6 +335,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       periodDurationHours: dataToSubmit.periodDurationHours,
       totalVotesPerUser: dataToSubmit.totalVotesPerUser,
       votingMethods: dataToSubmit.votingMethods,
+      juryMembers: dataToSubmit.juryMembers || [],
       
       // Time settings
       submissionEndAt,
@@ -1079,13 +1082,17 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                     value={formData.status}
                     onChange={(e) => handleInputChange('status', e.target.value)}
                     className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
+                    data-testid="select-contest-status"
                   >
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                    <option value="archived">Archived</option>
+                    <option value="draft">Draft - Awaiting Activation</option>
+                    <option value="active">Publish - Active Immediately</option>
+                    <option value="archived">Archive - Hide Contest</option>
                   </select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {formData.status === 'draft' && 'Contest will be saved as draft and require admin approval'}
+                    {formData.status === 'active' && 'Contest will be published and active immediately'}
+                    {formData.status === 'archived' && 'Contest will be archived and hidden from users'}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
