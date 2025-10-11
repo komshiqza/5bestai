@@ -33,6 +33,7 @@ export default function Profile() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currencyFilter, setCurrencyFilter] = useState<"all" | "GLORY" | "SOL" | "USDC">("all");
 
   // Redirect if not authenticated
   if (!isAuthenticated(user)) {
@@ -91,10 +92,13 @@ export default function Profile() {
   });
 
   const { data: gloryHistory = [] } = useQuery({
-    queryKey: ["/api/glory-ledger"],
+    queryKey: ["/api/glory-ledger", currencyFilter],
     queryFn: async () => {
-      const response = await fetch("/api/glory-ledger", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch glory history");
+      const url = currencyFilter === "all" 
+        ? "/api/glory-ledger" 
+        : `/api/glory-ledger?currency=${currencyFilter}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch transaction history");
       return response.json();
     },
   });
@@ -425,9 +429,9 @@ export default function Profile() {
                   <Upload className="w-4 h-4" />
                   <span className="hidden md:inline">My Submissions</span>
                 </TabsTrigger>
-                <TabsTrigger value="glory" className="gap-2" data-testid="tab-glory">
+                <TabsTrigger value="glory" className="gap-2" data-testid="tab-transactions">
                   <Medal className="w-4 h-4" />
-                  <span className="hidden md:inline">GLORY History</span>
+                  <span className="hidden md:inline">Transaction History</span>
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
                   <Settings className="w-4 h-4" />
@@ -597,16 +601,30 @@ export default function Profile() {
                 )}
               </TabsContent>
 
-              {/* Glory History Tab */}
-              <TabsContent value="glory" className="space-y-4" data-testid="glory-tab">
+              {/* Transaction History Tab */}
+              <TabsContent value="glory" className="space-y-4" data-testid="transactions-tab">
                 {gloryHistory.length > 0 ? (
                   <>
-                    <div className="flex justify-end">
+                    <div className="flex justify-between items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-muted-foreground">Currency:</label>
+                        <select
+                          value={currencyFilter}
+                          onChange={(e) => setCurrencyFilter(e.target.value as "all" | "GLORY" | "SOL" | "USDC")}
+                          className="px-3 py-1.5 bg-background border border-input rounded-lg text-sm"
+                          data-testid="select-currency-filter"
+                        >
+                          <option value="all">All Currencies</option>
+                          <option value="GLORY">GLORY</option>
+                          <option value="SOL">SOL</option>
+                          <option value="USDC">USDC</option>
+                        </select>
+                      </div>
                       <Button
                         variant="destructive"
                         onClick={handleClearGloryHistory}
                         disabled={clearGloryHistoryMutation.isPending}
-                        data-testid="button-clear-glory-history"
+                        data-testid="button-clear-history"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Clear All History
@@ -654,7 +672,7 @@ export default function Profile() {
                                         className={`font-semibold font-mono text-xs md:text-sm ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
                                         data-testid={`transaction-amount-${index}`}
                                       >
-                                        {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} GLORY
+                                        {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} {transaction.currency || "GLORY"}
                                       </span>
                                     </td>
                                   </tr>
@@ -667,13 +685,15 @@ export default function Profile() {
                     </Card>
                   </>
                 ) : (
-                  <div className="text-center py-12" data-testid="no-glory-history">
+                  <div className="text-center py-12" data-testid="no-transactions">
                     <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
                       <Trophy className="w-12 h-12 text-muted-foreground" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">No GLORY transactions yet</h3>
+                    <h3 className="text-xl font-semibold mb-2">
+                      {currencyFilter === "all" ? "No transactions yet" : `No ${currencyFilter} transactions yet`}
+                    </h3>
                     <p className="text-muted-foreground">
-                      Start participating in contests to earn GLORY rewards!
+                      Start participating in contests to earn rewards!
                     </p>
                   </div>
                 )}
