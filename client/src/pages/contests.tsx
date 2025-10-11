@@ -68,31 +68,6 @@ export default function Contests() {
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
-          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-prizes">
-            <Trophy className="text-primary mx-auto mb-3" size={32} />
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {contests.reduce((total: number, contest: any) => total + (Number(contest.prizeGlory) || 0), 0).toLocaleString()}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">$GLORY in Prizes</p>
-          </div>
-          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-active-contests">
-            <Calendar className="text-primary mx-auto mb-3" size={32} />
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {statusCounts.active}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">Active Contests</p>
-          </div>
-          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-participants">
-            <Users className="text-primary mx-auto mb-3" size={32} />
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {contests.reduce((total: number, contest: any) => total + (Number((contest as any).submissionCount) || 0), 0).toLocaleString()}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">Total Participants</p>
-          </div>
-        </div>
-
         {/* Filters and Search */}
         <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-6 md:mb-8">
           <div className="flex items-center gap-2 flex-wrap">
@@ -184,6 +159,31 @@ export default function Contests() {
             </Button>
           </div>
         )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-12">
+          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-prizes">
+            <Trophy className="text-primary mx-auto mb-3" size={32} />
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {contests.reduce((total: number, contest: any) => total + (Number(contest.prizeGlory) || 0), 0).toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">$GLORY in Prizes</p>
+          </div>
+          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-active-contests">
+            <Calendar className="text-primary mx-auto mb-3" size={32} />
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {statusCounts.active}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">Active Contests</p>
+          </div>
+          <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-participants">
+            <Users className="text-primary mx-auto mb-3" size={32} />
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {contests.reduce((total: number, contest: any) => total + (Number((contest as any).submissionCount) || 0), 0).toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">Total Participants</p>
+          </div>
+        </div>
       </div>
     </div>
   );
