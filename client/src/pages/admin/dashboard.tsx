@@ -1737,10 +1737,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="font-mono text-xs max-w-[200px] truncate" data-testid={`cashout-wallet-${request.id}`}>
-                              {request.wallet.address}
-                            </div>
-                            <div className="text-xs text-muted-foreground capitalize">
-                              {request.wallet.provider}
+                              {request.withdrawalAddress}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
