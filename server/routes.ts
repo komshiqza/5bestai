@@ -893,9 +893,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(404).json({ error: "User not found" });
           }
 
-          if (user.gloryBalance < config.entryFeeAmount) {
+          const currency = config.entryFeeCurrency || "GLORY";
+          let balance = user.gloryBalance;
+          if (currency === "SOL") balance = user.solBalance;
+          else if (currency === "USDC") balance = user.usdcBalance;
+
+          if (balance < config.entryFeeAmount) {
             return res.status(400).json({ 
-              error: `Insufficient GLORY balance. Entry fee is ${config.entryFeeAmount} GLORY, you have ${user.gloryBalance} GLORY` 
+              error: `Insufficient ${currency} balance. Entry fee is ${config.entryFeeAmount} ${currency}, you have ${balance} ${currency}` 
             });
           }
         }
@@ -939,11 +944,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Deduct entry fee AFTER submission is successfully created
       if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount) {
-        await storage.updateUserGloryBalance(req.user!.id, -(contest.config as any).entryFeeAmount);
+        const config = contest.config as any;
+        const currency = config.entryFeeCurrency || "GLORY";
+        
+        await storage.updateUserBalance(req.user!.id, -config.entryFeeAmount, currency);
         
         await storage.createGloryTransaction({
           userId: req.user!.id,
-          delta: -(contest.config as any).entryFeeAmount,
+          delta: -config.entryFeeAmount,
+          currency,
           reason: `Entry fee for contest: ${contest.title}`,
           contestId: contestId || null,
           submissionId: submission.id
@@ -1742,10 +1751,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update user GLORY balance route
-  app.patch("/api/admin/users/:id/glory-balance", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+  // Update user balance route (supports GLORY, SOL, USDC)
+  app.patch("/api/admin/users/:id/balance", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const { amount, operation } = req.body;
+      const { amount, operation, currency = "GLORY" } = req.body;
       const userId = req.params.id;
       
       // Generate unique request ID to track duplicates
@@ -1753,15 +1762,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
 
       
-      // Additional protection: Global rate limit per admin user (max 1 glory operation per 3 seconds)
-      const adminRateLimitKey = `admin-glory:${req.user!.id}`;
+      // Additional protection: Global rate limit per admin user (max 1 balance operation per 3 seconds)
+      const adminRateLimitKey = `admin-balance:${req.user!.id}`;
       const lastAdminRequest = recentGloryRequests.get(adminRateLimitKey);
       if (lastAdminRequest && (Date.now() - lastAdminRequest) < 3000) {
-        return res.status(429).json({ error: "Please wait before making another GLORY balance change." });
+        return res.status(429).json({ error: "Please wait before making another balance change." });
       }
       
       // Create request signature to detect duplicates
-      const requestSignature = `${userId}-${amount}-${operation}`;
+      const requestSignature = `${userId}-${amount}-${operation}-${currency}`;
       const now = Date.now();
       const lastRequest = recentGloryRequests.get(requestSignature);
       
@@ -1804,35 +1813,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let newBalance: number;
       let delta: number;
       let reason: string;
+      let currentBalance = user.gloryBalance;
+      
+      if (currency === "SOL") currentBalance = user.solBalance;
+      else if (currency === "USDC") currentBalance = user.usdcBalance;
 
       switch (operation) {
         case 'set':
           newBalance = amount;
-          delta = amount - user.gloryBalance;
-          reason = `Admin set balance to ${amount} GLORY`;
+          delta = amount - currentBalance;
+          reason = `Admin set balance to ${amount} ${currency}`;
 
           break;
         case 'add':
-          newBalance = user.gloryBalance + amount;
+          newBalance = currentBalance + amount;
           delta = amount;
-          reason = `Admin added ${amount} GLORY`;
+          reason = `Admin added ${amount} ${currency}`;
 
           break;
         case 'subtract':
-          newBalance = Math.max(0, user.gloryBalance - amount);
-          delta = -(Math.min(amount, user.gloryBalance));
-          reason = `Admin subtracted ${Math.min(amount, user.gloryBalance)} GLORY`;
+          newBalance = Math.max(0, currentBalance - amount);
+          delta = -(Math.min(amount, currentBalance));
+          reason = `Admin subtracted ${Math.min(amount, currentBalance)} ${currency}`;
 
           break;
         default:
           return res.status(400).json({ error: "Invalid operation" });
       }
 
-      // Create glory transaction record which will also update user balance
+      // Create transaction record which will also update user balance
       if (delta !== 0) {
         await storage.createGloryTransaction({
           userId,
           delta,
+          currency,
           reason,
           contestId: null,
           submissionId: null
@@ -1845,16 +1859,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Failed to get updated user balance" });
       }
 
+      // Get final balance based on currency
+      let finalBalance = updatedUser.gloryBalance;
+      if (currency === "SOL") finalBalance = updatedUser.solBalance;
+      else if (currency === "USDC") finalBalance = updatedUser.usdcBalance;
+
       // Log admin action
       await storage.createAuditLog({
         actorUserId: req.user!.id,
-        action: "UPDATE_USER_GLORY_BALANCE",
+        action: "UPDATE_USER_BALANCE",
         meta: { 
           targetUserId: userId, 
           operation,
           amount,
-          oldBalance: user.gloryBalance,
-          newBalance: updatedUser.gloryBalance,
+          currency,
+          oldBalance: currentBalance,
+          newBalance: finalBalance,
           delta
         }
       });
@@ -1863,14 +1883,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         success: true,
-        newBalance: updatedUser.gloryBalance,
+        newBalance: finalBalance,
         delta,
         operation,
-        message: `GLORY balance ${operation === 'set' ? 'set to' : operation === 'add' ? 'increased by' : 'decreased by'} ${amount}`,
+        currency,
+        message: `${currency} balance ${operation === 'set' ? 'set to' : operation === 'add' ? 'increased by' : 'decreased by'} ${amount}`,
         userData: {
           id: updatedUser.id,
           username: updatedUser.username,
-          gloryBalance: updatedUser.gloryBalance
+          gloryBalance: updatedUser.gloryBalance,
+          solBalance: updatedUser.solBalance,
+          usdcBalance: updatedUser.usdcBalance
         }
       });
     } catch (error) {
@@ -2205,13 +2228,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Glory ledger route
+  // Transaction history route (supports currency filter)
   app.get("/api/glory-ledger", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const transactions = await storage.getGloryTransactions(req.user!.id);
+      const { currency } = req.query;
+      const transactions = await storage.getGloryTransactions(
+        req.user!.id, 
+        currency as string | undefined
+      );
       res.json(transactions);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch glory transactions" });
+      res.status(500).json({ error: "Failed to fetch transactions" });
     }
   });
 
