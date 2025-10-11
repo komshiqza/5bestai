@@ -26,7 +26,8 @@ import {
   approveCashoutSchema,
   rejectCashoutSchema,
   bulkCashoutIdsSchema,
-  bulkRejectCashoutSchema
+  bulkRejectCashoutSchema,
+  insertSiteSettingsSchema
 } from "@shared/schema";
 
 // Create contest scheduler instance
