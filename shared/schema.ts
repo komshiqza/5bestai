@@ -13,6 +13,8 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 50 }).notNull().default("user"), // user, admin
   status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, banned
   gloryBalance: integer("glory_balance").notNull().default(0),
+  solBalance: integer("sol_balance").notNull().default(0),
+  usdcBalance: integer("usdc_balance").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 }, (table) => ({
@@ -74,11 +76,12 @@ export const votes = pgTable("votes", {
   createdAtIdx: index("votes_created_at_idx").on(table.createdAt)
 }));
 
-// Glory Ledger table
+// Glory Ledger table (kept for backwards compatibility, but now tracks all currencies)
 export const gloryLedger = pgTable("glory_ledger", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   delta: integer("delta").notNull(), // positive or negative change
+  currency: varchar("currency", { length: 20 }).notNull().default("GLORY"), // GLORY, SOL, USDC
   reason: text("reason").notNull(),
   contestId: varchar("contest_id").references(() => contests.id, { onDelete: "set null" }),
   submissionId: varchar("submission_id").references(() => submissions.id, { onDelete: "set null" }),
