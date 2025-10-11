@@ -12,7 +12,6 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import gloryLogo from "@assets/Token Logo_1760144437866.png";
 
 export default function Home() {
   const { data: user } = useAuth();
@@ -224,14 +223,14 @@ export default function Home() {
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600 rounded-full blur-3xl"></div>
         </div>
-        {/* GLORY Logo Background */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
+        {/* Background Image Placeholder - uncomment and add your image here */}
+        {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
           <img 
-            src={gloryLogo} 
+            src={yourImagePath} 
             alt="" 
             className="w-64 h-64 md:w-96 md:h-96 opacity-5 select-none"
           />
-        </div>
+        </div> */}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight mb-4 md:mb-6 leading-tight gradient-text" data-testid="hero-title">
