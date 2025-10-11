@@ -63,10 +63,11 @@ export default function AdminDashboard() {
   // Bulk cashout actions state
   const [selectedCashoutIds, setSelectedCashoutIds] = useState<string[]>([]);
 
-  // Glory balance edit state
+  // Balance edit state
   const [gloryEditDialogOpen, setGloryEditDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [gloryAmountInput, setGloryAmountInput] = useState("");
+  const [selectedCurrency, setSelectedCurrency] = useState<"GLORY" | "SOL" | "USDC">("GLORY");
 
   // Clear audit logs state
   const [clearLogsDialogOpen, setClearLogsDialogOpen] = useState(false);
@@ -578,20 +579,23 @@ export default function AdminDashboard() {
     },
   });
 
-  // Update Glory Balance mutation
+  // Update Balance mutation
   const updateGloryBalanceMutation = useMutation({
-    mutationFn: async ({ userId, amount, operation }: { userId: string; amount: number; operation: 'set' | 'add' | 'subtract' }) => {
-      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/glory-balance`, { 
+    mutationFn: async ({ userId, amount, operation, currency }: { userId: string; amount: number; operation: 'set' | 'add' | 'subtract'; currency: 'GLORY' | 'SOL' | 'USDC' }) => {
+      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/balance`, { 
         amount, 
-        operation 
+        operation,
+        currency
       });
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setGloryEditDialogOpen(false);
       setGloryAmountInput("");
       setSelectedUserId("");
+      const updatedCurrency = variables.currency;
+      setSelectedCurrency("GLORY");
       
       // Also invalidate /api/me for all users to update their balance display
       queryClient.invalidateQueries({ queryKey: ["/api/me"] });
@@ -600,14 +604,14 @@ export default function AdminDashboard() {
       queryClient.refetchQueries({ queryKey: ["/api/me"] });
       
       toast({
-        title: "GLORY balance updated",
-        description: data.message || `Successfully updated user's GLORY balance to ${data.newBalance?.toLocaleString()}.`,
+        title: "Balance updated",
+        description: data.message || `Successfully updated user's ${updatedCurrency} balance.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, variables) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update GLORY balance.",
+        description: error.message || `Failed to update ${variables.currency} balance.`,
         variant: "destructive",
       });
     },
@@ -739,10 +743,11 @@ export default function AdminDashboard() {
   const isAllSubmissionsSelected = filteredSubmissions.length > 0 && selectedSubmissionIds.length === filteredSubmissions.length;
   const isSomeSubmissionsSelected = selectedSubmissionIds.length > 0 && selectedSubmissionIds.length < filteredSubmissions.length;
 
-  // Helper function to open Glory edit dialog
-  const openGloryEditDialog = (userId: string, currentBalance: number) => {
+  // Helper function to open Balance edit dialog
+  const openGloryEditDialog = (userId: string) => {
     setSelectedUserId(userId);
-    setGloryAmountInput(currentBalance.toString());
+    setGloryAmountInput("");
+    setSelectedCurrency("GLORY");
     setGloryEditDialogOpen(true);
   };
 
@@ -787,7 +792,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    updateGloryBalanceMutation.mutate({ userId: selectedUserId, amount, operation });
+    updateGloryBalanceMutation.mutate({ userId: selectedUserId, amount, operation, currency: selectedCurrency });
   };
 
   // Helper functions for bulk contest selection
@@ -1059,9 +1064,9 @@ export default function AdminDashboard() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-6 w-6 p-0 hover:bg-primary/20"
-                                onClick={() => openGloryEditDialog(user.id, user.gloryBalance)}
-                                data-testid={`edit-glory-${user.id}`}
-                                title="Edit GLORY balance"
+                                onClick={() => openGloryEditDialog(user.id)}
+                                data-testid={`edit-balance-${user.id}`}
+                                title="Edit user balance"
                               >
                                 <Edit3 className="w-3 h-3" />
                               </Button>
@@ -2067,18 +2072,26 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Glory Balance Edit Dialog */}
-      <Dialog open={gloryEditDialogOpen} onOpenChange={setGloryEditDialogOpen}>
-        <DialogContent data-testid="glory-edit-dialog">
+      {/* Balance Edit Dialog */}
+      <Dialog open={gloryEditDialogOpen} onOpenChange={(open) => {
+        setGloryEditDialogOpen(open);
+        if (!open) {
+          // Reset state when dialog closes
+          setGloryAmountInput("");
+          setSelectedUserId("");
+          setSelectedCurrency("GLORY");
+        }
+      }}>
+        <DialogContent data-testid="balance-edit-dialog">
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <Crown className="w-5 h-5 mr-2 text-primary" />
-              Edit GLORY Balance
+              Edit User Balance
             </DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  Edit the GLORY balance for the selected user.
+                  Edit the balance for the selected user.
                 </p>
                 <div className="bg-muted p-3 rounded-md text-sm">
                   <p className="font-medium mb-2">Supported formats:</p>
@@ -2092,18 +2105,38 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <select
+                id="currency"
+                value={selectedCurrency}
+                onChange={(e) => setSelectedCurrency(e.target.value as "GLORY" | "SOL" | "USDC")}
+                className="w-full px-3 py-2 bg-background border border-input rounded-lg text-sm"
+                data-testid="select-balance-currency"
+              >
+                <option value="GLORY">GLORY</option>
+                <option value="SOL">SOL</option>
+                <option value="USDC">USDC</option>
+              </select>
+            </div>
             {selectedUserId && (
               <div className="bg-muted p-3 rounded-md">
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Current balance:</span>
+                  <span className="text-muted-foreground">Current {selectedCurrency} balance:</span>
                   <span className="font-mono font-semibold ml-2">
-                    {filteredUsers.find((u: any) => u.id === selectedUserId)?.gloryBalance.toLocaleString() || 0} GLORY
+                    {(() => {
+                      const userBalance = filteredUsers.find((u: any) => u.id === selectedUserId);
+                      const balance = selectedCurrency === 'SOL' ? userBalance?.solBalance : 
+                                     selectedCurrency === 'USDC' ? userBalance?.usdcBalance : 
+                                     userBalance?.gloryBalance;
+                      return (balance || 0).toLocaleString();
+                    })()} {selectedCurrency}
                   </span>
                 </div>
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="gloryAmount">New GLORY Amount</Label>
+              <Label htmlFor="gloryAmount">New {selectedCurrency} Amount</Label>
               <Input
                 id="gloryAmount"
                 placeholder="e.g., 300, +50, -20"
@@ -2123,8 +2156,9 @@ export default function AdminDashboard() {
                 setGloryEditDialogOpen(false);
                 setGloryAmountInput("");
                 setSelectedUserId("");
+                setSelectedCurrency("GLORY");
               }}
-              data-testid="cancel-glory-edit"
+              data-testid="cancel-balance-edit"
             >
               Cancel
             </Button>
