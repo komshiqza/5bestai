@@ -12,7 +12,6 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import gloryTokenLogo from "@assets/Token Logo_1760144437866.png";
 
 export default function Home() {
   const { data: user } = useAuth();
@@ -223,15 +222,6 @@ export default function Home() {
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600 rounded-full blur-3xl"></div>
-        </div>
-        {/* GLORY Token Logo Background */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <img 
-            src={gloryTokenLogo} 
-            alt="GLORY Token" 
-            className="w-64 h-64 md:w-96 md:h-96 lg:w-[500px] lg:h-[500px] object-contain opacity-5 animate-pulse"
-            style={{ animationDuration: '4s' }}
-          />
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
