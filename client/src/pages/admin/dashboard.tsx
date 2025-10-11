@@ -878,13 +878,13 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen py-16" data-testid="admin-dashboard">
+    <div className="min-h-screen py-8 md:py-16" data-testid="admin-dashboard">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-black tracking-tight mb-2 flex items-center" data-testid="admin-title">
-              <Shield className="w-10 h-10 text-primary mr-3" />
+            <h1 className="text-2xl md:text-4xl font-black tracking-tight mb-2 flex items-center" data-testid="admin-title">
+              <Shield className="w-8 h-8 md:w-10 md:h-10 text-primary mr-2 md:mr-3" />
               Admin Dashboard
             </h1>
             <p className="text-muted-foreground">Manage users, submissions, and contests</p>
