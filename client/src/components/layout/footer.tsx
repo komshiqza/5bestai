@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Trophy } from "lucide-react";
+import { Trophy, Map } from "lucide-react";
 
 export function Footer() {
   return (
@@ -22,6 +22,12 @@ export function Footer() {
             <h4 className="font-bold mb-4">Platform</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/contests" className="hover:text-foreground transition-colors" data-testid="footer-link-contests">Contests</Link></li>
+              <li>
+                <Link href="/roadmap" className="hover:text-foreground transition-colors inline-flex items-center gap-1.5" data-testid="footer-link-roadmap">
+                  <Map className="h-3.5 w-3.5" />
+                  Roadmap
+                </Link>
+              </li>
               <li><a href="#" className="hover:text-foreground transition-colors" data-testid="footer-link-how-it-works">How It Works</a></li>
               <li><a href="#" className="hover:text-foreground transition-colors" data-testid="footer-link-rules">Rules</a></li>
             </ul>

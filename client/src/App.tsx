@@ -24,6 +24,7 @@ import MySubmissions from "@/pages/my-submissions";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContestDetail from "@/pages/admin/contest-detail";
 import AdminSettings from "@/pages/admin/settings";
+import RoadmapPage from "@/pages/roadmap";
 import NotFound from "@/pages/not-found";
 
 function ScrollToTop() {
@@ -55,6 +56,7 @@ function Router() {
             <PrivateModeGuard>
               <Switch>
                 <Route path="/" component={Home} />
+                <Route path="/roadmap" component={RoadmapPage} />
                 <Route path="/contests" component={Contests} />
                 <Route path="/contest/:slug" component={ContestDetail} />
                 <Route path="/submission/:id" component={SubmissionDetail} />
