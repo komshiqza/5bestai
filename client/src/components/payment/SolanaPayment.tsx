@@ -273,28 +273,16 @@ export function SolanaPayment({
             lamports: Math.round(amount * LAMPORTS_PER_SOL),
           });
           
-          transaction.add(transferInstruction);
-          
-          // Add reference if provided (for tracking)
+          // Add reference as account key to transfer instruction (Solana Pay spec)
           if (referenceParam) {
-            transaction.add({
-              keys: [{ pubkey: new PublicKey(referenceParam), isSigner: false, isWritable: false }],
-              programId: new PublicKey('11111111111111111111111111111111'),
-              data: Buffer.alloc(0),
+            transferInstruction.keys.push({
+              pubkey: new PublicKey(referenceParam),
+              isSigner: false,
+              isWritable: false,
             });
           }
           
-          // Add memo if provided (simple memo instruction without external package)
-          if (memoParam) {
-            const memoProgram = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
-            const memoData = Buffer.from(decodeURIComponent(memoParam), 'utf8');
-            const memoInstruction = {
-              keys: [],
-              programId: memoProgram,
-              data: memoData,
-            };
-            transaction.add(memoInstruction);
-          }
+          transaction.add(transferInstruction);
           
           // Get latest blockhash
           const { blockhash } = await connection.getLatestBlockhash();
