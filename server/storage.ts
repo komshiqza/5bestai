@@ -20,6 +20,8 @@ import {
   type InsertCashoutEvent,
   type SiteSettings,
   type InsertSiteSettings,
+  type AiGeneration,
+  type InsertAiGeneration,
   type SubmissionWithUser,
   type ContestWithStats,
   type UserWithStats,
@@ -32,7 +34,8 @@ import {
   userWallets,
   cashoutRequests,
   cashoutEvents,
-  siteSettings
+  siteSettings,
+  aiGenerations
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -110,6 +113,12 @@ export interface IStorage {
   // Site Settings
   getSiteSettings(): Promise<SiteSettings>;
   updateSiteSettings(updates: Partial<SiteSettings>): Promise<SiteSettings>;
+  
+  // AI Generations
+  createAiGeneration(generation: InsertAiGeneration): Promise<AiGeneration>;
+  getAiGeneration(id: string): Promise<AiGeneration | undefined>;
+  getAiGenerations(userId: string, limit?: number): Promise<AiGeneration[]>;
+  deleteAiGeneration(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -705,6 +714,23 @@ export class MemStorage implements IStorage {
 
   async updateSiteSettings(updates: Partial<SiteSettings>): Promise<SiteSettings> {
     throw new Error("MemStorage site settings methods not implemented");
+  }
+
+  // AI Generations (MemStorage - not used in production)
+  async createAiGeneration(generation: InsertAiGeneration): Promise<AiGeneration> {
+    throw new Error("MemStorage AI generation methods not implemented");
+  }
+
+  async getAiGeneration(id: string): Promise<AiGeneration | undefined> {
+    throw new Error("MemStorage AI generation methods not implemented");
+  }
+
+  async getAiGenerations(userId: string, limit?: number): Promise<AiGeneration[]> {
+    throw new Error("MemStorage AI generation methods not implemented");
+  }
+
+  async deleteAiGeneration(id: string): Promise<void> {
+    throw new Error("MemStorage AI generation methods not implemented");
   }
 }
 
@@ -1421,6 +1447,32 @@ export class DbStorage implements IStorage {
       .returning();
     
     return updated as SiteSettings;
+  }
+
+  // AI Generations
+  async createAiGeneration(generation: InsertAiGeneration): Promise<AiGeneration> {
+    const [newGeneration] = await db.insert(aiGenerations).values(generation).returning();
+    return newGeneration as AiGeneration;
+  }
+
+  async getAiGeneration(id: string): Promise<AiGeneration | undefined> {
+    const result = await db.query.aiGenerations.findFirst({
+      where: eq(aiGenerations.id, id)
+    });
+    return result;
+  }
+
+  async getAiGenerations(userId: string, limit: number = 20): Promise<AiGeneration[]> {
+    const result = await db.query.aiGenerations.findMany({
+      where: eq(aiGenerations.userId, userId),
+      orderBy: [desc(aiGenerations.createdAt)],
+      limit
+    });
+    return result;
+  }
+
+  async deleteAiGeneration(id: string): Promise<void> {
+    await db.delete(aiGenerations).where(eq(aiGenerations.id, id));
   }
 }
 

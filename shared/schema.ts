@@ -379,6 +379,8 @@ export type InsertCashoutRequest = z.infer<typeof insertCashoutRequestSchema>;
 export type CashoutRequest = typeof cashoutRequests.$inferSelect;
 export type InsertCashoutEvent = z.infer<typeof insertCashoutEventSchema>;
 export type CashoutEvent = typeof cashoutEvents.$inferSelect;
+export type InsertAiGeneration = z.infer<typeof insertAiGenerationSchema>;
+export type AiGeneration = typeof aiGenerations.$inferSelect;
 
 // Extended types with relations
 export type SubmissionWithUser = Submission & {
@@ -403,6 +405,22 @@ export type CashoutRequestWithRelations = CashoutRequest & {
   user: Pick<User, 'id' | 'username' | 'email' | 'gloryBalance'>;
 };
 
+// AI Generations table
+export const aiGenerations = pgTable("ai_generations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  prompt: text("prompt").notNull(),
+  model: varchar("model", { length: 255 }).notNull(), // e.g., "stability-ai/sdxl"
+  imageUrl: text("image_url").notNull(),
+  parameters: jsonb("parameters"), // Store generation parameters (width, height, steps, etc.)
+  cloudinaryPublicId: varchar("cloudinary_public_id", { length: 255 }),
+  status: varchar("status", { length: 50 }).notNull().default("generated"), // generated, saved, submitted
+  createdAt: timestamp("created_at").notNull().defaultNow()
+}, (table) => ({
+  userIdx: index("ai_generations_user_idx").on(table.userId),
+  createdAtIdx: index("ai_generations_created_at_idx").on(table.createdAt)
+}));
+
 // Site Settings table (global settings - should have only one row)
 export const siteSettings = pgTable("site_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -418,3 +436,8 @@ export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({
 
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;
 export type SiteSettings = typeof siteSettings.$inferSelect;
+
+export const insertAiGenerationSchema = createInsertSchema(aiGenerations).omit({
+  id: true,
+  createdAt: true
+});

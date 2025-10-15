@@ -2673,6 +2673,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.send(svg);
   });
 
+  // AI Generation routes
+  const { generateImage } = await import("./ai-service");
+  
+  // Generate image validation schema
+  const generateImageSchema = z.object({
+    prompt: z.string().min(3, "Prompt must be at least 3 characters").max(1000, "Prompt too long"),
+    negativePrompt: z.string().max(500).optional(),
+    width: z.number().min(256).max(2048).optional(),
+    height: z.number().min(256).max(2048).optional(),
+    numInferenceSteps: z.number().min(10).max(50).optional(),
+    guidanceScale: z.number().min(1).max(20).optional(),
+    seed: z.number().int().optional(),
+  });
+
+  app.post("/api/ai/generate", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const params = generateImageSchema.parse(req.body);
+      const userId = req.user!.id;
+
+      console.log(`Generating AI image for user ${userId}:`, params.prompt);
+
+      // Generate image using Replicate
+      const result = await generateImage(params);
+
+      // Save generation to database
+      const generation = await storage.createAiGeneration({
+        userId,
+        prompt: params.prompt,
+        model: result.parameters.model,
+        imageUrl: result.url,
+        parameters: result.parameters,
+        status: "generated"
+      });
+
+      res.json({ 
+        id: generation.id,
+        imageUrl: result.url,
+        parameters: result.parameters
+      });
+    } catch (error) {
+      console.error("AI generation error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid parameters", details: error.errors });
+      }
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to generate image" 
+      });
+    }
+  });
+
+  app.get("/api/ai/generations", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { limit = 20 } = req.query;
+      
+      const generations = await storage.getAiGenerations(userId, parseInt(limit as string));
+      res.json(generations);
+    } catch (error) {
+      console.error("Error fetching AI generations:", error);
+      res.status(500).json({ error: "Failed to fetch generations" });
+    }
+  });
+
+  app.delete("/api/ai/generations/:id", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const generation = await storage.getAiGeneration(id);
+      if (!generation) {
+        return res.status(404).json({ error: "Generation not found" });
+      }
+
+      if (generation.userId !== userId) {
+        return res.status(403).json({ error: "Not authorized to delete this generation" });
+      }
+
+      await storage.deleteAiGeneration(id);
+      res.json({ message: "Generation deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting AI generation:", error);
+      res.status(500).json({ error: "Failed to delete generation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
