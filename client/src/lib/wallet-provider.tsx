@@ -1,4 +1,15 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useMemo, ReactNode, useCallback } from "react";
+import {
+  ConnectionProvider,
+  WalletProvider,
+  useWallet as useSolanaWallet,
+} from '@solana/wallet-adapter-react';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { clusterApiUrl } from '@solana/web3.js';
+import bs58 from 'bs58';
+
+// Import default wallet adapter styles
+import '@solana/wallet-adapter-react-ui/styles.css';
 
 interface WalletContextType {
   connected: boolean;
@@ -11,110 +22,83 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | null>(null);
 
-export function SolanaWalletProvider({ children }: { children: React.ReactNode }) {
-  const [connected, setConnected] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Check if wallet is already connected
-    const checkWallet = async () => {
-      if (window.solana?.isConnected) {
-        try {
-          const response = await window.solana.connect({ onlyIfTrusted: true });
-          setPublicKey(response.publicKey.toString());
-          setConnected(true);
-        } catch (err) {
-          console.log("Not connected");
-        }
-      }
-    };
-    checkWallet();
-
-    // Define event handlers
-    const handleConnect = (publicKey: any) => {
-      setPublicKey(publicKey.toString());
-      setConnected(true);
-    };
-
-    const handleDisconnect = () => {
-      setPublicKey(null);
-      setConnected(false);
-    };
-
-    const handleAccountChanged = (publicKey: any) => {
-      if (publicKey) {
-        setPublicKey(publicKey.toString());
-      } else {
-        setPublicKey(null);
-        setConnected(false);
-      }
-    };
-
-    // Listen for events
-    window.solana?.on("connect", handleConnect);
-    window.solana?.on("disconnect", handleDisconnect);
-    window.solana?.on("accountChanged", handleAccountChanged);
-
-    return () => {
-      window.solana?.removeListener("connect", handleConnect);
-      window.solana?.removeListener("disconnect", handleDisconnect);
-      window.solana?.removeListener("accountChanged", handleAccountChanged);
-    };
-  }, []);
-
-  const connect = async () => {
-    if (!window.solana) {
-      window.open("https://phantom.app/", "_blank");
-      throw new Error("Phantom wallet not found. Please install it.");
+export function SolanaWalletProvider({ children }: { children: ReactNode }) {
+  // Use devnet for testing, can be changed to mainnet-beta for production
+  const network = import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
+  const endpoint = useMemo(() => {
+    // Use custom RPC if provided, otherwise use default cluster API
+    const customRpc = import.meta.env.VITE_SOLANA_RPC_ENDPOINT;
+    if (customRpc) {
+      return customRpc;
     }
+    return clusterApiUrl(network as 'devnet' | 'testnet' | 'mainnet-beta');
+  }, [network]);
+  
+  // Empty array - Wallet Standard automatically detects Phantom, Solflare, Backpack, etc.
+  const wallets = useMemo(() => [], []);
 
-    try {
-      setConnecting(true);
-      const response = await window.solana.connect();
-      setPublicKey(response.publicKey.toString());
-      setConnected(true);
-    } catch (error) {
-      console.error("Error connecting to wallet:", error);
-      throw error;
-    } finally {
-      setConnecting(false);
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <WalletContextWrapper>
+            {children}
+          </WalletContextWrapper>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+}
+
+// Wrapper to provide compatibility with existing useWallet hook
+function WalletContextWrapper({ children }: { children: ReactNode }) {
+  const { 
+    publicKey: solanaPublicKey, 
+    connected, 
+    connecting, 
+    connect: solanaConnect,
+    disconnect: solanaDisconnect,
+    signMessage: solanaSignMessage,
+  } = useSolanaWallet();
+
+  const publicKey = solanaPublicKey?.toBase58() || null;
+
+  const connect = useCallback(async () => {
+    if (!solanaConnect) {
+      throw new Error("Wallet adapter not initialized");
     }
-  };
+    await solanaConnect();
+  }, [solanaConnect]);
 
-  const disconnect = async () => {
-    if (window.solana) {
-      await window.solana.disconnect();
-      setPublicKey(null);
-      setConnected(false);
+  const disconnect = useCallback(async () => {
+    if (solanaDisconnect) {
+      await solanaDisconnect();
     }
-  };
+  }, [solanaDisconnect]);
 
-  const signMessage = async (message: string): Promise<string> => {
-    if (!window.solana || !connected) {
+  const signMessage = useCallback(async (message: string): Promise<string> => {
+    if (!solanaSignMessage || !connected) {
       throw new Error("Wallet not connected");
     }
 
     const encodedMessage = new TextEncoder().encode(message);
-    const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
+    const signature = await solanaSignMessage(encodedMessage);
     
-    // Convert Uint8Array to base64 using browser APIs
-    const bytes = new Uint8Array(signedMessage.signature);
-    const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
-    return btoa(binary);
-  };
+    // Convert Uint8Array to base58
+    return bs58.encode(signature);
+  }, [solanaSignMessage, connected]);
+
+  const value = useMemo(() => ({
+    connected,
+    connecting,
+    publicKey,
+    connect,
+    disconnect,
+    signMessage,
+  }), [connected, connecting, publicKey, connect, disconnect, signMessage]);
 
   return (
-    <WalletContext.Provider
-      value={{
-        connected,
-        connecting,
-        publicKey,
-        connect,
-        disconnect,
-        signMessage,
-      }}
-    >
+    <WalletContext.Provider value={value}>
       {children}
     </WalletContext.Provider>
   );
@@ -127,6 +111,10 @@ export function useWallet() {
   }
   return context;
 }
+
+// Export additional wallet adapter hooks for advanced usage
+export { useConnection } from '@solana/wallet-adapter-react';
+export { useWallet as useSolanaWalletAdapter } from '@solana/wallet-adapter-react';
 
 declare global {
   interface Window {

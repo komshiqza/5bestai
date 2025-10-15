@@ -13,6 +13,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth, isAuthenticated } from "@/lib/auth";
 import { useUserBalance } from "@/hooks/useUserBalance";
 import { CashoutRequest } from "@/components/wallet/CashoutRequest";
+import { WalletConnect } from "@/components/wallet/WalletConnect";
 import { EditSubmissionModal } from "@/components/EditSubmissionModal";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { apiRequest } from "@/lib/queryClient";
@@ -852,6 +853,9 @@ export default function Profile() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Wallet Connection */}
+                <WalletConnect />
 
                 <Card>
                   <CardContent className="p-6">
