@@ -1,6 +1,6 @@
 import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
-const network = (process.env.SOLANA_NETWORK || 'devnet') as 'devnet' | 'testnet' | 'mainnet-beta';
+const network = (process.env.SOLANA_NETWORK || 'mainnet-beta') as 'devnet' | 'testnet' | 'mainnet-beta';
 
 const endpoint = process.env.SOLANA_RPC_ENDPOINT || clusterApiUrl(network);
 

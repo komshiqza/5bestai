@@ -23,8 +23,8 @@ interface WalletContextType {
 const WalletContext = createContext<WalletContextType | null>(null);
 
 export function SolanaWalletProvider({ children }: { children: ReactNode }) {
-  // Use devnet for testing, can be changed to mainnet-beta for production
-  const network = import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
+  // Using mainnet-beta for production (real transactions)
+  const network = import.meta.env.VITE_SOLANA_NETWORK || 'mainnet-beta';
   const endpoint = useMemo(() => {
     // Use custom RPC if provided, otherwise use default cluster API
     const customRpc = import.meta.env.VITE_SOLANA_RPC_ENDPOINT;

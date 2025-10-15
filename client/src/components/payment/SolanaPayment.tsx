@@ -3,8 +3,9 @@ import { QRCodeSVG } from "qrcode.react";
 import { PublicKey, Keypair } from "@solana/web3.js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Check, Loader2, ExternalLink } from "lucide-react";
+import { Copy, Check, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface SolanaPaymentProps {
@@ -117,8 +118,8 @@ export function SolanaPayment({
       
       // Add SPL token mint if applicable
       if (currency === "USDC") {
-        // USDC devnet mint address
-        params.append('spl-token', "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+        // USDC mainnet mint address
+        params.append('spl-token', "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
       } else if (currency === "CUSTOM" && customTokenMint) {
         params.append('spl-token', customTokenMint);
       }
@@ -258,8 +259,8 @@ export function SolanaPayment({
           // Import Solana web3.js for direct transaction creation
           const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
           
-          // Create connection to devnet
-          const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+          // Create connection to mainnet-beta
+          const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
           
           // Create transaction directly
           const transaction = new Transaction();
@@ -536,6 +537,14 @@ export function SolanaPayment({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Mainnet Warning */}
+        <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+          <AlertDescription className="text-amber-800 dark:text-amber-200">
+            <strong>Real Money Transaction:</strong> This payment uses mainnet with real {currency}. Make sure you're sending the correct amount to the right address.
+          </AlertDescription>
+        </Alert>
+
         {/* QR Code */}
         {paymentUrl && (
           <div className="flex justify-center p-4 bg-white rounded-lg" data-testid="container-qr-code">
