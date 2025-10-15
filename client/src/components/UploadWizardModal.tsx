@@ -11,9 +11,11 @@ import {
   Info,
   CheckCircle2,
   Search,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { SolanaPayment } from "@/components/payment/SolanaPayment";
 
 const CATEGORIES = [
   "Art",
@@ -56,6 +58,11 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  
+  // Payment state for wallet payments
+  const [paymentMethod, setPaymentMethod] = useState<'balance' | 'wallet'>('balance');
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentTxHash, setPaymentTxHash] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isVideo = useMemo(
@@ -97,6 +104,26 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     }
   }, [preselectedContestId, activeContests]);
 
+  // Auto-select payment method based on contest config
+  useEffect(() => {
+    if (selectedContest && selectedContest !== "my-gallery") {
+      const contest = activeContests.find((c: any) => c.id === selectedContest);
+      const contestConfig = contest?.config || {};
+      
+      // If contest only allows wallet payment (no balance option), force wallet
+      if (contestConfig.entryFee && contestConfig.entryFeePaymentMethods) {
+        const allowsBalance = contestConfig.entryFeePaymentMethods.includes('balance');
+        const allowsWallet = contestConfig.entryFeePaymentMethods.includes('wallet');
+        
+        if (allowsWallet && !allowsBalance) {
+          setPaymentMethod('wallet');
+        } else if (allowsBalance && !allowsWallet) {
+          setPaymentMethod('balance');
+        }
+      }
+    }
+  }, [selectedContest, activeContests]);
+
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -113,6 +140,9 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       setAgreedToTerms(false);
       setStep(1);
       setErrors([]);
+      setPaymentMethod('balance');
+      setShowPayment(false);
+      setPaymentTxHash(null);
     }
   }, [isOpen, preselectedContestId]);
 
@@ -212,14 +242,8 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     setTags((prev) => prev.filter((x) => x !== t));
   };
 
-  const handleSubmit = async () => {
-    resetErrors();
-    const allGood = validateStep(1) && validateStep(2) && validateStep(3);
-    if (!allGood) return;
-
-    if (uploadMode === 'new' && !file) return;
-    if (uploadMode === 'gallery' && !selectedGalleryImage) return;
-
+  // Submit submission with optional payment txHash
+  const submitSubmission = async (txHash?: string) => {
     setSubmitting(true);
     try {
       if (uploadMode === 'new' && file) {
@@ -232,6 +256,10 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
         formData.append("title", title);
         formData.append("description", description);
         formData.append("type", file.type.startsWith("video/") ? "video" : "image");
+        
+        if (txHash) {
+          formData.append("paymentTxHash", txHash);
+        }
 
         const response = await fetch("/api/submissions", {
           method: "POST",
@@ -257,6 +285,10 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
         if (selectedContest !== "my-gallery") {
           submissionData.contestId = selectedContest;
         }
+        
+        if (txHash) {
+          submissionData.paymentTxHash = txHash;
+        }
 
         const response = await fetch("/api/submissions", {
           method: "POST",
@@ -279,6 +311,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      setShowPayment(false);
       onClose();
     } catch (error) {
       toast({
@@ -289,6 +322,39 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    resetErrors();
+    const allGood = validateStep(1) && validateStep(2) && validateStep(3);
+    if (!allGood) return;
+
+    if (uploadMode === 'new' && !file) return;
+    if (uploadMode === 'gallery' && !selectedGalleryImage) return;
+
+    // Check if wallet payment is required
+    if (selectedContest && selectedContest !== "my-gallery") {
+      const contest = activeContests.find((c: any) => c.id === selectedContest);
+      const contestConfig = contest?.config || {};
+      
+      if (contestConfig.entryFee && contestConfig.entryFeeAmount && paymentMethod === 'wallet') {
+        // If payment not completed yet, show payment dialog
+        if (!paymentTxHash) {
+          setShowPayment(true);
+          return;
+        }
+        // Payment completed, proceed with txHash
+      }
+    }
+
+    // Submit with optional txHash from wallet payment
+    await submitSubmission(paymentTxHash || undefined);
+  };
+
+  // Handle successful payment
+  const handlePaymentSuccess = async (txHash: string) => {
+    setPaymentTxHash(txHash);
+    await submitSubmission(txHash);
   };
 
   if (!isOpen) {
@@ -423,6 +489,8 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
                 agreedToTerms={agreedToTerms}
                 setAgreedToTerms={setAgreedToTerms}
                 user={user}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
               />
             )}
           </div>
@@ -462,6 +530,27 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
           </div>
         </div>
       </div>
+      
+      {/* Payment Overlay */}
+      {showPayment && selectedContest && selectedContest !== "my-gallery" && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-10">
+          <div className="w-full max-w-md">
+            <SolanaPayment
+              amount={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.entryFeeAmount || 0}
+              currency={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.entryFeeCurrency || 'SOL'}
+              recipient={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.platformWalletAddress || ''}
+              label={activeContests.find((c: any) => c.id === selectedContest)?.title || 'Contest Entry'}
+              message={`Entry fee for ${activeContests.find((c: any) => c.id === selectedContest)?.title}`}
+              customTokenMint={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.customTokenMint}
+              customTokenDecimals={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.customTokenDecimals}
+              userId={user?.id || ''}
+              contestId={selectedContest}
+              onSuccess={handlePaymentSuccess}
+              onCancel={() => setShowPayment(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -745,6 +834,8 @@ function StepContest({
   agreedToTerms,
   setAgreedToTerms,
   user,
+  paymentMethod,
+  setPaymentMethod,
 }: {
   contests: any[];
   selectedContest: string;
@@ -754,6 +845,8 @@ function StepContest({
   agreedToTerms: boolean;
   setAgreedToTerms: (b: boolean) => void;
   user: any;
+  paymentMethod: 'balance' | 'wallet';
+  setPaymentMethod: (method: 'balance' | 'wallet') => void;
 }) {
   const selectedContestData = contests.find((c) => c.id === selectedContest);
   const contestConfig = selectedContestData?.config || {};
@@ -811,7 +904,64 @@ function StepContest({
         </select>
       </div>
 
+      {/* Payment Method Selection */}
       {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && (
+        contestConfig.entryFeePaymentMethods?.includes('wallet') ? (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+              Payment Method *
+            </label>
+            <div className="space-y-2">
+              {contestConfig.entryFeePaymentMethods.includes('balance') && (
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="balance"
+                    checked={paymentMethod === 'balance'}
+                    onChange={() => setPaymentMethod('balance')}
+                    className="h-4 w-4 text-violet-600 focus:ring-violet-500"
+                    data-testid="radio-payment-balance"
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      Pay from Balance
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Your {entryFeeCurrency} balance: {userBalance.toLocaleString()}
+                    </div>
+                  </div>
+                </label>
+              )}
+              
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="wallet"
+                  checked={paymentMethod === 'wallet'}
+                  onChange={() => setPaymentMethod('wallet')}
+                  className="h-4 w-4 text-violet-600 focus:ring-violet-500"
+                  data-testid="radio-payment-wallet"
+                />
+                <div className="flex-1 flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  <div>
+                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                      Pay with Solana Wallet
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Pay directly with SOL/USDC/tokens
+                    </div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+        ) : null
+      )}
+
+      {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && paymentMethod === 'balance' && (
         <div className={`flex items-start gap-3 rounded-xl border p-4 ${
           hasInsufficientBalance
             ? 'border-red-300/60 dark:border-red-700/60 bg-red-50/70 dark:bg-red-950/20'

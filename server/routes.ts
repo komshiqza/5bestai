@@ -10,7 +10,9 @@ import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
 import { ContestScheduler } from "./contest-scheduler";
-import { verifyTransaction } from "./solana";
+import { verifyTransaction, solanaConnection } from "./solana";
+import { findReference } from "@solana/pay";
+import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
 import { 
   loginSchema, 
@@ -427,6 +429,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Solana payment verification error:", error);
       res.status(400).json({ 
         error: error instanceof Error ? error.message : "Failed to verify Solana payment" 
+      });
+    }
+  });
+
+  // Find payment by reference (Solana Pay reference tracking)
+  const findPaymentByReferenceSchema = z.object({
+    reference: z.string(), // Base58 public key
+    expectedAmount: z.number().positive(),
+    recipientAddress: z.string(),
+    contestId: z.string().uuid().optional(),
+    submissionId: z.string().uuid().optional(),
+  });
+
+  app.post("/api/payment/find-by-reference", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { reference, expectedAmount, recipientAddress, contestId, submissionId } = 
+        findPaymentByReferenceSchema.parse(req.body);
+      
+      const userId = req.user!.id;
+
+      // Get user's connected wallet
+      const userWallet = await storage.getUserWallet(userId);
+      if (!userWallet) {
+        return res.status(400).json({ error: "No wallet connected. Please connect your Solana wallet first." });
+      }
+
+      // Convert reference string to PublicKey
+      const referenceKey = new PublicKey(reference);
+
+      // Find transaction using reference
+      const signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'confirmed' });
+      
+      if (!signatureInfo || !signatureInfo.signature) {
+        return res.json({ found: false, message: "Payment not found yet. Please complete the transaction in your wallet." });
+      }
+
+      const signature = signatureInfo.signature;
+
+      // Check if transaction already processed
+      const existingTx = await storage.getGloryTransactionByHash(signature);
+      if (existingTx) {
+        return res.json({ 
+          found: true, 
+          alreadyProcessed: true,
+          success: true,
+          txHash: signature,
+          message: "Payment already verified" 
+        });
+      }
+
+      // Verify transaction details
+      const txResult = await verifyTransaction(signature);
+
+      if (!txResult.confirmed) {
+        return res.json({ found: false, message: "Transaction found but not yet confirmed" });
+      }
+
+      // Verify payer matches user's connected wallet
+      if (txResult.from !== userWallet.address) {
+        return res.status(400).json({ 
+          error: `Transaction payer mismatch. Expected ${userWallet.address}, got ${txResult.from}` 
+        });
+      }
+
+      // Verify transaction details
+      if (!txResult.amount || txResult.amount < expectedAmount) {
+        return res.status(400).json({ 
+          error: `Insufficient payment amount. Expected ${expectedAmount} SOL, received ${txResult.amount || 0} SOL` 
+        });
+      }
+
+      if (txResult.to !== recipientAddress) {
+        return res.status(400).json({ 
+          error: "Payment recipient address mismatch" 
+        });
+      }
+
+      // Record transaction in glory ledger
+      await storage.createGloryTransaction({
+        userId,
+        delta: 0, // Crypto payments don't affect GLORY balance
+        currency: "SOL",
+        reason: `Solana payment verified via reference - ${expectedAmount} SOL`,
+        contestId: contestId || null,
+        submissionId: submissionId || null,
+        txHash: signature,
+        metadata: {
+          reference,
+          from: txResult.from,
+          to: txResult.to,
+          amount: txResult.amount,
+          verifiedAt: new Date().toISOString(),
+        }
+      });
+
+      res.json({ 
+        found: true,
+        alreadyProcessed: false,
+        success: true, 
+        txHash: signature,
+        transaction: {
+          signature,
+          amount: txResult.amount,
+          from: txResult.from,
+          to: txResult.to,
+        }
+      });
+    } catch (error) {
+      console.error("Find payment by reference error:", error);
+      
+      // Handle specific errors
+      if (error instanceof Error) {
+        if (error.message.includes("not found")) {
+          return res.json({ found: false, message: "Payment not found yet. Please complete the transaction." });
+        }
+      }
+      
+      res.status(400).json({ 
+        error: error instanceof Error ? error.message : "Failed to find payment" 
       });
     }
   });
@@ -926,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", authenticateToken, requireApproved, upload.single("file"), async (req: AuthRequest, res) => {
     try {
-      const { contestId, title, description, type, mediaUrl, thumbnailUrl } = req.body;
+      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash } = req.body;
       
       // Check if either file or mediaUrl is provided (gallery selection)
       if (!req.file && !mediaUrl) {
@@ -999,22 +1120,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Check if user has sufficient balance for entry fee (but don't deduct yet)
+        // Wallet payment validation for contests requiring crypto payments
         if (config && config.entryFee && config.entryFeeAmount) {
-          const user = await storage.getUser(req.user!.id);
-          if (!user) {
-            return res.status(404).json({ error: "User not found" });
+          const paymentMethods = config.entryFeePaymentMethods || ['balance'];
+          const allowsBalance = paymentMethods.includes('balance');
+          const allowsWallet = paymentMethods.includes('wallet');
+
+          // If wallet is the only payment method, require verified transaction
+          if (allowsWallet && !allowsBalance) {
+            if (!paymentTxHash) {
+              return res.status(400).json({ 
+                error: "This contest requires wallet payment. Please complete the payment with your Solana wallet." 
+              });
+            }
+
+            // Verify the transaction exists and is valid
+            const txRecord = await storage.getGloryTransactionByHash(paymentTxHash);
+            if (!txRecord) {
+              return res.status(400).json({ 
+                error: "Payment transaction not verified. Please ensure your payment is confirmed on the blockchain." 
+              });
+            }
+
+            // Verify transaction is for this contest and user
+            if (txRecord.userId !== req.user!.id || txRecord.contestId !== contestId) {
+              return res.status(400).json({ 
+                error: "Payment transaction verification failed. Transaction does not match contest or user." 
+              });
+            }
           }
+          // If balance payment is allowed, check balance (skip if wallet payment provided)
+          else if (allowsBalance && !paymentTxHash) {
+            const user = await storage.getUser(req.user!.id);
+            if (!user) {
+              return res.status(404).json({ error: "User not found" });
+            }
 
-          const currency = config.entryFeeCurrency || "GLORY";
-          let balance = user.gloryBalance;
-          if (currency === "SOL") balance = user.solBalance;
-          else if (currency === "USDC") balance = user.usdcBalance;
+            const currency = config.entryFeeCurrency || "GLORY";
+            let balance = user.gloryBalance;
+            if (currency === "SOL") balance = user.solBalance;
+            else if (currency === "USDC") balance = user.usdcBalance;
 
-          if (balance < config.entryFeeAmount) {
-            return res.status(400).json({ 
-              error: `Insufficient ${currency} balance. Entry fee is ${config.entryFeeAmount} ${currency}, you have ${balance} ${currency}` 
-            });
+            if (balance < config.entryFeeAmount) {
+              return res.status(400).json({ 
+                error: `Insufficient ${currency} balance. Entry fee is ${config.entryFeeAmount} ${currency}, you have ${balance} ${currency}` 
+              });
+            }
           }
         }
       }
@@ -1055,8 +1206,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending" // Requires admin approval
       });
 
-      // Deduct entry fee AFTER submission is successfully created
-      if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount) {
+      // Deduct entry fee AFTER submission is successfully created (skip if wallet payment already made)
+      if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount && !paymentTxHash) {
         const config = contest.config as any;
         const currency = config.entryFeeCurrency || "GLORY";
         
