@@ -1,0 +1,22 @@
+index-BoGFyGDr.js:587 🎯 BUTTON CLICKED! Wallet detected: true
+index-BoGFyGDr.js:587 🚀 openInWallet called! {paymentUrl: 'solana:8A46SPkNSiDwwptWJsycFNXUi7wf9jvqeNTHnV9YbVG…4dd%3Auser%3A8bfae1ae-c7a9-4d7c-8dfe-f9d0296c3539', walletDetected: true}
+index-BoGFyGDr.js:587 🔍 Detailed wallet detection: {hasSolana: true, isPhantom: true, isConnected: true, phantomExists: true, solflareExists: false, …}
+index-BoGFyGDr.js:587 Attempting Phantom direct integration...
+index-BoGFyGDr.js:587 ✅ Wallet already connected, skipping connect call
+index-BoGFyGDr.js:587 Payment details: {recipientAddress: '8A46SPkNSiDwwptWJsycFNXUi7wf9jvqeNTHnV9YbVGh', amount: 0.001, referenceParam: 'CV9dsAu5Ushyn1rqRJGvhvugxx99gy2877UGBiZpf4ac', memoParam: 'contest:64957fa1-6e56-4f1c-8611-82eed3a874dd:user:8bfae1ae-c7a9-4d7c-8dfe-f9d0296c3539'}
+index-BoGFyGDr.js:587 🔄 Sending transaction to Phantom for signature...
+index-BoGFyGDr.js:587 ❌ Transaction failed: Oe: User rejected the request.
+    at #n (solana.js:3:416169)
+    at async r.signAndSendTransaction (solana.js:3:418382)
+    at async index-BoGFyGDr.js:587:9070
+index-BoGFyGDr.js:587 🎯 BUTTON CLICKED! Wallet detected: true
+index-BoGFyGDr.js:587 🚀 openInWallet called! {paymentUrl: 'solana:8A46SPkNSiDwwptWJsycFNXUi7wf9jvqeNTHnV9YbVG…4dd%3Auser%3A8bfae1ae-c7a9-4d7c-8dfe-f9d0296c3539', walletDetected: true}
+index-BoGFyGDr.js:587 🔍 Detailed wallet detection: {hasSolana: true, isPhantom: true, isConnected: true, phantomExists: true, solflareExists: false, …}
+index-BoGFyGDr.js:587 Attempting Phantom direct integration...
+index-BoGFyGDr.js:587 ✅ Wallet already connected, skipping connect call
+index-BoGFyGDr.js:587 Payment details: {recipientAddress: '8A46SPkNSiDwwptWJsycFNXUi7wf9jvqeNTHnV9YbVGh', amount: 0.001, referenceParam: '8146dPWcLtxYJyLepgtiV7bm6BXDGZfvkf5afrwyPDjc', memoParam: 'contest:64957fa1-6e56-4f1c-8611-82eed3a874dd:user:8bfae1ae-c7a9-4d7c-8dfe-f9d0296c3539'}
+index-BoGFyGDr.js:587 🔄 Sending transaction to Phantom for signature...
+index-BoGFyGDr.js:587 ❌ Transaction failed: Oe: Unexpected error
+    at #n (solana.js:3:416169)
+    at async r.signAndSendTransaction (solana.js:3:418382)
+    at async index-BoGFyGDr.js:587:9070
