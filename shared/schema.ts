@@ -406,6 +406,7 @@ export type CashoutRequestWithRelations = CashoutRequest & {
 export const siteSettings = pgTable("site_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   privateMode: boolean("private_mode").notNull().default(false), // When true, only logged-in users can access the site
+  platformWalletAddress: varchar("platform_wallet_address", { length: 255 }), // Solana wallet address for receiving entry fees
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 

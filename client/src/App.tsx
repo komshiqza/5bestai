@@ -23,6 +23,7 @@ import Profile from "@/pages/profile";
 import MySubmissions from "@/pages/my-submissions";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContestDetail from "@/pages/admin/contest-detail";
+import AdminSettings from "@/pages/admin/settings";
 import NotFound from "@/pages/not-found";
 
 function ScrollToTop() {
@@ -62,6 +63,7 @@ function Router() {
                 <Route path="/my-submissions" component={MySubmissions} />
                 <Route path="/admin" component={AdminDashboard} />
                 <Route path="/admin/dashboard" component={AdminDashboard} />
+                <Route path="/admin/settings" component={AdminSettings} />
                 <Route path="/admin/contest/:id" component={AdminContestDetail} />
                 <Route component={NotFound} />
               </Switch>

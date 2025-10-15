@@ -81,6 +81,11 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
 
   const activeContests = contests.filter((c: any) => c.status === "active");
 
+  // Fetch platform wallet address from settings
+  const { data: platformSettings } = useQuery<{ platformWalletAddress?: string | null }>({
+    queryKey: ["/api/settings/platform-wallet"],
+  });
+
   // Fetch user's submissions for gallery
   const { data: allSubmissions = [] } = useQuery<any[]>({
     queryKey: ["/api/submissions"],
@@ -538,7 +543,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
             <SolanaPayment
               amount={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.entryFeeAmount || 0}
               currency={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.entryFeeCurrency || 'SOL'}
-              recipient={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.platformWalletAddress || ''}
+              recipient={platformSettings?.platformWalletAddress || ''}
               label={activeContests.find((c: any) => c.id === selectedContest)?.title || 'Contest Entry'}
               message={`Entry fee for ${activeContests.find((c: any) => c.id === selectedContest)?.title}`}
               customTokenMint={(activeContests.find((c: any) => c.id === selectedContest)?.config as any)?.customTokenMint}

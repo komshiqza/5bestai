@@ -2589,6 +2589,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint to get platform wallet address (for payment flows)
+  app.get("/api/settings/platform-wallet", async (req, res) => {
+    try {
+      const settings = await storage.getSiteSettings();
+      res.json({ platformWalletAddress: settings.platformWalletAddress || null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch platform wallet address" });
+    }
+  });
+
   // Placeholder for video thumbnails in local mode
   app.get("/api/placeholder/video-thumbnail", (req, res) => {
     // Return a simple SVG placeholder for video thumbnails
