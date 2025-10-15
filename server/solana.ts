@@ -2,7 +2,8 @@ import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
 
 const network = (process.env.SOLANA_NETWORK || 'mainnet-beta') as 'devnet' | 'testnet' | 'mainnet-beta';
 
-const endpoint = process.env.SOLANA_RPC_ENDPOINT || clusterApiUrl(network);
+// Priority: 1. Helius RPC (custom with better limits), 2. Generic RPC, 3. Public endpoint
+const endpoint = process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC_ENDPOINT || clusterApiUrl(network);
 
 export const solanaConnection = new Connection(endpoint, 'confirmed');
 
