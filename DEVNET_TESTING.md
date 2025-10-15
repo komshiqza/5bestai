@@ -35,14 +35,39 @@ This guide walks through testing the complete Solana wallet payment flow on devn
 
 ## Testing Flow
 
-### Test 1: Wallet Connection
+### Test 1: Wallet Connection (Message Signing Flow)
+
+**Technical Flow:**
+1. User clicks "Connect Wallet" → Wallet extension opens
+2. User approves connection → `publicKey` available in browser (base58 format)
+3. Frontend generates message: `Sign this message to verify your wallet ownership.\nWallet: {publicKey}\nTimestamp: {timestamp}`
+4. User signs message in wallet → signature returned as base64
+5. Frontend sends to `POST /api/wallet/connect`:
+   ```json
+   {
+     "address": "base58 wallet address (e.g., 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU)",
+     "provider": "phantom",
+     "signature": "base64-encoded signature",
+     "message": "message that was signed"
+   }
+   ```
+6. Backend converts base58 address to bytes via `new PublicKey(address).toBytes()`
+7. Backend verifies signature using ed25519 (message bytes + signature bytes + public key bytes)
+8. Backend stores wallet record with base58 address and `verifiedAt` timestamp
+
+**Important:** Wallet address stays in **base58 format** throughout (Solana standard). Only converted to bytes internally for ed25519 verification.
+
+**Test Steps:**
 1. Go to `/profile`
 2. Click "Connect Wallet" button in navbar
 3. Select Phantom or Solflare
 4. Approve connection in wallet popup
-5. ✅ Verify: Wallet address displayed in navbar
-6. ✅ Verify: SOL balance shown
-7. ✅ Verify: Profile page shows connected wallet
+5. Sign verification message when prompted
+6. ✅ Verify: Wallet address displayed in navbar
+7. ✅ Verify: SOL balance shown
+8. ✅ Verify: Profile page shows "Wallet verified and ready for cashouts"
+9. ✅ Verify: Green checkmark icon displayed
+10. **DevTools Check**: Network tab shows `POST /api/wallet/connect` with 200 response
 
 ### Test 2: Payment QR Code Generation
 1. Go to test contest detail page
@@ -66,20 +91,47 @@ solana:{recipient}?
   memo=contest:{contestId}:user:{userId}
 ```
 
-### Test 4: Automatic Payment Verification
+### Test 4: Automatic Payment Verification (Two-Step Flow)
+
+**Technical Flow:**
+1. SolanaPayment component polls every 3 seconds via `POST /api/payment/find-by-reference`
+2. Backend uses `findReference()` from @solana/pay to search blockchain for reference key
+3. **First response**: `{found: false, message: "Payment not found yet"}`
+4. User completes payment in wallet
+5. **Second response** (when transaction found):
+   - Backend calls `verifyTransaction()` to check confirmation status
+   - Validates: payer = user wallet, amount ≥ expected, recipient = platform wallet
+   - Creates `glory_ledger` entry with txHash
+   - Returns: `{found: true, success: true, txHash: "...", alreadyProcessed: false}`
+6. Frontend detects `success: true` → closes modal, shows success toast
+
+**Test Steps:**
 1. On mobile: Scan QR code with Phantom/Solflare app
 2. On desktop: Click "Open in Wallet" button
-3. Approve transaction in wallet (0.01 SOL + network fee)
-4. ✅ Verify: Payment modal shows "Verifying..." or automatically closes
-5. ✅ Verify: Success toast appears
-6. ✅ Verify: Submission created successfully
+3. Approve transaction in wallet (0.01 SOL + network fee ~0.000005)
+4. Wait 3-10 seconds for blockchain confirmation
+5. ✅ Verify: Payment modal shows "Verifying payment..." spinner
+6. ✅ Verify: Modal automatically closes when verified
+7. ✅ Verify: Success toast: "Payment verified successfully!"
+8. ✅ Verify: Submission created and visible in contest
+9. **DevTools Check**: Network tab shows multiple `/api/payment/find-by-reference` requests, last one returns `{found: true, success: true}`
 
 ### Test 5: Manual Payment Verification
-1. Complete payment in wallet but DON'T wait for auto-verification
-2. Click "Verify Payment" button manually
-3. ✅ Verify: Success toast appears
-4. ✅ Verify: Transaction verified
-5. ✅ Verify: Payment modal closes
+
+**When to use:**
+- Polling timeout (60 seconds max)
+- Network delays causing auto-verification to miss transaction
+- User prefers manual control
+
+**Test Steps:**
+1. Complete payment in wallet (follow Test 4 steps 1-3)
+2. DON'T wait for auto-verification
+3. Click "Verify Payment" button in modal
+4. ✅ Verify: Manual verification triggers immediately
+5. ✅ Verify: Success toast appears
+6. ✅ Verify: Transaction verified via same backend flow
+7. ✅ Verify: Payment modal closes
+8. **DevTools Check**: Network tab shows single `/api/payment/find-by-reference` POST triggered by button click
 
 ### Test 6: Backend Verification
 1. Check browser DevTools Network tab
@@ -156,20 +208,88 @@ All tests must pass:
 
 ## Troubleshooting
 
-### Payment Not Found
-- Wait 10-15 seconds for blockchain confirmation
-- Check transaction on Solana Explorer: https://explorer.solana.com/?cluster=devnet
-- Verify wallet is on devnet (not mainnet)
+### Payment Not Found (Most Common)
+**Symptom:** `{found: false, message: "Payment not found yet"}` persists after transaction
 
-### Verification Fails
-- Check server logs for detailed error messages
-- Verify SOLANA_NETWORK=devnet (or not set, defaults to devnet)
-- Ensure platform wallet address is correct
+**Causes & Solutions:**
+1. **Blockchain Confirmation Delay** (3-15 seconds on devnet)
+   - Wait 10-15 seconds, auto-polling will detect it
+   - Devnet is slower than mainnet during high load
+   
+2. **Transaction Not Finalized**
+   - Backend uses `finality: 'confirmed'` (usually 1-2 seconds)
+   - Check Solana Explorer: https://explorer.solana.com/?cluster=devnet
+   - Look for transaction status: "Finalized" or "Confirmed"
+   - If status is "Processing", wait and retry manual verification
+
+3. **Wrong Network**
+   - Verify wallet is on **devnet** (not mainnet/testnet)
+   - Check wallet network selector (usually top-right in wallet settings)
+
+4. **Reference Key Mismatch**
+   - Ensure payment URL matches exactly what was generated
+   - Don't modify Solana Pay URL manually
+   - Reference must be unique PublicKey in base58 format
+
+**Debugging Steps:**
+1. Copy transaction signature from wallet history
+2. Paste into Solana Explorer with `?cluster=devnet` parameter
+3. Check:
+   - Status: Must be "Confirmed" or "Finalized"
+   - From: Must match your connected wallet address
+   - To: Must match platform wallet address
+   - Amount: Must be ≥ entry fee amount
+4. If all correct but still fails, click "Verify Payment" manually
+5. Check server logs for detailed error (see Server Logs section below)
+
+### Verification Fails with Error
+
+**Error: "Transaction payer mismatch"**
+- You connected wallet A but paid from wallet B
+- Solution: Ensure you pay from the SAME wallet shown in navbar
+
+**Error: "Insufficient payment amount"**
+- You paid less than entry fee (e.g., 0.005 SOL instead of 0.01 SOL)
+- Check transaction details in Solana Explorer
+- Network fees are separate, don't reduce payment amount
+
+**Error: "Payment recipient address mismatch"**
+- Payment went to wrong address
+- Check platform wallet configuration in `/admin/settings`
+- Verify contest was created AFTER platform wallet was set
+
+**Error: "Transaction already verified"**
+- You tried to reuse same transaction for multiple submissions
+- Each submission requires NEW payment with unique transaction
+- Solution: Make a fresh payment
+
+**Error: "Transaction not found or not confirmed"**
+- Transaction exists but not confirmed on blockchain
+- Wait 10-30 seconds and retry manual verification
+- Use `getSignatureStatus` to check:
+   ```bash
+   # In browser console or via Solana CLI
+   solana confirm <SIGNATURE> --url devnet
+   ```
 
 ### QR Code Not Scanning
 - Ensure mobile wallet is on devnet
 - Try "Open in Wallet" button instead
-- Check payment URL format
+- Check payment URL format (should start with `solana:`)
+- Some wallets don't support Solana Pay QR codes → use manual URL open
+
+### Server Logs (Advanced Debugging)
+1. Open Replit Shell
+2. Check logs for payment verification:
+   ```bash
+   # Filter for payment-related logs
+   tail -f /tmp/*.log | grep -i "payment\|solana\|verify"
+   ```
+3. Look for errors:
+   - `Solana payment verification error:`
+   - `Transaction not found or not confirmed`
+   - `Payment recipient mismatch`
+4. Check transaction details logged by `verifyTransaction()`
 
 ## Production Checklist
 
