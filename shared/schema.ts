@@ -86,11 +86,14 @@ export const gloryLedger = pgTable("glory_ledger", {
   reason: text("reason").notNull(),
   contestId: varchar("contest_id").references(() => contests.id, { onDelete: "set null" }),
   submissionId: varchar("submission_id").references(() => submissions.id, { onDelete: "set null" }),
+  txHash: varchar("tx_hash", { length: 255 }), // Blockchain transaction hash (for crypto payments)
+  metadata: jsonb("metadata"), // Additional transaction metadata
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userIdx: index("glory_ledger_user_idx").on(table.userId),
   createdAtIdx: index("glory_ledger_created_at_idx").on(table.createdAt),
-  contestSubmissionUnique: unique("glory_ledger_contest_submission_unique").on(table.contestId, table.submissionId)
+  contestSubmissionUnique: unique("glory_ledger_contest_submission_unique").on(table.contestId, table.submissionId),
+  txHashUnique: unique("glory_ledger_tx_hash_unique").on(table.txHash)
 }));
 
 // Audit Log table

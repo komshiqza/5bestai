@@ -79,6 +79,7 @@ export interface IStorage {
   // Glory Ledger (now handles all currencies)
   createGloryTransaction(transaction: InsertGloryLedger): Promise<GloryLedger>;
   getGloryTransactions(userId: string, currency?: string): Promise<GloryLedger[]>;
+  getGloryTransactionByHash(txHash: string): Promise<GloryLedger | undefined>;
   clearGloryTransactions(userId: string): Promise<void>;
   updateUserBalance(userId: string, delta: number, currency: string): Promise<void>;
   
@@ -534,6 +535,8 @@ export class MemStorage implements IStorage {
       currency: insertTransaction.currency || "GLORY",
       contestId: insertTransaction.contestId || null,
       submissionId: insertTransaction.submissionId || null,
+      txHash: insertTransaction.txHash || null,
+      metadata: insertTransaction.metadata || null,
       createdAt: new Date()
     };
     this.gloryLedger.set(id, transaction);
@@ -551,6 +554,11 @@ export class MemStorage implements IStorage {
         (!currency || transaction.currency === currency)
       )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getGloryTransactionByHash(txHash: string): Promise<GloryLedger | undefined> {
+    return Array.from(this.gloryLedger.values())
+      .find(transaction => transaction.txHash === txHash);
   }
 
   async clearGloryTransactions(userId: string): Promise<void> {
@@ -1131,6 +1139,13 @@ export class DbStorage implements IStorage {
         ? and(eq(gloryLedger.userId, userId), eq(gloryLedger.currency, currency))
         : eq(gloryLedger.userId, userId),
       orderBy: [desc(gloryLedger.createdAt)]
+    });
+    return result;
+  }
+
+  async getGloryTransactionByHash(txHash: string): Promise<GloryLedger | undefined> {
+    const result = await db.query.gloryLedger.findFirst({
+      where: eq(gloryLedger.txHash, txHash)
     });
     return result;
   }

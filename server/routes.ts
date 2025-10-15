@@ -10,6 +10,7 @@ import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
 import { ContestScheduler } from "./contest-scheduler";
+import { verifyTransaction } from "./solana";
 import { z } from "zod";
 import { 
   loginSchema, 
@@ -338,6 +339,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ wallet });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch wallet" });
+    }
+  });
+
+  // Solana payment verification
+  const verifySolanaPaymentSchema = z.object({
+    signature: z.string(),
+    expectedAmount: z.number().positive(),
+    recipientAddress: z.string(),
+    contestId: z.string().uuid().optional(),
+    submissionId: z.string().uuid().optional(),
+  });
+
+  app.post("/api/payment/verify-solana", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { signature, expectedAmount, recipientAddress, contestId, submissionId } = 
+        verifySolanaPaymentSchema.parse(req.body);
+      
+      const userId = req.user!.id;
+
+      // Get user's connected wallet
+      const userWallet = await storage.getUserWallet(userId);
+      if (!userWallet) {
+        return res.status(400).json({ error: "No wallet connected. Please connect your Solana wallet first." });
+      }
+
+      // Check if transaction already used (prevent replay attacks)
+      const existingTx = await storage.getGloryTransactionByHash(signature);
+      if (existingTx) {
+        return res.status(400).json({ error: "Transaction already verified. Each transaction can only be used once." });
+      }
+
+      // Verify transaction on Solana blockchain
+      const txResult = await verifyTransaction(signature);
+
+      if (!txResult.confirmed) {
+        return res.status(400).json({ error: "Transaction not found or not confirmed on Solana blockchain" });
+      }
+
+      // Verify payer matches user's connected wallet
+      if (txResult.from !== userWallet.address) {
+        return res.status(400).json({ 
+          error: `Transaction payer mismatch. Expected ${userWallet.address}, got ${txResult.from}` 
+        });
+      }
+
+      // Verify transaction details
+      if (!txResult.amount || txResult.amount < expectedAmount) {
+        return res.status(400).json({ 
+          error: `Insufficient payment amount. Expected ${expectedAmount} SOL, received ${txResult.amount || 0} SOL` 
+        });
+      }
+
+      if (txResult.to !== recipientAddress) {
+        return res.status(400).json({ 
+          error: "Payment recipient address mismatch" 
+        });
+      }
+
+      // Record transaction in glory ledger
+      await storage.createGloryTransaction({
+        userId,
+        delta: 0, // Crypto payments don't affect GLORY balance
+        currency: "SOL",
+        reason: `Solana payment verified - ${expectedAmount} SOL`,
+        contestId: contestId || null,
+        submissionId: submissionId || null,
+        txHash: signature,
+        metadata: {
+          from: txResult.from,
+          to: txResult.to,
+          amount: txResult.amount,
+          verifiedAt: new Date().toISOString(),
+        }
+      });
+
+      res.json({ 
+        success: true, 
+        transaction: {
+          signature,
+          amount: txResult.amount,
+          from: txResult.from,
+          to: txResult.to,
+        }
+      });
+    } catch (error) {
+      console.error("Solana payment verification error:", error);
+      res.status(400).json({ 
+        error: error instanceof Error ? error.message : "Failed to verify Solana payment" 
+      });
     }
   });
 
