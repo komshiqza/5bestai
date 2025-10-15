@@ -259,8 +259,9 @@ export function SolanaPayment({
           // Import Solana web3.js for direct transaction creation
           const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
           
-          // Create connection to mainnet-beta
-          const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+          // Create connection using custom Helius RPC (better rate limits) or fallback to public mainnet
+          const rpcUrl = import.meta.env.VITE_HELIUS_RPC_URL || 'https://api.mainnet-beta.solana.com';
+          const connection = new Connection(rpcUrl, 'confirmed');
           
           // Create transaction directly
           const transaction = new Transaction();
