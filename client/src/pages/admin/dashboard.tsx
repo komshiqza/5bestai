@@ -30,13 +30,29 @@ import {
   Trash2,
   Edit3,
   Copy,
-  Download
+  Download,
+  Settings
 } from "lucide-react";
 import { useAuth, isAdmin } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { CreateContestModal } from "@/components/CreateContestModal";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+// Settings form schema
+const settingsFormSchema = z.object({
+  privateMode: z.boolean(),
+  platformWalletAddress: z.string().optional().refine(
+    (val) => !val || /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(val),
+    { message: "Invalid Solana wallet address" }
+  ),
+});
+
+type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
 export default function AdminDashboard() {
   const { data: user } = useAuth();
@@ -131,12 +147,21 @@ export default function AdminDashboard() {
   });
 
   // Site Settings
-  const { data: siteSettings } = useQuery<{ privateMode: boolean }>({
+  const { data: siteSettings } = useQuery<{ privateMode: boolean; platformWalletAddress?: string | null }>({
     queryKey: ["/api/admin/settings"],
     queryFn: async () => {
       const response = await fetch("/api/admin/settings", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch site settings");
       return response.json();
+    },
+  });
+
+  // Settings form
+  const settingsForm = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsFormSchema),
+    values: {
+      privateMode: siteSettings?.privateMode || false,
+      platformWalletAddress: siteSettings?.platformWalletAddress || "",
     },
   });
 
@@ -630,27 +655,31 @@ export default function AdminDashboard() {
     },
   });
 
-  // Update Private Mode mutation
-  const updatePrivateModeMutation = useMutation({
-    mutationFn: async (privateMode: boolean) => {
-      const response = await apiRequest("PATCH", "/api/admin/settings", { privateMode });
+  // Update Settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (values: SettingsFormValues) => {
+      const response = await apiRequest("PATCH", "/api/admin/settings", values);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
       toast({
         title: "Settings Updated",
-        description: `Private mode is now ${!siteSettings?.privateMode ? "enabled" : "disabled"}.`,
+        description: "Site settings have been successfully updated",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
-        title: "Update Failed",
-        description: "Failed to update private mode setting.",
+        title: "Error",
+        description: error.message || "Failed to update settings",
         variant: "destructive",
       });
     },
   });
+
+  const onSettingsSubmit = (values: SettingsFormValues) => {
+    updateSettingsMutation.mutate(values);
+  };
 
   // Helper functions
   const getInitials = (username: string) => {
@@ -961,8 +990,11 @@ export default function AdminDashboard() {
                 </div>
                 <Switch
                   checked={siteSettings?.privateMode || false}
-                  onCheckedChange={(checked) => updatePrivateModeMutation.mutate(checked)}
-                  disabled={updatePrivateModeMutation.isPending}
+                  onCheckedChange={(checked) => updateSettingsMutation.mutate({ 
+                    privateMode: checked,
+                    platformWalletAddress: siteSettings?.platformWalletAddress || ""
+                  })}
+                  disabled={updateSettingsMutation.isPending}
                   data-testid="switch-private-mode"
                 />
               </div>
@@ -975,7 +1007,7 @@ export default function AdminDashboard() {
 
         {/* Admin Tabs */}
         <Tabs defaultValue="users" className="space-y-4" data-testid="admin-tabs">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="users" data-testid="tab-users">
               <Users className="w-4 h-4 mr-2" />
               Users
@@ -995,6 +1027,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="audit" data-testid="tab-audit">
               <BarChart3 className="w-4 h-4 mr-2" />
               Audit Logs
+            </TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-settings">
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
             </TabsTrigger>
           </TabsList>
 
@@ -2269,6 +2305,100 @@ export default function AdminDashboard() {
                     <p className="text-muted-foreground">Admin actions will appear here.</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-4" data-testid="settings-tab">
+            <Card>
+              <CardHeader>
+                <CardTitle>Site Settings</CardTitle>
+                <p className="text-sm text-muted-foreground">Configure global platform settings</p>
+              </CardHeader>
+              <CardContent>
+                <Form {...settingsForm}>
+                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                    {/* Private Mode */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-1">Access Control</h3>
+                        <p className="text-sm text-muted-foreground">Manage who can access the platform</p>
+                      </div>
+                      <FormField
+                        control={settingsForm.control}
+                        name="privateMode"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Private Mode</FormLabel>
+                              <FormDescription>
+                                When enabled, only logged-in users can access the site
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                data-testid="settings-switch-private-mode"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Platform Wallet */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-1">Payment Configuration</h3>
+                        <p className="text-sm text-muted-foreground">Configure Solana wallet for receiving entry fees</p>
+                      </div>
+                      <FormField
+                        control={settingsForm.control}
+                        name="platformWalletAddress"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Platform Wallet Address</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter Solana wallet address (e.g., 7xK...abc)"
+                                {...field}
+                                data-testid="settings-input-platform-wallet"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              This wallet will receive all entry fees paid with SOL, USDC, or custom tokens.
+                              Make sure you have access to this wallet.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="flex justify-end pt-4">
+                      <Button
+                        type="submit"
+                        disabled={updateSettingsMutation.isPending}
+                        data-testid="button-save-settings"
+                      >
+                        {updateSettingsMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Settings className="mr-2 h-4 w-4" />
+                            Save Settings
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </CardContent>
             </Card>
           </TabsContent>
