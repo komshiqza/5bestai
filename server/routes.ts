@@ -1206,21 +1206,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending" // Requires admin approval
       });
 
-      // Deduct entry fee AFTER submission is successfully created (skip if wallet payment already made)
-      if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount && !paymentTxHash) {
+      // Deduct entry fee AFTER submission is successfully created
+      // Only deduct from internal balance for GLORY currency (SOL/USDC/tokens are paid via wallet)
+      if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount) {
         const config = contest.config as any;
         const currency = config.entryFeeCurrency || "GLORY";
         
-        await storage.updateUserBalance(req.user!.id, -config.entryFeeAmount, currency);
-        
-        await storage.createGloryTransaction({
-          userId: req.user!.id,
-          delta: -config.entryFeeAmount,
-          currency,
-          reason: `Entry fee for contest: ${contest.title}`,
-          contestId: contestId || null,
-          submissionId: submission.id
-        });
+        // Only deduct from user balance if paying with GLORY (internal currency)
+        // For SOL/USDC/tokens, payment happens via Solana wallet (verified by paymentTxHash)
+        if (currency === "GLORY" && !paymentTxHash) {
+          await storage.updateUserBalance(req.user!.id, -config.entryFeeAmount, currency);
+          
+          await storage.createGloryTransaction({
+            userId: req.user!.id,
+            delta: -config.entryFeeAmount,
+            currency,
+            reason: `Entry fee for contest: ${contest.title}`,
+            contestId: contestId || null,
+            submissionId: submission.id
+          });
+        }
       }
 
       res.status(201).json(submission);
