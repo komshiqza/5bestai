@@ -2676,6 +2676,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Generation routes
   const { generateImage } = await import("./ai-service");
   
+  // AI generation rate limiter (30 generations per hour per user)
+  const aiGenerationRateLimiter = async (req: AuthRequest): Promise<boolean> => {
+    if (!req.user) return false;
+    
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentGenerations = await storage.getAiGenerations(req.user.id, 1000); // Get more to count in last hour
+    const generationsInLastHour = recentGenerations.filter(g => new Date(g.createdAt) > oneHourAgo);
+    
+    return generationsInLastHour.length < 30; // Max 30 per hour
+  };
+  
   // Generate image validation schema
   const generateImageSchema = z.object({
     prompt: z.string().min(3, "Prompt must be at least 3 characters").max(1000, "Prompt too long"),
@@ -2688,6 +2699,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/ai/generate", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    // Check rate limit
+    const canGenerate = await aiGenerationRateLimiter(req);
+    if (!canGenerate) {
+      return res.status(429).json({ error: "Rate limit exceeded. Maximum 30 generations per hour." });
+    }
     try {
       const params = generateImageSchema.parse(req.body);
       const userId = req.user!.id;
@@ -2723,7 +2739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/ai/generations", authenticateToken, async (req: AuthRequest, res) => {
+  app.get("/api/ai/generations", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
       const userId = req.user!.id;
       const { limit = 20 } = req.query;
@@ -2736,7 +2752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/ai/generations/:id", authenticateToken, async (req: AuthRequest, res) => {
+  app.delete("/api/ai/generations/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
       const userId = req.user!.id;

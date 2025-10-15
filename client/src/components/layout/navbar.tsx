@@ -6,7 +6,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet } from "lucide-react";
+import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles } from "lucide-react";
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 export function Navbar() {
@@ -44,12 +44,20 @@ export function Navbar() {
               <Button variant="ghost" className="px-4 py-2">Contests</Button>
             </Link>
             {isAuthenticated(user) && (
-              <Link href="/upload" data-testid="link-upload">
-                <GlassButton className="px-4 py-2">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload
-                </GlassButton>
-              </Link>
+              <>
+                <Link href="/ai-generator" data-testid="link-ai-generator">
+                  <Button variant="ghost" className="px-4 py-2">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    AI Studio
+                  </Button>
+                </Link>
+                <Link href="/upload" data-testid="link-upload">
+                  <GlassButton className="px-4 py-2">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload
+                  </GlassButton>
+                </Link>
+              </>
             )}
           </div>
 

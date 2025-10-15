@@ -25,6 +25,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContestDetail from "@/pages/admin/contest-detail";
 import AdminSettings from "@/pages/admin/settings";
 import RoadmapPage from "@/pages/roadmap";
+import AiGeneratorPage from "@/pages/ai-generator";
 import NotFound from "@/pages/not-found";
 
 function ScrollToTop() {
@@ -57,6 +58,7 @@ function Router() {
               <Switch>
                 <Route path="/" component={Home} />
                 <Route path="/roadmap" component={RoadmapPage} />
+                <Route path="/ai-generator" component={AiGeneratorPage} />
                 <Route path="/contests" component={Contests} />
                 <Route path="/contest/:slug" component={ContestDetail} />
                 <Route path="/submission/:id" component={SubmissionDetail} />
