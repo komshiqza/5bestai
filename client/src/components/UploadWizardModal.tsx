@@ -13,6 +13,10 @@ import {
   Search,
   Wallet,
 } from "lucide-react";
+import { debugLog } from "../utils/debug";
+
+// Global flag to control debug logging - set to false to reduce console spam
+const DEBUG_ENABLED = false;
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { SolanaPayment } from "@/components/payment/SolanaPayment";
@@ -64,6 +68,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
   const [showPayment, setShowPayment] = useState(false);
   const [paymentTxHash, setPaymentTxHash] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastDebugLog = useRef<string>(''); // For throttling debug logs
 
   const isVideo = useMemo(
     () => (file ? file.type.startsWith("video/") : false),
@@ -109,25 +114,114 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     }
   }, [preselectedContestId, activeContests]);
 
-  // Auto-select payment method based on contest config
-  useEffect(() => {
-    if (selectedContest && selectedContest !== "my-gallery") {
-      const contest = activeContests.find((c: any) => c.id === selectedContest);
-      const contestConfig = contest?.config || {};
-      
-      // If contest only allows wallet payment (no balance option), force wallet
-      if (contestConfig.entryFee && contestConfig.entryFeePaymentMethods) {
-        const allowsBalance = contestConfig.entryFeePaymentMethods.includes('balance');
-        const allowsWallet = contestConfig.entryFeePaymentMethods.includes('wallet');
-        
-        if (allowsWallet && !allowsBalance) {
-          setPaymentMethod('wallet');
-        } else if (allowsBalance && !allowsWallet) {
-          setPaymentMethod('balance');
-        }
+  // Get optimal payment method based on contest config and user balance
+  const getOptimalPaymentMethod = useCallback(() => {
+    // Create unique key for this call to avoid spam
+    const debugKey = `${selectedContest}-${user?.id}-${user?.solBalance}`;
+    const shouldLog = false; // Disabled to reduce console spam
+    
+    if (shouldLog) {
+      console.log('🔍 getOptimalPaymentMethod called with:', { selectedContest, user: !!user });
+      lastDebugLog.current = debugKey;
+    }
+    
+    if (!selectedContest || selectedContest === "my-gallery" || !user) {
+      if (shouldLog) console.log('⚠️ Early return: no contest or user');
+      return 'balance';
+    }
+
+    const contest = activeContests.find((c: any) => c.id === selectedContest);
+    if (shouldLog) console.log('📋 Found contest:', contest?.title, contest?.config);
+    const contestConfig = contest?.config || {};
+    
+    if (!contestConfig.entryFee) {
+      if (shouldLog) console.log('⚠️ No entry fee configured');
+      return 'balance';
+    }
+
+    // Smart fallback: if no payment methods configured, determine based on currency
+    const isStandardCrypto = contestConfig.entryFeeCurrency && ['SOL', 'USDC'].includes(contestConfig.entryFeeCurrency);
+    const defaultMethods = isStandardCrypto ? ['balance', 'wallet'] : ['balance'];
+    const paymentMethods = contestConfig.entryFeePaymentMethods || defaultMethods;
+    
+    if (shouldLog) {
+      console.log('🎯 Using payment methods:', { 
+        configured: contestConfig.entryFeePaymentMethods, 
+        fallback: defaultMethods,
+        final: paymentMethods 
+      });
+    }
+
+    const allowsBalance = paymentMethods.includes('balance');
+    const allowsWallet = paymentMethods.includes('wallet');
+    const entryFeeAmount = contestConfig.entryFeeAmount || 0;
+    const entryFeeCurrency = contestConfig.entryFeeCurrency || 'GLORY';
+    
+    if (shouldLog) {
+      console.log('🎯 Contest payment config:', {
+        entryFeePaymentMethods: contestConfig.entryFeePaymentMethods,
+        allowsBalance,
+        allowsWallet,
+        entryFeeAmount,
+        entryFeeCurrency
+      });
+    }
+    
+    // Get user's balance for the entry fee currency
+    const getUserBalance = () => {
+      switch (entryFeeCurrency) {
+        case 'SOL': return user.solBalance || 0;
+        case 'USDC': return user.usdcBalance || 0;
+        case 'GLORY':
+        default: return user.gloryBalance || 0;
+      }
+    };
+    
+    const userBalance = getUserBalance();
+    const hasInsufficientBalance = userBalance < entryFeeAmount;
+    
+    if (shouldLog) {
+      console.log('💰 Balance analysis:', {
+        entryFeeCurrency,
+        entryFeeAmount,
+        userBalance,
+        hasInsufficientBalance,
+        userBalances: { sol: user.solBalance, usdc: user.usdcBalance, glory: user.gloryBalance }
+      });
+    }
+    
+    // Smart payment method selection:
+    if (allowsWallet && !allowsBalance) {
+      if (shouldLog) console.log('🔒 Contest only allows wallet payment');
+      return 'wallet';
+    } else if (allowsBalance && !allowsWallet) {
+      if (shouldLog) console.log('🔒 Contest only allows balance payment');
+      return 'balance';
+    } else if (allowsBalance && allowsWallet) {
+      // Both methods available - choose based on balance
+      if (hasInsufficientBalance) {
+        if (shouldLog) console.log('💳 Auto-selecting wallet payment due to insufficient balance');
+        return 'wallet';
+      } else {
+        if (shouldLog) console.log('🏦 Using balance payment - sufficient funds available');
+        return 'balance';
       }
     }
-  }, [selectedContest, activeContests]);
+    
+    if (shouldLog) console.log('⚠️ Fallback to balance payment');
+    return 'balance';
+  }, [selectedContest, activeContests, user]);
+
+  // Auto-select payment method based on contest config and user balance
+  useEffect(() => {
+    const optimalMethod = getOptimalPaymentMethod();
+    if (optimalMethod !== paymentMethod) {
+      if (DEBUG_ENABLED) {
+        console.log('🔄 Auto-switching payment method to:', optimalMethod);
+      }
+      setPaymentMethod(optimalMethod);
+    }
+  }, [selectedContest, activeContests, user, getOptimalPaymentMethod, paymentMethod]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -306,6 +400,15 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
 
         if (!response.ok) {
           const error = await response.json();
+          console.error("💥 Submission failed:", error);
+          
+          // Show user-friendly error message
+          toast({
+            title: "Submission Failed",
+            description: error.error || "Failed to submit. Please try again.",
+            variant: "destructive",
+          });
+          
           throw new Error(error.error || "Failed to submit");
         }
       }
@@ -330,12 +433,46 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
   };
 
   const handleSubmit = async () => {
+    // Disabled debug logging to reduce console spam
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('🚀 handleSubmit called');
+    // }
     resetErrors();
     const allGood = validateStep(1) && validateStep(2) && validateStep(3);
     if (!allGood) return;
 
     if (uploadMode === 'new' && !file) return;
     if (uploadMode === 'gallery' && !selectedGalleryImage) return;
+
+    if (DEBUG_ENABLED) {
+      console.log('🔍 Current payment method before check:', paymentMethod);
+    }
+    
+    // Re-check optimal payment method right before submission
+    const optimalMethod = getOptimalPaymentMethod();
+    if (DEBUG_ENABLED) {
+      console.log('💡 Optimal method determined:', optimalMethod);
+    }
+    
+    if (optimalMethod !== paymentMethod) {
+      if (DEBUG_ENABLED) {
+        console.log('🔄 Last-minute payment method correction:', paymentMethod, '→', optimalMethod);
+      }
+      setPaymentMethod(optimalMethod);
+      
+      // If switching to wallet payment, show payment modal and return
+      if (optimalMethod === 'wallet') {
+        if (DEBUG_ENABLED) {
+          console.log('💳 Switching to wallet - showing payment modal');
+        }
+        setShowPayment(true);
+        return;
+      }
+    } else {
+      if (DEBUG_ENABLED) {
+        console.log('✅ Payment method already optimal:', paymentMethod);
+      }
+    }
 
     // Check if wallet payment is required
     if (selectedContest && selectedContest !== "my-gallery") {
@@ -345,10 +482,15 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       if (contestConfig.entryFee && contestConfig.entryFeeAmount && paymentMethod === 'wallet') {
         // If payment not completed yet, show payment dialog
         if (!paymentTxHash) {
+          if (DEBUG_ENABLED) {
+            console.log('💳 Showing payment modal for wallet payment');
+          }
           setShowPayment(true);
           return;
         }
-        // Payment completed, proceed with txHash
+        if (DEBUG_ENABLED) {
+          console.log('✅ Payment completed, proceeding with txHash:', paymentTxHash);
+        }
       }
     }
 

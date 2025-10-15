@@ -44,11 +44,13 @@ export default function ContestDetailPage() {
       if (!contest?.id) {
         throw new Error("Contest ID is not available");
       }
+      // Debug logging disabled to reduce console spam
       const response = await fetch(`/api/submissions?contestId=${contest.id}`, {
         credentials: "include"
       });
       if (!response.ok) throw new Error("Failed to fetch submissions");
-      return response.json();
+      const data = await response.json();
+      return data;
     }
   });
 
@@ -206,6 +208,31 @@ export default function ContestDetailPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Process submissions with vote data (moved here to avoid hooks rule violation)
+  const submissionsWithVotes = submissions.map((sub: any) => ({
+    ...sub,
+    voteCount: sub.votesCount || 0,
+    hasVoted: userVotes.some((v: any) => v.submissionId === sub.id)
+  }));
+
+  // Debug logging (only log once to avoid spam) - moved here to be before early returns
+  React.useEffect(() => {
+    // Debug logging disabled to reduce console spam
+    // if (submissions.length > 0) {
+    //   console.log("🎯 Processing submissions:", {
+    //     totalSubmissions: submissions.length,
+    //     submissionsWithVotes: submissionsWithVotes.length,
+    //     userIsLoggedIn: !!user,
+    //     userId: user?.id
+    //   });
+
+    //   // Log each submission status for debugging
+    //   submissionsWithVotes.forEach((sub: any) => {
+    //     console.log(`📝 Submission "${sub.title}" (${sub.id}) - Status: ${sub.status}, User: ${sub.userId}`);
+    //   });
+    // }
+  }, [submissions.length]); // Only run when submissions count changes
+
   // Show loading state while contests are being fetched
   if (contestsLoading) {
     return (
@@ -235,13 +262,6 @@ export default function ContestDetailPage() {
       </div>
     );
   }
-
-  // Process submissions with vote data
-  const submissionsWithVotes = submissions.map((sub: any) => ({
-    ...sub,
-    voteCount: sub.votesCount || 0,
-    hasVoted: userVotes.some((v: any) => v.submissionId === sub.id)
-  }));
 
   // Top 5 submissions always sorted by votes (not affected by filters)
   const topSubmissions = [...submissionsWithVotes]

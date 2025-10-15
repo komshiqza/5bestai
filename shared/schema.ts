@@ -246,6 +246,7 @@ export const contestConfigSchema = z.object({
   
   // Prize distribution
   prizeDistribution: z.array(z.number()).optional(),
+  currency: z.enum(["GLORY", "SOL", "USDC"]).optional(), // Prize currency
   
   // Entry fee configuration
   entryFee: z.boolean().optional(),

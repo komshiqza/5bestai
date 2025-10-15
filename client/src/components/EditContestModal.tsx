@@ -19,6 +19,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     entryFee: false,
     entryFeeAmount: undefined as number | undefined,
     entryFeeCurrency: 'GLORY' as 'GLORY' | 'SOL' | 'USDC',
+    entryFeePaymentMethods: ['balance'] as ('balance' | 'wallet')[],
     startDateOption: 'later' as 'now' | 'later',
     startDate: '',
     startTime: '',
@@ -32,7 +33,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     votingEndDate: '',
     votingEndTime: '',
     prizePool: '',
-    currency: 'GLORY',
+    currency: 'GLORY' as 'GLORY' | 'SOL' | 'USDC',
     prizeDistribution: [
       { place: 1, value: 0 },
       { place: 2, value: 0 },
@@ -101,6 +102,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         entryFee: config.entryFee || false,
         entryFeeAmount: config.entryFeeAmount,
         entryFeeCurrency: config.entryFeeCurrency || 'GLORY',
+        entryFeePaymentMethods: config.entryFeePaymentMethods || ['balance'],
         startDateOption: 'later',
         startDate: isValidStartDate ? startDate.toISOString().split('T')[0] : '',
         startTime: isValidStartDate ? startDate.toTimeString().slice(0, 5) : '',
@@ -154,6 +156,20 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       }
       if (field === 'endDate') {
         updates.votingEndDate = value;
+      }
+      
+      // Auto-select payment methods when currency changes
+      if (field === 'entryFeeCurrency' && prev.entryFee) {
+        const isStandardCrypto = value && ['SOL', 'USDC'].includes(value);
+        const currentMethods = prev.entryFeePaymentMethods;
+        
+        if (isStandardCrypto && !currentMethods.includes('wallet')) {
+          console.log('🔄 Auto-adding wallet payment method for', value);
+          updates.entryFeePaymentMethods = ['balance', 'wallet'] as ('balance' | 'wallet')[];
+        } else if (!isStandardCrypto && currentMethods.includes('wallet')) {
+          console.log('🔄 Removing wallet payment for', value);
+          updates.entryFeePaymentMethods = ['balance'] as ('balance' | 'wallet')[];
+        }
       }
       
       return { ...prev, ...updates };
@@ -244,8 +260,16 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       validationErrors.push('Voting start date is required');
     }
     
-    // Chronological validation - only if all required dates are present
-    if (validationErrors.length === 0) {
+    // Chronological validation - skip for already active/started contests
+    const isContestActive = contest && (contest.status === 'active' || new Date(contest.startAt) <= new Date());
+    console.log('⏰ Contest validation check:', { 
+      contestStatus: contest?.status, 
+      startAt: contest?.startAt, 
+      isActive: isContestActive,
+      skipValidation: isContestActive 
+    });
+    
+    if (validationErrors.length === 0 && !isContestActive) {
       // Build date objects for comparison
       const startAt = dataToValidate.startDateOption === 'now' 
         ? new Date() 
@@ -385,6 +409,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       entryFee: dataToSubmit.entryFee,
       entryFeeAmount: dataToSubmit.entryFeeAmount,
       entryFeeCurrency: dataToSubmit.entryFeeCurrency || 'GLORY',
+      entryFeePaymentMethods: dataToSubmit.entryFeePaymentMethods,
       
       // Contest metadata
       contestType: dataToSubmit.contestType,
@@ -456,6 +481,17 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Active Contest Info */}
+          {contest && (contest.status === 'active' || new Date(contest.startAt) <= new Date()) && (
+            <div className="mb-6 rounded-xl border border-blue-300/50 dark:border-blue-600/50 bg-blue-50 dark:bg-blue-950/30 p-4 text-sm text-blue-800 dark:text-blue-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="font-semibold">Active Contest</span>
+              </div>
+              <p>This contest is currently active. Time validations are relaxed to allow necessary updates without disrupting the ongoing contest.</p>
+            </div>
+          )}
+
           {errors.length > 0 && (
             <div className="mb-6 rounded-xl border border-red-300/50 dark:border-red-600/50 bg-red-50 dark:bg-red-950/30 p-4 text-sm text-red-800 dark:text-red-200">
               <ul className="list-disc ps-5 space-y-1">
@@ -655,6 +691,44 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                         data-testid="input-entry-fee-amount"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                        Payment Methods *
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.entryFeePaymentMethods.includes('balance')}
+                            onChange={(e) => {
+                              const methods = e.target.checked
+                                ? [...formData.entryFeePaymentMethods.filter(m => m !== 'balance'), 'balance']
+                                : formData.entryFeePaymentMethods.filter(m => m !== 'balance');
+                              handleInputChange('entryFeePaymentMethods', methods);
+                            }}
+                            className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-slate-800 dark:text-slate-200">Platform Balance</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.entryFeePaymentMethods.includes('wallet')}
+                            onChange={(e) => {
+                              const methods = e.target.checked
+                                ? [...formData.entryFeePaymentMethods.filter(m => m !== 'wallet'), 'wallet']
+                                : formData.entryFeePaymentMethods.filter(m => m !== 'wallet');
+                              handleInputChange('entryFeePaymentMethods', methods);
+                            }}
+                            className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-slate-800 dark:text-slate-200">Connected Wallet</span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Select at least one payment method. Wallet payment allows users to pay directly from their connected Solana wallet.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -751,13 +825,13 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                     </label>
                     <select
                       value={formData.currency}
-                      onChange={(e) => handleInputChange('currency', e.target.value)}
+                      onChange={(e) => handleInputChange('currency', e.target.value as 'GLORY' | 'SOL' | 'USDC')}
                       className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                       data-testid="select-currency"
                     >
-                      <option value="GLORY">$GLORY</option>
-                      <option value="USD">USD</option>
-                      <option value="ETH">ETH</option>
+                      <option value="GLORY">GLORY</option>
+                      <option value="SOL">SOL</option>
+                      <option value="USDC">USDC</option>
                     </select>
                   </div>
                 </div>

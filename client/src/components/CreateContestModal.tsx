@@ -19,6 +19,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
     entryFee: false,
     entryFeeAmount: undefined as number | undefined,
     entryFeeCurrency: 'GLORY' as 'GLORY' | 'SOL' | 'USDC',
+    entryFeePaymentMethods: ['balance'] as ('balance' | 'wallet')[],
 
     // Time settings
     startDateOption: 'later' as 'now' | 'later',
@@ -39,7 +40,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
 
     // Prizes
     prizePool: '',
-    currency: 'GLORY',
+    currency: 'GLORY' as 'GLORY' | 'SOL' | 'USDC',
     prizeDistribution: [
       { place: 1, value: 0 },
       { place: 2, value: 0 },
@@ -100,6 +101,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
         entryFee: false,
         entryFeeAmount: undefined,
         entryFeeCurrency: 'GLORY',
+        entryFeePaymentMethods: ['balance'],
         startDateOption: 'later',
         startDate: '',
         startTime: '',
@@ -142,7 +144,26 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
   if (!isOpen) return null;
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updates: any = { [field]: value };
+      
+      // Auto-select payment methods when currency changes
+      if (field === 'entryFeeCurrency' && prev.entryFee) {
+        const isStandardCrypto = value && ['SOL', 'USDC'].includes(value);
+        const currentMethods = prev.entryFeePaymentMethods;
+        const isDefaultBalance = currentMethods.length === 1 && currentMethods[0] === 'balance';
+        
+        if (isStandardCrypto && isDefaultBalance) {
+          console.log('🔄 Auto-selecting payment methods for', value, ': [balance, wallet]');
+          updates.entryFeePaymentMethods = ['balance', 'wallet'] as ('balance' | 'wallet')[];
+        } else if (!isStandardCrypto && currentMethods.includes('wallet')) {
+          console.log('🔄 Removing wallet payment for', value);
+          updates.entryFeePaymentMethods = ['balance'] as ('balance' | 'wallet')[];
+        }
+      }
+      
+      return { ...prev, ...updates };
+    });
   };
 
   const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -365,6 +386,7 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
       entryFee: dataToSubmit.entryFee,
       entryFeeAmount: dataToSubmit.entryFeeAmount,
       entryFeeCurrency: dataToSubmit.entryFeeCurrency || 'GLORY',
+      entryFeePaymentMethods: dataToSubmit.entryFeePaymentMethods,
       
       // Contest metadata
       contestType: dataToSubmit.contestType,
@@ -632,6 +654,44 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                        Payment Methods *
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.entryFeePaymentMethods.includes('balance')}
+                            onChange={(e) => {
+                              const methods = e.target.checked
+                                ? [...formData.entryFeePaymentMethods.filter(m => m !== 'balance'), 'balance']
+                                : formData.entryFeePaymentMethods.filter(m => m !== 'balance');
+                              handleInputChange('entryFeePaymentMethods', methods);
+                            }}
+                            className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-slate-800 dark:text-slate-200">Platform Balance</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.entryFeePaymentMethods.includes('wallet')}
+                            onChange={(e) => {
+                              const methods = e.target.checked
+                                ? [...formData.entryFeePaymentMethods.filter(m => m !== 'wallet'), 'wallet']
+                                : formData.entryFeePaymentMethods.filter(m => m !== 'wallet');
+                              handleInputChange('entryFeePaymentMethods', methods);
+                            }}
+                            className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className="text-sm text-slate-800 dark:text-slate-200">Connected Wallet</span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Select at least one payment method. Wallet payment allows users to pay directly from their connected Solana wallet.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -844,12 +904,12 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                     </label>
                     <select
                       value={formData.currency}
-                      onChange={(e) => handleInputChange('currency', e.target.value)}
+                      onChange={(e) => handleInputChange('currency', e.target.value as 'GLORY' | 'SOL' | 'USDC')}
                       className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                     >
-                      <option value="GLORY">$GLORY</option>
-                      <option value="USD">USD</option>
-                      <option value="ETH">ETH</option>
+                      <option value="GLORY">GLORY</option>
+                      <option value="SOL">SOL</option>
+                      <option value="USDC">USDC</option>
                     </select>
                   </div>
                 </div>

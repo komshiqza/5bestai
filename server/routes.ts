@@ -444,32 +444,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/payment/find-by-reference", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
+      console.log("🔍 [PAYMENT] Starting payment verification:", req.body);
+      
       const { reference, expectedAmount, recipientAddress, contestId, submissionId } = 
         findPaymentByReferenceSchema.parse(req.body);
       
       const userId = req.user!.id;
+      console.log("👤 [PAYMENT] User ID:", userId);
 
       // Get user's connected wallet
       const userWallet = await storage.getUserWallet(userId);
       if (!userWallet) {
+        console.log("❌ [PAYMENT] No wallet connected for user:", userId);
         return res.status(400).json({ error: "No wallet connected. Please connect your Solana wallet first." });
       }
+      
+      console.log("💼 [PAYMENT] User wallet found:", userWallet.address);
 
       // Convert reference string to PublicKey
       const referenceKey = new PublicKey(reference);
+      console.log("🔑 [PAYMENT] Reference key:", reference);
 
       // Find transaction using reference
+      console.log("🔎 [PAYMENT] Searching blockchain for reference...");
       const signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'confirmed' });
       
       if (!signatureInfo || !signatureInfo.signature) {
+        console.log("⚠️ [PAYMENT] No transaction found for reference");
         return res.json({ found: false, message: "Payment not found yet. Please complete the transaction in your wallet." });
       }
+
+      console.log("✅ [PAYMENT] Transaction found:", signatureInfo.signature);
 
       const signature = signatureInfo.signature;
 
       // Check if transaction already processed
+      console.log("🔄 [PAYMENT] Checking if transaction already processed...");
       const existingTx = await storage.getGloryTransactionByHash(signature);
       if (existingTx) {
+        console.log("ℹ️ [PAYMENT] Transaction already processed:", signature);
         return res.json({ 
           found: true, 
           alreadyProcessed: true,
@@ -480,34 +493,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify transaction details
+      console.log("🔍 [PAYMENT] Verifying transaction details...");
       const txResult = await verifyTransaction(signature);
+      console.log("📊 [PAYMENT] Transaction verification result:", txResult);
 
       if (!txResult.confirmed) {
+        console.log("⚠️ [PAYMENT] Transaction not yet confirmed");
         return res.json({ found: false, message: "Transaction found but not yet confirmed" });
       }
 
       // Verify payer matches user's connected wallet
+      console.log("👤 [PAYMENT] Verifying payer:", {
+        expected: userWallet.address,
+        actual: txResult.from,
+        match: txResult.from === userWallet.address
+      });
       if (txResult.from !== userWallet.address) {
+        console.log("❌ [PAYMENT] Payer mismatch!");
         return res.status(400).json({ 
           error: `Transaction payer mismatch. Expected ${userWallet.address}, got ${txResult.from}` 
         });
       }
 
       // Verify transaction details
+      console.log("💰 [PAYMENT] Verifying amount:", {
+        expected: expectedAmount,
+        actual: txResult.amount,
+        sufficient: txResult.amount && txResult.amount >= expectedAmount
+      });
       if (!txResult.amount || txResult.amount < expectedAmount) {
+        console.log("❌ [PAYMENT] Insufficient amount!");
         return res.status(400).json({ 
           error: `Insufficient payment amount. Expected ${expectedAmount} SOL, received ${txResult.amount || 0} SOL` 
         });
       }
 
+      console.log("🎯 [PAYMENT] Verifying recipient:", {
+        expected: recipientAddress,
+        actual: txResult.to,
+        match: txResult.to === recipientAddress
+      });
       if (txResult.to !== recipientAddress) {
+        console.log("❌ [PAYMENT] Recipient mismatch!");
         return res.status(400).json({ 
           error: "Payment recipient address mismatch" 
         });
       }
 
+      console.log("✅ [PAYMENT] All verifications passed!");
+
       // Record transaction in glory ledger
-      await storage.createGloryTransaction({
+      console.log("📝 [PAYMENT] Recording transaction in ledger...");
+      const ledgerEntry = await storage.createGloryTransaction({
         userId,
         delta: 0, // Crypto payments don't affect GLORY balance
         currency: "SOL",
@@ -524,6 +561,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      console.log("✅ [PAYMENT] Payment verification completed successfully!", {
+        txHash: signature,
+        amount: txResult.amount,
+        ledgerEntryId: ledgerEntry.id
+      });
+
       res.json({ 
         found: true,
         alreadyProcessed: false,
@@ -537,10 +580,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Find payment by reference error:", error);
+      console.error("💥 [PAYMENT] Payment verification failed:", error);
       
       // Handle specific errors
       if (error instanceof Error) {
+        console.log("🔍 [PAYMENT] Error details:", {
+          name: error.name,
+          message: error.message,
+          stack: error.stack?.slice(0, 200)
+        });
+        
         if (error.message.includes("not found")) {
           return res.json({ found: false, message: "Payment not found yet. Please complete the transaction." });
         }
@@ -1122,7 +1171,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Wallet payment validation for contests requiring crypto payments
         if (config && config.entryFee && config.entryFeeAmount) {
-          const paymentMethods = config.entryFeePaymentMethods || ['balance'];
+          // Smart fallback: if no payment methods configured, allow both balance and wallet for crypto contests
+          const isStandardCrypto = config.entryFeeCurrency && ['SOL', 'USDC'].includes(config.entryFeeCurrency);
+          const defaultMethods = isStandardCrypto ? ['balance', 'wallet'] : ['balance'];
+          const paymentMethods = config.entryFeePaymentMethods || defaultMethods;
+          
           const allowsBalance = paymentMethods.includes('balance');
           const allowsWallet = paymentMethods.includes('wallet');
 
