@@ -225,6 +225,69 @@ export const insertCashoutEventSchema = createInsertSchema(cashoutEvents).omit({
   createdAt: true
 });
 
+// Contest Config schema
+export const contestConfigSchema = z.object({
+  // Contest type and rules
+  contestType: z.enum(["image", "video"]).optional(),
+  votingMethods: z.array(z.enum(["public", "jury"])).optional(),
+  juryMembers: z.array(z.string()).optional(),
+  maxSubmissions: z.number().optional(),
+  fileSizeLimit: z.number().optional(),
+  
+  // Timing
+  submissionEndAt: z.string().optional(),
+  votingStartAt: z.string().optional(),
+  votingEndAt: z.string().optional(),
+  
+  // Voting rules
+  votesPerUserPerPeriod: z.number().optional(),
+  periodDurationHours: z.number().optional(),
+  totalVotesPerUser: z.number().optional(),
+  
+  // Prize distribution
+  prizeDistribution: z.array(z.number()).optional(),
+  
+  // Entry fee configuration
+  entryFee: z.boolean().optional(),
+  entryFeeAmount: z.number().optional(),
+  entryFeeCurrency: z.enum(["GLORY", "SOL", "USDC", "CUSTOM"]).optional(),
+  entryFeePaymentMethods: z.array(z.enum(["balance", "wallet"])).optional(), // Allow balance or wallet payment
+  
+  // Platform wallet configuration for crypto payments
+  platformWalletAddress: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).optional(), // Solana wallet address (base58, 32-44 chars)
+  platformFeePercentage: z.number().min(0).max(100).optional(), // Platform fee percentage from entry fees
+  
+  // Custom SPL token support
+  customTokenMint: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).optional(), // Solana SPL token mint address (base58, 32-44 chars)
+  customTokenDecimals: z.number().int().min(0).max(9).optional(), // Decimals for custom token (0-9)
+}).optional().refine((config) => {
+  // If currency is CUSTOM, require customTokenMint and customTokenDecimals
+  if (config?.entryFeeCurrency === "CUSTOM") {
+    return config.customTokenMint && config.customTokenDecimals !== undefined;
+  }
+  return true;
+}, {
+  message: "customTokenMint and customTokenDecimals are required when entryFeeCurrency is CUSTOM"
+}).refine((config) => {
+  // Forbid customTokenMint/decimals when currency is not CUSTOM
+  if (config?.entryFeeCurrency && config.entryFeeCurrency !== "CUSTOM") {
+    return !config.customTokenMint && config.customTokenDecimals === undefined;
+  }
+  return true;
+}, {
+  message: "customTokenMint and customTokenDecimals can only be used when entryFeeCurrency is CUSTOM"
+}).refine((config) => {
+  // If wallet payment is enabled, require platformWalletAddress
+  if (config?.entryFeePaymentMethods?.includes("wallet")) {
+    return !!config.platformWalletAddress;
+  }
+  return true;
+}, {
+  message: "platformWalletAddress is required when wallet payment method is enabled"
+});
+
+export type ContestConfig = z.infer<typeof contestConfigSchema>;
+
 // Auth schemas
 export const loginSchema = z.object({
   email: z.string().email(),
