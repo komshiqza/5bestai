@@ -1,60 +1,68 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Zap } from "lucide-react";
 import type { AiGeneration } from "@shared/schema";
 
 const stylePresets = {
   realistic: {
     name: "Realistic",
     description: "Photo-realistic images",
-    negativePrompt: "cartoon, illustration, anime, painting, drawing, art, sketch",
+    promptSuffix: ", photorealistic, highly detailed, professional photography, 8k uhd, dslr, soft lighting, high quality",
   },
   artistic: {
     name: "Artistic",
     description: "Painted and artistic style",
-    negativePrompt: "photo, photograph, realistic, hyperrealistic",
+    promptSuffix: ", digital art, artistic, painterly style, vibrant colors, creative composition, masterpiece",
   },
   anime: {
     name: "Anime",
     description: "Anime and manga style",
-    negativePrompt: "realistic, photo, 3d render",
+    promptSuffix: ", anime style, manga art, cel shaded, vibrant colors, expressive, japanese animation style",
   },
   fantasy: {
     name: "Fantasy",
     description: "Fantasy and magical themes",
-    negativePrompt: "modern, contemporary, realistic photo",
+    promptSuffix: ", fantasy art, magical, ethereal, epic, enchanted, mystical atmosphere, dramatic lighting",
   },
   abstract: {
     name: "Abstract",
     description: "Abstract and experimental",
-    negativePrompt: "realistic, photo, detailed",
+    promptSuffix: ", abstract art, geometric shapes, vibrant colors, modern art, creative patterns, artistic composition",
   },
   portrait: {
     name: "Portrait",
     description: "Focus on faces and portraits",
-    negativePrompt: "landscape, scenery, background focus",
+    promptSuffix: ", portrait photography, face focus, detailed facial features, professional headshot, studio lighting",
   },
 };
+
+const aspectRatios = [
+  { value: "1:1", label: "Square (1:1)" },
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "4:3", label: "Classic (4:3)" },
+  { value: "3:2", label: "Photo (3:2)" },
+  { value: "21:9", label: "Cinematic (21:9)" },
+];
 
 export default function AiGeneratorPage() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState<keyof typeof stylePresets>("realistic");
-  const [customNegativePrompt, setCustomNegativePrompt] = useState("");
-  const [width, setWidth] = useState(1024);
-  const [height, setHeight] = useState(1024);
-  const [steps, setSteps] = useState(30);
-  const [guidanceScale, setGuidanceScale] = useState(7.5);
+  const [aspectRatio, setAspectRatio] = useState("1:1");
+  const [outputFormat, setOutputFormat] = useState("webp");
+  const [outputQuality, setOutputQuality] = useState(90);
+  const [goFast, setGoFast] = useState(true);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,11 +76,10 @@ export default function AiGeneratorPage() {
   const generateMutation = useMutation({
     mutationFn: async (params: {
       prompt: string;
-      negativePrompt?: string;
-      width: number;
-      height: number;
-      numInferenceSteps: number;
-      guidanceScale: number;
+      aspectRatio: string;
+      outputFormat: string;
+      outputQuality: number;
+      goFast: boolean;
     }) => {
       const res = await apiRequest("POST", "/api/ai/generate", params);
       return res.json();
@@ -117,15 +124,15 @@ export default function AiGeneratorPage() {
       return;
     }
 
-    const negativePrompt = customNegativePrompt || stylePresets[selectedStyle].negativePrompt;
+    // Add style suffix to prompt
+    const enhancedPrompt = prompt.trim() + stylePresets[selectedStyle].promptSuffix;
 
     generateMutation.mutate({
-      prompt: prompt.trim(),
-      negativePrompt,
-      width,
-      height,
-      numInferenceSteps: steps,
-      guidanceScale,
+      prompt: enhancedPrompt,
+      aspectRatio,
+      outputFormat,
+      outputQuality,
+      goFast,
     });
   };
 
@@ -148,7 +155,7 @@ export default function AiGeneratorPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">AI Studio</h1>
-            <p className="text-muted-foreground">Create stunning images with AI</p>
+            <p className="text-muted-foreground">Create stunning images with Flux Schnell</p>
           </div>
         </div>
 
@@ -202,63 +209,59 @@ export default function AiGeneratorPage() {
                   </summary>
                   <div className="mt-4 space-y-4 pl-6 border-l-2 border-border">
                     <div>
-                      <Label htmlFor="negative-prompt">Custom Negative Prompt (Optional)</Label>
-                      <Input
-                        id="negative-prompt"
-                        placeholder="Things to avoid in the image..."
-                        value={customNegativePrompt}
-                        onChange={(e) => setCustomNegativePrompt(e.target.value)}
-                        data-testid="input-negative-prompt"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Width: {width}px</Label>
-                        <Slider
-                          value={[width]}
-                          onValueChange={([v]) => setWidth(v)}
-                          min={256}
-                          max={2048}
-                          step={64}
-                          data-testid="slider-width"
-                        />
-                      </div>
-                      <div>
-                        <Label>Height: {height}px</Label>
-                        <Slider
-                          value={[height]}
-                          onValueChange={([v]) => setHeight(v)}
-                          min={256}
-                          max={2048}
-                          step={64}
-                          data-testid="slider-height"
-                        />
-                      </div>
+                      <Label>Aspect Ratio</Label>
+                      <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                        <SelectTrigger data-testid="select-aspect-ratio">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {aspectRatios.map((ratio) => (
+                            <SelectItem key={ratio.value} value={ratio.value}>
+                              {ratio.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
-                      <Label>Quality (Steps): {steps}</Label>
-                      <Slider
-                        value={[steps]}
-                        onValueChange={([v]) => setSteps(v)}
-                        min={10}
-                        max={50}
-                        step={1}
-                        data-testid="slider-steps"
-                      />
+                      <Label>Output Format</Label>
+                      <Select value={outputFormat} onValueChange={setOutputFormat}>
+                        <SelectTrigger data-testid="select-output-format">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="webp">WebP (Recommended)</SelectItem>
+                          <SelectItem value="png">PNG (High Quality)</SelectItem>
+                          <SelectItem value="jpg">JPG (Compatible)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
-                      <Label>Creativity (Guidance): {guidanceScale.toFixed(1)}</Label>
+                      <Label>Output Quality: {outputQuality}%</Label>
                       <Slider
-                        value={[guidanceScale]}
-                        onValueChange={([v]) => setGuidanceScale(v)}
-                        min={1}
-                        max={20}
-                        step={0.5}
-                        data-testid="slider-guidance"
+                        value={[outputQuality]}
+                        onValueChange={([v]) => setOutputQuality(v)}
+                        min={50}
+                        max={100}
+                        step={5}
+                        data-testid="slider-quality"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">Higher quality = larger file size</p>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="go-fast"
+                        checked={goFast}
+                        onCheckedChange={(checked) => setGoFast(checked as boolean)}
+                        data-testid="checkbox-go-fast"
+                      />
+                      <Label htmlFor="go-fast" className="flex items-center gap-2 cursor-pointer">
+                        <Zap className="h-4 w-4 text-yellow-500" />
+                        Fast Mode (Optimized fp8)
+                      </Label>
                     </div>
                   </div>
                 </details>
@@ -297,7 +300,7 @@ export default function AiGeneratorPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDownload(currentImage, `ai-generated-${Date.now()}.png`)}
+                      onClick={() => handleDownload(currentImage, `ai-generated-${Date.now()}.${outputFormat}`)}
                       data-testid="button-download-current"
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -352,7 +355,7 @@ export default function AiGeneratorPage() {
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => handleDownload(gen.imageUrl, `${gen.id}.png`)}
+                            onClick={() => handleDownload(gen.imageUrl, `${gen.id}.webp`)}
                             data-testid={`button-download-${gen.id}`}
                           >
                             <Download className="h-4 w-4" />

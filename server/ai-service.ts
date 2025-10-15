@@ -6,11 +6,10 @@ const replicate = new Replicate({
 
 export interface GenerateImageOptions {
   prompt: string;
-  negativePrompt?: string;
-  width?: number;
-  height?: number;
-  numInferenceSteps?: number;
-  guidanceScale?: number;
+  aspectRatio?: string;
+  outputFormat?: string;
+  outputQuality?: number;
+  goFast?: boolean;
   seed?: number;
 }
 
@@ -19,11 +18,10 @@ export interface GeneratedImage {
   parameters: {
     model: string;
     prompt: string;
-    negativePrompt?: string;
-    width: number;
-    height: number;
-    numInferenceSteps: number;
-    guidanceScale: number;
+    aspectRatio: string;
+    outputFormat: string;
+    outputQuality: number;
+    goFast: boolean;
     seed?: number;
   };
 }
@@ -31,27 +29,26 @@ export interface GeneratedImage {
 export async function generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
   const {
     prompt,
-    negativePrompt = "ugly, blurry, low quality, distorted",
-    width = 1024,
-    height = 1024,
-    numInferenceSteps = 30,
-    guidanceScale = 7.5,
+    aspectRatio = "1:1",
+    outputFormat = "webp",
+    outputQuality = 90,
+    goFast = true,
     seed,
   } = options;
 
-  console.log("Generating AI image with Replicate...", { prompt, width, height });
+  console.log("Generating AI image with Flux Schnell...", { prompt, aspectRatio, outputFormat });
 
   try {
     const output = await replicate.run(
-      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+      "black-forest-labs/flux-schnell",
       {
         input: {
           prompt,
-          negative_prompt: negativePrompt,
-          width,
-          height,
-          num_inference_steps: numInferenceSteps,
-          guidance_scale: guidanceScale,
+          aspect_ratio: aspectRatio,
+          output_format: outputFormat,
+          output_quality: outputQuality,
+          go_fast: goFast,
+          num_outputs: 1,
           ...(seed !== undefined && { seed }),
         },
       }
@@ -68,13 +65,12 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     return {
       url: imageUrl,
       parameters: {
-        model: "stability-ai/sdxl",
+        model: "black-forest-labs/flux-schnell",
         prompt,
-        negativePrompt,
-        width,
-        height,
-        numInferenceSteps,
-        guidanceScale,
+        aspectRatio,
+        outputFormat,
+        outputQuality,
+        goFast,
         seed,
       },
     };
@@ -86,30 +82,30 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   }
 }
 
-// Style presets for easy access
+// Style presets optimized for Flux Schnell (uses prompt engineering instead of negative prompts)
 export const stylePresets = {
   realistic: {
     name: "Realistic",
-    negativePrompt: "cartoon, illustration, anime, painting, drawing, art, sketch",
+    promptSuffix: ", photorealistic, highly detailed, professional photography, 8k uhd, dslr, soft lighting, high quality",
   },
   artistic: {
     name: "Artistic",
-    negativePrompt: "photo, photograph, realistic, hyperrealistic",
+    promptSuffix: ", digital art, artistic, painterly style, vibrant colors, creative composition, masterpiece",
   },
   anime: {
     name: "Anime",
-    negativePrompt: "realistic, photo, 3d render",
+    promptSuffix: ", anime style, manga art, cel shaded, vibrant colors, expressive, japanese animation style",
   },
   fantasy: {
     name: "Fantasy",
-    negativePrompt: "modern, contemporary, realistic photo",
+    promptSuffix: ", fantasy art, magical, ethereal, epic, enchanted, mystical atmosphere, dramatic lighting",
   },
   abstract: {
     name: "Abstract",
-    negativePrompt: "realistic, photo, detailed",
+    promptSuffix: ", abstract art, geometric shapes, vibrant colors, modern art, creative patterns, artistic composition",
   },
   portrait: {
     name: "Portrait",
-    negativePrompt: "landscape, scenery, background focus",
+    promptSuffix: ", portrait photography, face focus, detailed facial features, professional headshot, studio lighting",
   },
 };

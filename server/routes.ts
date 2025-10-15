@@ -2687,14 +2687,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return generationsInLastHour.length < 30; // Max 30 per hour
   };
   
-  // Generate image validation schema
+  // Generate image validation schema (Flux Schnell)
   const generateImageSchema = z.object({
     prompt: z.string().min(3, "Prompt must be at least 3 characters").max(1000, "Prompt too long"),
-    negativePrompt: z.string().max(500).optional(),
-    width: z.number().min(256).max(2048).optional(),
-    height: z.number().min(256).max(2048).optional(),
-    numInferenceSteps: z.number().min(10).max(50).optional(),
-    guidanceScale: z.number().min(1).max(20).optional(),
+    aspectRatio: z.enum(["1:1", "16:9", "9:16", "4:3", "3:2", "21:9"]).optional(),
+    outputFormat: z.enum(["webp", "png", "jpg"]).optional(),
+    outputQuality: z.number().min(0).max(100).optional(),
+    goFast: z.boolean().optional(),
     seed: z.number().int().optional(),
   });
 
