@@ -13,6 +13,16 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Zap } from "lucide-react";
 import type { AiGeneration } from "@shared/schema";
 
+interface ModelConfig {
+  id: string;
+  name: string;
+  description: string;
+  supportsAspectRatio: boolean;
+  supportsOutputFormat: boolean;
+  supportsGoFast: boolean;
+  costPerImage: number;
+}
+
 const stylePresets = {
   realistic: {
     name: "Realistic",
@@ -55,14 +65,6 @@ const aspectRatios = [
   { value: "21:9", label: "Cinematic (21:9)" },
 ];
 
-const aiModels = [
-  { value: "flux-schnell", label: "Flux Schnell", description: "⚡ Fastest, most affordable (~$0.003)", icon: "⚡" },
-  { value: "flux-dev", label: "Flux Dev", description: "⚖️ Balanced quality & speed (~$0.025)", icon: "⚖️" },
-  { value: "flux-pro", label: "Flux Pro", description: "⭐ Highest quality (~$0.05)", icon: "⭐" },
-  { value: "sdxl-lightning", label: "SDXL Lightning", description: "🌩️ Super fast SDXL (~$0.003)", icon: "🌩️" },
-  { value: "sd3", label: "Stable Diffusion 3", description: "📝 Great for text in images (~$0.02)", icon: "📝" },
-];
-
 export default function AiGeneratorPage() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
@@ -78,9 +80,16 @@ export default function AiGeneratorPage() {
     document.title = "AI Studio - 5best";
   }, []);
 
+  const { data: modelConfigs, isLoading: loadingModels } = useQuery<ModelConfig[]>({
+    queryKey: ["/api/ai/models"],
+  });
+
   const { data: generations, isLoading: loadingHistory } = useQuery<AiGeneration[]>({
     queryKey: ["/api/ai/generations"],
   });
+
+  // Get current model config
+  const currentModelConfig = modelConfigs?.find(m => m.id === selectedModel);
 
   const generateMutation = useMutation({
     mutationFn: async (params: {
@@ -196,24 +205,49 @@ export default function AiGeneratorPage() {
 
                 <div>
                   <Label>AI Model</Label>
-                  <Select value={selectedModel} onValueChange={setSelectedModel}>
-                    <SelectTrigger data-testid="select-model">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {aiModels.map((model) => (
-                        <SelectItem key={model.value} value={model.value}>
-                          <div className="flex items-center gap-2">
-                            <span>{model.icon}</span>
-                            <div>
-                              <div className="font-medium">{model.label}</div>
-                              <div className="text-xs text-muted-foreground">{model.description}</div>
+                  {loadingModels ? (
+                    <div className="h-10 rounded-md border border-input bg-muted/50 animate-pulse" />
+                  ) : (
+                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                      <SelectTrigger data-testid="select-model">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modelConfigs?.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            <div className="flex items-start justify-between gap-3 w-full">
+                              <div className="flex-1">
+                                <div className="font-medium">{model.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  ${model.costPerImage.toFixed(3)} per image
+                                </div>
+                              </div>
+                              <div className="flex gap-1 text-xs text-muted-foreground shrink-0">
+                                {model.supportsAspectRatio && (
+                                  <span title="Supports aspect ratio">📐</span>
+                                )}
+                                {model.supportsOutputFormat && (
+                                  <span title="Supports output format">🎨</span>
+                                )}
+                                {model.supportsGoFast && (
+                                  <span title="Supports fast mode">⚡</span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {currentModelConfig && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Supports: {[
+                        currentModelConfig.supportsAspectRatio && "Aspect Ratio",
+                        currentModelConfig.supportsOutputFormat && "Output Format",
+                        currentModelConfig.supportsGoFast && "Fast Mode"
+                      ].filter(Boolean).join(", ") || "Basic generation"}
+                    </p>
+                  )}
                 </div>
 
                 <Tabs value={selectedStyle} onValueChange={(v) => setSelectedStyle(v as keyof typeof stylePresets)}>
@@ -235,69 +269,79 @@ export default function AiGeneratorPage() {
                   ))}
                 </Tabs>
 
-                <details className="group">
-                  <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium">
-                    <Settings className="h-4 w-4" />
-                    Advanced Settings
-                  </summary>
-                  <div className="mt-4 space-y-4 pl-6 border-l-2 border-border">
-                    <div>
-                      <Label>Aspect Ratio</Label>
-                      <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                        <SelectTrigger data-testid="select-aspect-ratio">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {aspectRatios.map((ratio) => (
-                            <SelectItem key={ratio.value} value={ratio.value}>
-                              {ratio.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                {currentModelConfig && (
+                  <details className="group">
+                    <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium">
+                      <Settings className="h-4 w-4" />
+                      Advanced Settings
+                    </summary>
+                    <div className="mt-4 space-y-4 pl-6 border-l-2 border-border">
+                      {currentModelConfig.supportsAspectRatio && (
+                        <div>
+                          <Label>Aspect Ratio</Label>
+                          <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                            <SelectTrigger data-testid="select-aspect-ratio">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {aspectRatios.map((ratio) => (
+                                <SelectItem key={ratio.value} value={ratio.value}>
+                                  {ratio.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
 
-                    <div>
-                      <Label>Output Format</Label>
-                      <Select value={outputFormat} onValueChange={setOutputFormat}>
-                        <SelectTrigger data-testid="select-output-format">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="webp">WebP (Recommended)</SelectItem>
-                          <SelectItem value="png">PNG (High Quality)</SelectItem>
-                          <SelectItem value="jpg">JPG (Compatible)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      {currentModelConfig.supportsOutputFormat && (
+                        <>
+                          <div>
+                            <Label>Output Format</Label>
+                            <Select value={outputFormat} onValueChange={setOutputFormat}>
+                              <SelectTrigger data-testid="select-output-format">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="webp">WebP (Recommended)</SelectItem>
+                                <SelectItem value="png">PNG (High Quality)</SelectItem>
+                                <SelectItem value="jpg">JPG (Compatible)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                    <div>
-                      <Label>Output Quality: {outputQuality}%</Label>
-                      <Slider
-                        value={[outputQuality]}
-                        onValueChange={([v]) => setOutputQuality(v)}
-                        min={50}
-                        max={100}
-                        step={5}
-                        data-testid="slider-quality"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Higher quality = larger file size</p>
-                    </div>
+                          <div>
+                            <Label>Output Quality: {outputQuality}%</Label>
+                            <Slider
+                              value={[outputQuality]}
+                              onValueChange={([v]) => setOutputQuality(v)}
+                              min={50}
+                              max={100}
+                              step={5}
+                              data-testid="slider-quality"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Higher quality = larger file size</p>
+                          </div>
+                        </>
+                      )}
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="go-fast"
-                        checked={goFast}
-                        onCheckedChange={(checked) => setGoFast(checked as boolean)}
-                        data-testid="checkbox-go-fast"
-                      />
-                      <Label htmlFor="go-fast" className="flex items-center gap-2 cursor-pointer">
-                        <Zap className="h-4 w-4 text-yellow-500" />
-                        Fast Mode (Optimized fp8)
-                      </Label>
+                      {currentModelConfig.supportsGoFast && (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="go-fast"
+                            checked={goFast}
+                            onCheckedChange={(checked) => setGoFast(checked as boolean)}
+                            data-testid="checkbox-go-fast"
+                          />
+                          <Label htmlFor="go-fast" className="flex items-center gap-2 cursor-pointer">
+                            <Zap className="h-4 w-4 text-yellow-500" />
+                            Fast Mode (Optimized fp8)
+                          </Label>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </details>
+                  </details>
+                )}
 
                 <Button
                   onClick={handleGenerate}

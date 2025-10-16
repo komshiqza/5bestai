@@ -2674,7 +2674,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Generation routes
-  const { generateImage } = await import("./ai-service");
+  const { generateImage, AI_MODELS } = await import("./ai-service");
+  
+  // Get available AI models and their configurations
+  app.get("/api/ai/models", (req, res) => {
+    const models = Object.values(AI_MODELS).map(model => ({
+      id: model.id,
+      name: model.name,
+      description: model.description,
+      supportsAspectRatio: model.supportsAspectRatio,
+      supportsOutputFormat: model.supportsOutputFormat,
+      supportsGoFast: model.supportsGoFast,
+      costPerImage: model.costPerImage,
+    }));
+    res.json(models);
+  });
   
   // AI generation rate limiter (30 generations per hour per user)
   const aiGenerationRateLimiter = async (req: AuthRequest): Promise<boolean> => {
