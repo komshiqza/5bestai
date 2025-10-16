@@ -55,9 +55,18 @@ const aspectRatios = [
   { value: "21:9", label: "Cinematic (21:9)" },
 ];
 
+const aiModels = [
+  { value: "flux-schnell", label: "Flux Schnell", description: "⚡ Fastest, most affordable (~$0.003)", icon: "⚡" },
+  { value: "flux-dev", label: "Flux Dev", description: "⚖️ Balanced quality & speed (~$0.025)", icon: "⚖️" },
+  { value: "flux-pro", label: "Flux Pro", description: "⭐ Highest quality (~$0.05)", icon: "⭐" },
+  { value: "sdxl-lightning", label: "SDXL Lightning", description: "🌩️ Super fast SDXL (~$0.003)", icon: "🌩️" },
+  { value: "sd3", label: "Stable Diffusion 3", description: "📝 Great for text in images (~$0.02)", icon: "📝" },
+];
+
 export default function AiGeneratorPage() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
+  const [selectedModel, setSelectedModel] = useState("flux-schnell");
   const [selectedStyle, setSelectedStyle] = useState<keyof typeof stylePresets>("realistic");
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [outputFormat, setOutputFormat] = useState("webp");
@@ -76,6 +85,7 @@ export default function AiGeneratorPage() {
   const generateMutation = useMutation({
     mutationFn: async (params: {
       prompt: string;
+      model: string;
       aspectRatio: string;
       outputFormat: string;
       outputQuality: number;
@@ -129,6 +139,7 @@ export default function AiGeneratorPage() {
 
     generateMutation.mutate({
       prompt: enhancedPrompt,
+      model: selectedModel,
       aspectRatio,
       outputFormat,
       outputQuality,
@@ -155,7 +166,7 @@ export default function AiGeneratorPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">AI Studio</h1>
-            <p className="text-muted-foreground">Create stunning images with Flux Schnell</p>
+            <p className="text-muted-foreground">Create stunning images with AI</p>
           </div>
         </div>
 
@@ -181,6 +192,28 @@ export default function AiGeneratorPage() {
                     rows={3}
                     data-testid="input-prompt"
                   />
+                </div>
+
+                <div>
+                  <Label>AI Model</Label>
+                  <Select value={selectedModel} onValueChange={setSelectedModel}>
+                    <SelectTrigger data-testid="select-model">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {aiModels.map((model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          <div className="flex items-center gap-2">
+                            <span>{model.icon}</span>
+                            <div>
+                              <div className="font-medium">{model.label}</div>
+                              <div className="text-xs text-muted-foreground">{model.description}</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <Tabs value={selectedStyle} onValueChange={(v) => setSelectedStyle(v as keyof typeof stylePresets)}>
