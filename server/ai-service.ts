@@ -65,10 +65,17 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       const firstOutput = output[0];
       
       // Handle FileOutput object with url() method
-      if (typeof firstOutput === 'object' && firstOutput !== null && 'url' in firstOutput) {
-        imageUrl = typeof firstOutput.url === 'function' ? await firstOutput.url() : firstOutput.url;
+      if (typeof firstOutput === 'object' && firstOutput !== null) {
+        // FileOutput objects have a url() method that returns a string
+        if (typeof firstOutput.url === 'function') {
+          imageUrl = firstOutput.url();
+        } else if (typeof firstOutput.url === 'string') {
+          imageUrl = firstOutput.url;
+        } else {
+          throw new Error("FileOutput object missing url property");
+        }
       } 
-      // Handle direct string URL
+      // Handle direct string URL (backward compatibility)
       else if (typeof firstOutput === 'string') {
         imageUrl = firstOutput;
       }
@@ -77,6 +84,9 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       }
     } else if (typeof output === 'string') {
       imageUrl = output;
+    } else if (typeof output === 'object' && output !== null && typeof output.url === 'function') {
+      // Handle single FileOutput object (not in array)
+      imageUrl = output.url();
     } else {
       throw new Error("Invalid output format from Replicate");
     }
