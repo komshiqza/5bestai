@@ -52,13 +52,34 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
           ...(seed !== undefined && { seed }),
         },
       }
-    ) as string[];
+    ) as any;
 
-    if (!output || output.length === 0) {
+    if (!output) {
       throw new Error("No image generated");
     }
 
-    const imageUrl = Array.isArray(output) ? output[0] : output;
+    // Extract URL from Replicate FileOutput response
+    let imageUrl: string;
+    
+    if (Array.isArray(output)) {
+      const firstOutput = output[0];
+      
+      // Handle FileOutput object with url() method
+      if (typeof firstOutput === 'object' && firstOutput !== null && 'url' in firstOutput) {
+        imageUrl = typeof firstOutput.url === 'function' ? await firstOutput.url() : firstOutput.url;
+      } 
+      // Handle direct string URL
+      else if (typeof firstOutput === 'string') {
+        imageUrl = firstOutput;
+      }
+      else {
+        throw new Error("Invalid output format from Replicate");
+      }
+    } else if (typeof output === 'string') {
+      imageUrl = output;
+    } else {
+      throw new Error("Invalid output format from Replicate");
+    }
 
     console.log("AI image generated successfully:", imageUrl);
 
