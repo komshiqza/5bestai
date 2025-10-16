@@ -38,16 +38,21 @@ interface UploadWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
   preselectedContestId?: string;
+  aiSubmissionMode?: {
+    imageUrl: string;
+    cloudinaryPublicId: string;
+    prompt: string;
+  };
 }
 
-export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: UploadWizardModalProps) {
+export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSubmissionMode }: UploadWizardModalProps) {
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Form state
   const [file, setFile] = useState<File | null>(null);
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState<{url: string, type: string, thumbnailUrl?: string} | null>(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<{url: string, type: string, thumbnailUrl?: string, cloudinaryPublicId?: string} | null>(null);
   const [uploadMode, setUploadMode] = useState<'new' | 'gallery'>('new');
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -69,6 +74,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
   const [paymentTxHash, setPaymentTxHash] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastDebugLog = useRef<string>(''); // For throttling debug logs
+  const appliedAiModeRef = useRef<string | null>(null); // Track applied AI cloudinaryPublicId
 
   const isVideo = useMemo(
     () => (file ? file.type.startsWith("video/") : false),
@@ -223,6 +229,25 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
     }
   }, [selectedContest, activeContests, user, getOptimalPaymentMethod, paymentMethod]);
 
+  // Sync AI submission mode when modal opens (only once per unique AI image)
+  useEffect(() => {
+    if (isOpen && aiSubmissionMode) {
+      // Only apply if we haven't already applied this specific AI image
+      if (appliedAiModeRef.current !== aiSubmissionMode.cloudinaryPublicId) {
+        setSelectedGalleryImage({
+          url: aiSubmissionMode.imageUrl,
+          type: 'image',
+          cloudinaryPublicId: aiSubmissionMode.cloudinaryPublicId
+        });
+        setUploadMode('gallery');
+        setStep(2);
+        setTitle(""); // Let user fill in title
+        setDescription(""); // Let user fill in description
+        appliedAiModeRef.current = aiSubmissionMode.cloudinaryPublicId;
+      }
+    }
+  }, [isOpen, aiSubmissionMode]);
+
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -242,6 +267,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
       setPaymentMethod('balance');
       setShowPayment(false);
       setPaymentTxHash(null);
+      appliedAiModeRef.current = null; // Reset AI mode tracking
     }
   }, [isOpen, preselectedContestId]);
 
@@ -377,6 +403,8 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId }: Upl
           type: selectedGalleryImage.type,
           mediaUrl: selectedGalleryImage.url,
           thumbnailUrl: selectedGalleryImage.thumbnailUrl,
+          cloudinaryPublicId: selectedGalleryImage.cloudinaryPublicId,
+          cloudinaryResourceType: selectedGalleryImage.type === 'video' ? 'video' : 'image',
           status: "pending",
         };
         
