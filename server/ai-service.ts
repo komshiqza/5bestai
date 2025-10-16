@@ -13,6 +13,7 @@ export interface ModelConfig {
   supportsAspectRatio: boolean;
   supportsOutputFormat: boolean;
   supportsGoFast: boolean;
+  supportsNegativePrompt: boolean;
   costPerImage: number;
 }
 
@@ -25,6 +26,7 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsAspectRatio: true,
     supportsOutputFormat: true,
     supportsGoFast: true,
+    supportsNegativePrompt: false,
     costPerImage: 0.003,
   },
   "flux-dev": {
@@ -35,6 +37,7 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsAspectRatio: true,
     supportsOutputFormat: true,
     supportsGoFast: false,
+    supportsNegativePrompt: false,
     costPerImage: 0.025,
   },
   "flux-pro": {
@@ -45,6 +48,7 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsAspectRatio: true,
     supportsOutputFormat: true,
     supportsGoFast: false,
+    supportsNegativePrompt: false,
     costPerImage: 0.05,
   },
   "sdxl-lightning": {
@@ -55,6 +59,7 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsAspectRatio: false,
     supportsOutputFormat: false,
     supportsGoFast: false,
+    supportsNegativePrompt: true,
     costPerImage: 0.003,
   },
   "sd3": {
@@ -65,6 +70,7 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsAspectRatio: true,
     supportsOutputFormat: false,
     supportsGoFast: false,
+    supportsNegativePrompt: true,
     costPerImage: 0.02,
   },
 };
@@ -72,6 +78,7 @@ export const AI_MODELS: Record<string, ModelConfig> = {
 export interface GenerateImageOptions {
   prompt: string;
   model?: string;
+  negativePrompt?: string;
   aspectRatio?: string;
   outputFormat?: string;
   outputQuality?: number;
@@ -96,6 +103,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   const {
     prompt,
     model = "flux-schnell",
+    negativePrompt,
     aspectRatio = "1:1",
     outputFormat = "webp",
     outputQuality = 90,
@@ -106,7 +114,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   // Get model configuration
   const modelConfig = AI_MODELS[model] || AI_MODELS["flux-schnell"];
   
-  console.log(`Generating AI image with ${modelConfig.name}...`, { prompt, model, aspectRatio, outputFormat });
+  console.log(`Generating AI image with ${modelConfig.name}...`, { prompt, negativePrompt, model, aspectRatio, outputFormat });
 
   try {
     // Build input parameters based on model capabilities
@@ -117,6 +125,9 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     };
 
     // Add optional parameters based on model support
+    if (modelConfig.supportsNegativePrompt && negativePrompt) {
+      input.negative_prompt = negativePrompt;
+    }
     if (modelConfig.supportsAspectRatio) {
       input.aspect_ratio = aspectRatio;
     }

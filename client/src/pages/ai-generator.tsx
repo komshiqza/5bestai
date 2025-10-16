@@ -20,6 +20,7 @@ interface ModelConfig {
   supportsAspectRatio: boolean;
   supportsOutputFormat: boolean;
   supportsGoFast: boolean;
+  supportsNegativePrompt: boolean;
   costPerImage: number;
 }
 
@@ -68,6 +69,7 @@ const aspectRatios = [
 export default function AiGeneratorPage() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
+  const [negativePrompt, setNegativePrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState("flux-schnell");
   const [selectedStyle, setSelectedStyle] = useState<keyof typeof stylePresets>("realistic");
   const [aspectRatio, setAspectRatio] = useState("1:1");
@@ -95,6 +97,7 @@ export default function AiGeneratorPage() {
     mutationFn: async (params: {
       prompt: string;
       model: string;
+      negativePrompt?: string;
       aspectRatio: string;
       outputFormat: string;
       outputQuality: number;
@@ -146,14 +149,21 @@ export default function AiGeneratorPage() {
     // Add style suffix to prompt
     const enhancedPrompt = prompt.trim() + stylePresets[selectedStyle].promptSuffix;
 
-    generateMutation.mutate({
+    const params: any = {
       prompt: enhancedPrompt,
       model: selectedModel,
       aspectRatio,
       outputFormat,
       outputQuality,
       goFast,
-    });
+    };
+
+    // Add negative prompt if model supports it and it's provided
+    if (currentModelConfig?.supportsNegativePrompt && negativePrompt.trim()) {
+      params.negativePrompt = negativePrompt.trim();
+    }
+
+    generateMutation.mutate(params);
   };
 
   const handleDownload = (url: string, filename: string) => {
@@ -203,6 +213,23 @@ export default function AiGeneratorPage() {
                   />
                 </div>
 
+                {currentModelConfig?.supportsNegativePrompt && (
+                  <div>
+                    <Label htmlFor="negative-prompt">Negative Prompt (Optional)</Label>
+                    <Textarea
+                      id="negative-prompt"
+                      placeholder="blurry, low quality, distorted, bad anatomy, watermark, text..."
+                      value={negativePrompt}
+                      onChange={(e) => setNegativePrompt(e.target.value)}
+                      rows={2}
+                      data-testid="input-negative-prompt"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Describe what you DON'T want to see in the image
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <Label>AI Model</Label>
                   {loadingModels ? (
@@ -232,6 +259,9 @@ export default function AiGeneratorPage() {
                                 {model.supportsGoFast && (
                                   <span title="Supports fast mode">⚡</span>
                                 )}
+                                {model.supportsNegativePrompt && (
+                                  <span title="Supports negative prompt">🚫</span>
+                                )}
                               </div>
                             </div>
                           </SelectItem>
@@ -244,7 +274,8 @@ export default function AiGeneratorPage() {
                       Supports: {[
                         currentModelConfig.supportsAspectRatio && "Aspect Ratio",
                         currentModelConfig.supportsOutputFormat && "Output Format",
-                        currentModelConfig.supportsGoFast && "Fast Mode"
+                        currentModelConfig.supportsGoFast && "Fast Mode",
+                        currentModelConfig.supportsNegativePrompt && "Negative Prompt"
                       ].filter(Boolean).join(", ") || "Basic generation"}
                     </p>
                   )}
