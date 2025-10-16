@@ -2736,12 +2736,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         model: result.parameters.model,
         imageUrl: result.url,
         parameters: result.parameters,
+        cloudinaryPublicId: result.cloudinaryPublicId,
         status: "generated"
       });
 
       res.json({ 
         id: generation.id,
         imageUrl: result.url,
+        cloudinaryUrl: result.cloudinaryUrl,
+        cloudinaryPublicId: result.cloudinaryPublicId,
         parameters: result.parameters
       });
     } catch (error) {
@@ -2787,6 +2790,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting AI generation:", error);
       res.status(500).json({ error: "Failed to delete generation" });
+    }
+  });
+
+  // Submit AI generation to contest
+  const submitToContestSchema = z.object({
+    contestId: z.string(),
+    title: z.string().min(1, "Title is required").max(255),
+    description: z.string().optional(),
+    tags: z.array(z.string()).optional()
+  });
+
+  app.post("/api/ai/generations/:id/submit-to-contest", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const params = submitToContestSchema.parse(req.body);
+
+      // Get AI generation
+      const generation = await storage.getAiGeneration(id);
+      if (!generation) {
+        return res.status(404).json({ error: "AI generation not found" });
+      }
+
+      if (generation.userId !== userId) {
+        return res.status(403).json({ error: "Not authorized to submit this generation" });
+      }
+
+      if (!generation.cloudinaryPublicId) {
+        return res.status(400).json({ error: "Image not properly uploaded to storage" });
+      }
+
+      // Get contest
+      const contest = await storage.getContest(params.contestId);
+      if (!contest) {
+        return res.status(404).json({ error: "Contest not found" });
+      }
+
+      if (contest.status !== "active") {
+        return res.status(400).json({ error: "Contest is not active" });
+      }
+
+      // Check contest type matches (AI images are always image type)
+      const config = contest.config as any;
+      if (config?.contestType && config.contestType !== "image") {
+        return res.status(400).json({ error: "This contest does not accept images" });
+      }
+
+      // Create submission from AI generation
+      const submission = await storage.createSubmission({
+        userId,
+        contestId: params.contestId,
+        contestName: contest.title,
+        type: "image",
+        title: params.title,
+        description: params.description,
+        mediaUrl: generation.imageUrl,
+        cloudinaryPublicId: generation.cloudinaryPublicId,
+        cloudinaryResourceType: "image",
+        tags: params.tags,
+        status: "pending" // Will need admin approval
+      });
+
+      // Note: AI generation status remains as "generated" - we don't update it
+      // The submission itself tracks the contest entry
+
+      res.json({ 
+        message: "Successfully submitted to contest",
+        submission 
+      });
+    } catch (error) {
+      console.error("Error submitting AI generation to contest:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid parameters", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to submit to contest" });
     }
   });
 

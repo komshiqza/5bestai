@@ -1,7 +1,21 @@
 import Replicate from "replicate";
+import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
+import path from "path";
+import { promisify } from "util";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
+});
+
+const writeFileAsync = promisify(fs.writeFile);
+const unlinkAsync = promisify(fs.unlink);
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // AI Model configurations
@@ -88,6 +102,8 @@ export interface GenerateImageOptions {
 
 export interface GeneratedImage {
   url: string;
+  cloudinaryUrl?: string;
+  cloudinaryPublicId?: string;
   parameters: {
     model: string;
     prompt: string;
@@ -186,8 +202,24 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
 
     console.log("AI image generated successfully:", imageUrl);
 
+    // Download image and upload to Cloudinary
+    let cloudinaryUrl: string | undefined;
+    let cloudinaryPublicId: string | undefined;
+
+    try {
+      const uploadResult = await downloadAndUploadToCloudinary(imageUrl);
+      cloudinaryUrl = uploadResult.url;
+      cloudinaryPublicId = uploadResult.publicId;
+      console.log("Image uploaded to Cloudinary:", cloudinaryUrl);
+    } catch (uploadError) {
+      console.error("Cloudinary upload failed, using Replicate URL:", uploadError);
+      // Continue with Replicate URL if Cloudinary fails
+    }
+
     return {
-      url: imageUrl,
+      url: cloudinaryUrl || imageUrl, // Prefer Cloudinary URL
+      cloudinaryUrl,
+      cloudinaryPublicId,
       parameters: {
         model: modelConfig.id,
         prompt,
@@ -203,6 +235,51 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     throw new Error(
       `Failed to generate image: ${error instanceof Error ? error.message : "Unknown error"}`
     );
+  }
+}
+
+async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
+  url: string;
+  publicId: string;
+}> {
+  const tempDir = path.join(process.cwd(), "temp");
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  const tempFilePath = path.join(tempDir, `ai-${Date.now()}.png`);
+
+  try {
+    // Download image from Replicate CDN
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    await writeFileAsync(tempFilePath, Buffer.from(buffer));
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(tempFilePath, {
+      resource_type: "image",
+      folder: "5best-ai-generated",
+      quality: "auto:good",
+      fetch_format: "auto",
+    });
+
+    // Cleanup temp file
+    await unlinkAsync(tempFilePath);
+
+    return {
+      url: result.secure_url,
+      publicId: result.public_id,
+    };
+  } catch (error) {
+    // Cleanup on error
+    if (fs.existsSync(tempFilePath)) {
+      await unlinkAsync(tempFilePath);
+    }
+    throw error;
   }
 }
 

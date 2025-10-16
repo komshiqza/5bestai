@@ -8,10 +8,12 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Zap } from "lucide-react";
-import type { AiGeneration } from "@shared/schema";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Zap, Upload } from "lucide-react";
+import type { AiGeneration, Contest } from "@shared/schema";
 
 interface ModelConfig {
   id: string;
@@ -77,6 +79,13 @@ export default function AiGeneratorPage() {
   const [outputQuality, setOutputQuality] = useState(90);
   const [goFast, setGoFast] = useState(true);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  
+  // Submit to contest dialog state
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [selectedGeneration, setSelectedGeneration] = useState<AiGeneration | null>(null);
+  const [submissionTitle, setSubmissionTitle] = useState("");
+  const [submissionDescription, setSubmissionDescription] = useState("");
+  const [selectedContestId, setSelectedContestId] = useState("");
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -89,6 +98,16 @@ export default function AiGeneratorPage() {
   const { data: generations, isLoading: loadingHistory } = useQuery<AiGeneration[]>({
     queryKey: ["/api/ai/generations"],
   });
+
+  const { data: contests } = useQuery<Contest[]>({
+    queryKey: ["/api/contests"],
+  });
+
+  // Filter active contests that accept images
+  const activeImageContests = contests?.filter(c => 
+    c.status === "active" && 
+    (!c.config || !(c.config as any).contestType || (c.config as any).contestType === "image")
+  ) || [];
 
   // Get current model config
   const currentModelConfig = modelConfigs?.find(m => m.id === selectedModel);
@@ -135,6 +154,66 @@ export default function AiGeneratorPage() {
       });
     },
   });
+
+  const submitToContestMutation = useMutation({
+    mutationFn: async (params: {
+      generationId: string;
+      contestId: string;
+      title: string;
+      description?: string;
+    }) => {
+      const res = await apiRequest("POST", `/api/ai/generations/${params.generationId}/submit-to-contest`, {
+        contestId: params.contestId,
+        title: params.title,
+        description: params.description,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      setSubmitDialogOpen(false);
+      setSubmissionTitle("");
+      setSubmissionDescription("");
+      setSelectedContestId("");
+      toast({
+        title: "Submitted!",
+        description: "Your AI creation has been submitted to the contest.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Submission Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenSubmitDialog = (generation: AiGeneration) => {
+    setSelectedGeneration(generation);
+    setSubmissionTitle("");
+    setSubmissionDescription("");
+    setSelectedContestId(activeImageContests[0]?.id || "");
+    setSubmitDialogOpen(true);
+  };
+
+  const handleSubmitToContest = () => {
+    if (!selectedGeneration || !selectedContestId || !submissionTitle.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a contest and provide a title.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    submitToContestMutation.mutate({
+      generationId: selectedGeneration.id,
+      contestId: selectedContestId,
+      title: submissionTitle,
+      description: submissionDescription,
+    });
+  };
 
   const handleGenerate = () => {
     if (!prompt.trim()) {
@@ -470,6 +549,14 @@ export default function AiGeneratorPage() {
                           </Button>
                           <Button
                             size="sm"
+                            variant="default"
+                            onClick={() => handleOpenSubmitDialog(gen)}
+                            data-testid={`button-submit-${gen.id}`}
+                          >
+                            <Upload className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="destructive"
                             onClick={() => deleteMutation.mutate(gen.id)}
                             disabled={deleteMutation.isPending}
@@ -490,6 +577,92 @@ export default function AiGeneratorPage() {
           </div>
         </div>
       </div>
+
+      {/* Submit to Contest Dialog */}
+      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+        <DialogContent data-testid="dialog-submit-to-contest">
+          <DialogHeader>
+            <DialogTitle>Submit to Contest</DialogTitle>
+            <DialogDescription>
+              Submit your AI-generated image to an active contest
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {activeImageContests.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No active contests accepting images at the moment.
+              </p>
+            ) : (
+              <>
+                <div>
+                  <Label htmlFor="contest">Contest</Label>
+                  <Select value={selectedContestId} onValueChange={setSelectedContestId}>
+                    <SelectTrigger data-testid="select-contest">
+                      <SelectValue placeholder="Select a contest" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeImageContests.map((contest) => (
+                        <SelectItem key={contest.id} value={contest.id}>
+                          {contest.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="title">Submission Title *</Label>
+                  <Input
+                    id="title"
+                    value={submissionTitle}
+                    onChange={(e) => setSubmissionTitle(e.target.value)}
+                    placeholder="Give your creation a title"
+                    data-testid="input-submission-title"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Textarea
+                    id="description"
+                    value={submissionDescription}
+                    onChange={(e) => setSubmissionDescription(e.target.value)}
+                    placeholder="Describe your creation..."
+                    rows={3}
+                    data-testid="input-submission-description"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSubmitDialogOpen(false)}
+              data-testid="button-cancel-submit"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitToContest}
+              disabled={submitToContestMutation.isPending || activeImageContests.length === 0 || !submissionTitle.trim()}
+              className="gradient-glory"
+              data-testid="button-confirm-submit"
+            >
+              {submitToContestMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit to Contest"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
