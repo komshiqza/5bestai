@@ -296,8 +296,18 @@ export default function AiGeneratorPage() {
     queryKey: ["/api/pricing"],
   });
 
+  // Map model IDs to pricing keys
+  const modelToPricingKey: Record<string, string> = {
+    "leonardo-lucid": "leonardo",
+    "ideogram-v3": "ideogram-v3",
+    "nano-banana": "nano-banana",
+    "flux-1.1-pro": "flux-1.1-pro",
+    "sd-3.5-large": "sd-3.5-large",
+  };
+
   const userCredits = userData?.imageCredits || 0;
-  const modelCost = pricing?.[selectedModel] || 0;
+  const pricingKey = modelToPricingKey[selectedModel] || selectedModel;
+  const modelCost = pricing?.[pricingKey] || 0;
   const hasEnoughCredits = userCredits >= modelCost;
 
   const currentModelConfig = modelConfigs?.find(m => m.id === selectedModel);
@@ -613,11 +623,12 @@ export default function AiGeneratorPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {modelConfigs?.map((model) => {
-                          const credits = pricing?.[model.id] || 0;
+                          const pricingKey = modelToPricingKey[model.id] || model.id;
+                          const credits = pricing?.[pricingKey] || 0;
                           return (
                             <SelectItem key={model.id} value={model.id}>
                               <span className="text-sm">
-                                {model.name} - {model.description} - {credits} {credits === 1 ? 'кредит' : 'кредита'} на генерирано изображение
+                                {model.name} - {model.description} - {credits} {credits === 1 ? 'credit' : 'credits'} per image
                               </span>
                             </SelectItem>
                           );
