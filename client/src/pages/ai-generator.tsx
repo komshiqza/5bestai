@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import type { AiGeneration } from "@shared/schema";
 
@@ -237,6 +238,7 @@ async function uploadToCloudinary(file: File): Promise<string> {
 
 export default function AiGeneratorPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
   const [selectedModel, setSelectedModel] = useState("flux-1.1-pro");
@@ -1198,6 +1200,14 @@ export default function AiGeneratorPage() {
                             data-testid={`button-download-${gen.id}`}
                           >
                             <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setLocation(`/image-editor/${gen.id}`)}
+                            data-testid={`button-edit-${gen.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           {!gen.isUpscaled && (
                             <Button

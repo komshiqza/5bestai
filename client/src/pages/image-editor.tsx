@@ -34,7 +34,7 @@ export default function ImageEditor() {
   const [isSaving, setIsSaving] = useState(false);
 
   // Fetch generation data
-  const { data: generation, isLoading } = useQuery({
+  const { data: generation, isLoading } = useQuery<any>({
     queryKey: [`/api/ai/generations/${id}`],
     enabled: !!id,
   });
@@ -50,7 +50,7 @@ export default function ImageEditor() {
     });
 
     // Load image onto canvas
-    fabric.Image.fromURL(generation.imageUrl, (img) => {
+    fabric.FabricImage.fromURL(generation.imageUrl, { crossOrigin: "anonymous" }).then((img: any) => {
       const scale = Math.min(
         fabricCanvas.width! / img.width!,
         fabricCanvas.height! / img.height!
@@ -64,9 +64,9 @@ export default function ImageEditor() {
         selectable: false,
       });
       fabricCanvas.add(img);
-      fabricCanvas.sendToBack(img);
+      img.sendToBack();
       fabricCanvas.renderAll();
-    }, { crossOrigin: "anonymous" });
+    });
 
     setCanvas(fabricCanvas);
 
@@ -78,19 +78,19 @@ export default function ImageEditor() {
   // Apply filters
   const applyFilters = () => {
     if (!canvas) return;
-    const bgImage = canvas.getObjects()[0] as fabric.Image;
+    const bgImage = canvas.getObjects()[0] as any;
     if (!bgImage) return;
 
     const filters: any[] = [];
 
     if (brightness !== 0) {
-      filters.push(new fabric.Image.filters.Brightness({ brightness: brightness / 100 }));
+      filters.push(new fabric.filters.Brightness({ brightness: brightness / 100 }));
     }
     if (contrast !== 0) {
-      filters.push(new fabric.Image.filters.Contrast({ contrast: contrast / 100 }));
+      filters.push(new fabric.filters.Contrast({ contrast: contrast / 100 }));
     }
     if (saturation !== 0) {
-      filters.push(new fabric.Image.filters.Saturation({ saturation: saturation / 100 }));
+      filters.push(new fabric.filters.Saturation({ saturation: saturation / 100 }));
     }
 
     bgImage.filters = filters;
@@ -153,7 +153,7 @@ export default function ImageEditor() {
     setIsSaving(true);
     try {
       // Export canvas as data URL
-      const dataURL = canvas.toDataURL({ format: "png", quality: 1 });
+      const dataURL = canvas.toDataURL({ format: "png", quality: 1, multiplier: 1 });
 
       // Convert data URL to Blob
       const res = await fetch(dataURL);
