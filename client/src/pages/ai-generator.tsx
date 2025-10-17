@@ -270,7 +270,7 @@ export default function AiGeneratorPage() {
   const [contrast, setContrast] = useState("medium");
   const [generationMode, setGenerationMode] = useState("standard");
   const [promptEnhance, setPromptEnhance] = useState(true);
-  const [numImages, setNumImages] = useState(1);
+  const [numImages, setNumImages] = useState(2);
   
   // Submit to contest wizard modal state
   const [wizardModalOpen, setWizardModalOpen] = useState(false);
@@ -316,8 +316,8 @@ export default function AiGeneratorPage() {
     const pricingKey = modelToPricingKey[selectedModel] || selectedModel;
     const modelCost = pricing?.[pricingKey] || 0;
     
-    // Calculate total cost (multiply by numImages if model supports it)
-    const total = currentModelConfig?.supportsNumImages ? modelCost * numImages : modelCost;
+    // Calculate total cost (multiply by numImages - all models support multiple images)
+    const total = modelCost * numImages;
     
     return {
       totalCost: total,
@@ -545,9 +545,8 @@ export default function AiGeneratorPage() {
       if (currentModelConfig?.supportsPromptEnhance) {
         params.promptEnhance = promptEnhance;
       }
-      if (currentModelConfig?.supportsNumImages) {
-        params.numImages = numImages;
-      }
+      // All models now support multiple images
+      params.numImages = numImages;
 
       generateMutation.mutate(params);
     } catch (error) {
@@ -915,11 +914,10 @@ export default function AiGeneratorPage() {
                         </div>
                       )}
 
-                      {/* Number of Images (Leonardo) */}
-                      {currentModelConfig.supportsNumImages && (
-                        <div>
-                          <Label>Number of Images: {numImages}</Label>
-                          <Slider
+                      {/* Number of Images (All Models) */}
+                      <div>
+                        <Label>Number of Images: {numImages}</Label>
+                        <Slider
                             value={[numImages]}
                             onValueChange={([v]) => setNumImages(v)}
                             min={1}
@@ -928,7 +926,6 @@ export default function AiGeneratorPage() {
                             data-testid="slider-num-images"
                           />
                         </div>
-                      )}
 
                       {/* Prompt Upsampling (Flux 1.1) */}
                       {currentModelConfig.supportsPromptUpsampling && (
@@ -1058,7 +1055,7 @@ export default function AiGeneratorPage() {
                       <span className="text-muted-foreground">Cost:</span>
                       <span className="font-semibold" data-testid="text-model-cost">
                         {totalCost} credits
-                        {currentModelConfig?.supportsNumImages && numImages > 1 && (
+                        {numImages > 1 && (
                           <span className="text-muted-foreground font-normal ml-1">
                             ({numImages} images)
                           </span>

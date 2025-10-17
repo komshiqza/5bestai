@@ -301,126 +301,152 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   console.log(`Generating AI image with ${modelConfig.name}...`, { prompt, model });
 
   try {
-    // Build input parameters based on model
-    const input: any = {
-      prompt,
+    // Helper function to build input parameters for a single generation
+    const buildInputParams = () => {
+      const input: any = {
+        prompt,
+      };
+
+      // Add seed if provided
+      if (seed !== undefined) {
+        input.seed = seed;
+      }
+
+      // Model-specific parameter handling
+      switch (model) {
+        case "ideogram-v3":
+          if (resolution && resolution !== "None") {
+            input.resolution = resolution;
+          } else if (aspectRatio) {
+            input.aspect_ratio = aspectRatio;
+          }
+          if (magicPromptOption) input.magic_prompt_option = magicPromptOption;
+          if (styleType && styleType !== "None") input.style_type = styleType;
+          if (stylePreset && stylePreset !== "None") input.style_preset = stylePreset;
+          if (imageInput) input.image = imageInput;
+          if (mask) input.mask = mask;
+          if (styleReferenceImages && styleReferenceImages.length > 0) {
+            input.style_reference_images = styleReferenceImages;
+          }
+          break;
+
+        case "nano-banana":
+          if (aspectRatio) input.aspect_ratio = aspectRatio;
+          if (outputFormat) {
+            // Nano Banana only supports jpg/png
+            input.output_format = outputFormat === "webp" ? "jpg" : outputFormat;
+          }
+          if (imageInput) {
+            // Handle single image or array
+            input.image_input = Array.isArray(imageInput) ? imageInput : [imageInput];
+          }
+          break;
+
+        case "flux-1.1-pro":
+          if (aspectRatio === "custom" && width && height) {
+            input.aspect_ratio = "custom";
+            input.width = width;
+            input.height = height;
+          } else if (aspectRatio) {
+            input.aspect_ratio = aspectRatio;
+          }
+          if (outputFormat) input.output_format = outputFormat;
+          if (outputQuality) input.output_quality = outputQuality;
+          if (promptUpsampling) input.prompt_upsampling = true;
+          if (safetyTolerance) input.safety_tolerance = safetyTolerance;
+          if (imageInput) input.image_prompt = imageInput;
+          break;
+
+        case "sd-3.5-large":
+          if (aspectRatio) input.aspect_ratio = aspectRatio;
+          if (outputFormat) input.output_format = outputFormat;
+          if (negativePrompt) input.negative_prompt = negativePrompt;
+          if (cfg) input.cfg = cfg;
+          if (imageInput) {
+            input.image = imageInput;
+            input.prompt_strength = promptStrength;
+          }
+          break;
+
+        case "leonardo-lucid":
+          if (aspectRatio) input.aspect_ratio = aspectRatio;
+          if (leonardoStyle && leonardoStyle !== "none") input.style = leonardoStyle;
+          if (contrast) input.contrast = contrast;
+          if (generationMode) input.generation_mode = generationMode;
+          if (promptEnhance !== undefined) input.prompt_enhance = promptEnhance;
+          if (numImages) input.num_images = numImages;
+          break;
+      }
+
+      return input;
     };
 
-    // Add seed if provided
-    if (seed !== undefined) {
-      input.seed = seed;
+    // Leonardo supports native multi-image generation
+    const leonardoSupportsMultiImage = model === "leonardo-lucid";
+    
+    // Collect all Replicate outputs
+    let allOutputs: any[] = [];
+
+    if (leonardoSupportsMultiImage) {
+      // Leonardo: Single API call with num_images parameter
+      const input = buildInputParams();
+      console.log("Replicate input parameters:", input);
+      
+      const output = await replicate.run(
+        modelConfig.replicateModel as `${string}/${string}`,
+        { input }
+      ) as any;
+      
+      allOutputs = Array.isArray(output) ? output : [output];
+    } else {
+      // Other models: Call API multiple times for each image
+      console.log(`Generating ${numImages} image(s) with sequential API calls...`);
+      
+      for (let i = 0; i < numImages; i++) {
+        const input = buildInputParams();
+        console.log(`Replicate input parameters (image ${i + 1}/${numImages}):`, input);
+        
+        const output = await replicate.run(
+          modelConfig.replicateModel as `${string}/${string}`,
+          { input }
+        ) as any;
+        
+        // Each call returns a single image (or array with one image)
+        if (Array.isArray(output)) {
+          allOutputs.push(...output);
+        } else {
+          allOutputs.push(output);
+        }
+      }
     }
 
-    // Model-specific parameter handling
-    switch (model) {
-      case "ideogram-v3":
-        if (resolution && resolution !== "None") {
-          input.resolution = resolution;
-        } else if (aspectRatio) {
-          input.aspect_ratio = aspectRatio;
-        }
-        if (magicPromptOption) input.magic_prompt_option = magicPromptOption;
-        if (styleType && styleType !== "None") input.style_type = styleType;
-        if (stylePreset && stylePreset !== "None") input.style_preset = stylePreset;
-        if (imageInput) input.image = imageInput;
-        if (mask) input.mask = mask;
-        if (styleReferenceImages && styleReferenceImages.length > 0) {
-          input.style_reference_images = styleReferenceImages;
-        }
-        break;
-
-      case "nano-banana":
-        if (aspectRatio) input.aspect_ratio = aspectRatio;
-        if (outputFormat) {
-          // Nano Banana only supports jpg/png
-          input.output_format = outputFormat === "webp" ? "jpg" : outputFormat;
-        }
-        if (imageInput) {
-          // Handle single image or array
-          input.image_input = Array.isArray(imageInput) ? imageInput : [imageInput];
-        }
-        break;
-
-      case "flux-1.1-pro":
-        if (aspectRatio === "custom" && width && height) {
-          input.aspect_ratio = "custom";
-          input.width = width;
-          input.height = height;
-        } else if (aspectRatio) {
-          input.aspect_ratio = aspectRatio;
-        }
-        if (outputFormat) input.output_format = outputFormat;
-        if (outputQuality) input.output_quality = outputQuality;
-        if (promptUpsampling) input.prompt_upsampling = true;
-        if (safetyTolerance) input.safety_tolerance = safetyTolerance;
-        if (imageInput) input.image_prompt = imageInput;
-        break;
-
-      case "sd-3.5-large":
-        if (aspectRatio) input.aspect_ratio = aspectRatio;
-        if (outputFormat) input.output_format = outputFormat;
-        if (negativePrompt) input.negative_prompt = negativePrompt;
-        if (cfg) input.cfg = cfg;
-        if (imageInput) {
-          input.image = imageInput;
-          input.prompt_strength = promptStrength;
-        }
-        break;
-
-      case "leonardo-lucid":
-        if (aspectRatio) input.aspect_ratio = aspectRatio;
-        if (leonardoStyle && leonardoStyle !== "none") input.style = leonardoStyle;
-        if (contrast) input.contrast = contrast;
-        if (generationMode) input.generation_mode = generationMode;
-        if (promptEnhance !== undefined) input.prompt_enhance = promptEnhance;
-        if (numImages) input.num_images = numImages;
-        break;
-    }
-
-    console.log("Replicate input parameters:", input);
-
-    const output = await replicate.run(
-      modelConfig.replicateModel as `${string}/${string}`,
-      { input }
-    ) as any;
-
-    if (!output) {
+    if (!allOutputs || allOutputs.length === 0) {
       throw new Error("No image generated");
     }
 
-    // Extract URLs from Replicate response (handle both single and multiple images)
+    // Extract URLs from Replicate response (always an array now)
     let imageUrls: string[] = [];
     
-    if (Array.isArray(output)) {
-      // Process all images in the array
-      for (const item of output) {
-        let url: string;
-        
-        if (typeof item === 'object' && item !== null) {
-          if (typeof item.url === 'function') {
-            const urlResult = await item.url();
-            url = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
-          } else if (typeof item.url === 'string') {
-            url = item.url;
-          } else {
-            throw new Error("FileOutput object missing url property");
-          }
-        } else if (typeof item === 'string') {
-          url = item;
+    // Process all images in the array
+    for (const item of allOutputs) {
+      let url: string;
+      
+      if (typeof item === 'object' && item !== null) {
+        if (typeof item.url === 'function') {
+          const urlResult = await item.url();
+          url = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
+        } else if (typeof item.url === 'string') {
+          url = item.url;
         } else {
-          throw new Error("Invalid output format from Replicate");
+          throw new Error("FileOutput object missing url property");
         }
-        
-        imageUrls.push(url);
+      } else if (typeof item === 'string') {
+        url = item;
+      } else {
+        throw new Error("Invalid output format from Replicate");
       }
-    } else if (typeof output === 'string') {
-      imageUrls = [output];
-    } else if (typeof output === 'object' && output !== null && typeof output.url === 'function') {
-      const urlResult = await output.url();
-      const url = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
-      imageUrls = [url];
-    } else {
-      throw new Error("Invalid output format from Replicate");
+      
+      imageUrls.push(url);
     }
 
     console.log(`AI image(s) generated successfully: ${imageUrls.length} image(s)`);
