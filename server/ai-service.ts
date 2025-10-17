@@ -96,7 +96,7 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsOutputFormat: true,
     supportsGoFast: false,
     supportsNegativePrompt: false,
-    costPerImage: 0.002,
+    costPerImage: 0.039,
   },
 };
 
