@@ -2705,7 +2705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate image validation schema
   const generateImageSchema = z.object({
     prompt: z.string().min(3, "Prompt must be at least 3 characters").max(1000, "Prompt too long"),
-    model: z.enum(["flux-schnell", "flux-dev", "flux-pro", "sdxl-lightning", "sd3"]).optional(),
+    model: z.enum(["flux-schnell", "flux-dev", "flux-pro", "sdxl-lightning", "sd3", "nano-banana"]).optional(),
     negativePrompt: z.string().max(500, "Negative prompt too long").optional(),
     aspectRatio: z.enum(["1:1", "16:9", "9:16", "4:3", "3:2", "21:9"]).optional(),
     outputFormat: z.enum(["webp", "png", "jpg"]).optional(),
