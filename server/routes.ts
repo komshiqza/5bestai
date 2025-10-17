@@ -2711,6 +2711,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
     res.json(models);
   });
+
+  // Get pricing settings for all models and upscaling
+  app.get("/api/pricing", async (req, res) => {
+    try {
+      const allPricing = await storage.getAllPricingSettings();
+      const pricingObject: Record<string, number> = {};
+      allPricing.forEach((value, key) => {
+        pricingObject[key] = value;
+      });
+      res.json(pricingObject);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pricing" });
+    }
+  });
   
   // AI generation rate limiter (30 generations per hour per user)
   const aiGenerationRateLimiter = async (req: AuthRequest): Promise<boolean> => {

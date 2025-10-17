@@ -287,6 +287,18 @@ export default function AiGeneratorPage() {
     queryKey: ["/api/ai/generations"],
   });
 
+  const { data: userData } = useQuery<any>({
+    queryKey: ["/api/me"],
+  });
+
+  const { data: pricing } = useQuery<Record<string, number>>({
+    queryKey: ["/api/pricing"],
+  });
+
+  const userCredits = userData?.imageCredits || 0;
+  const modelCost = pricing?.[selectedModel] || 0;
+  const hasEnoughCredits = userCredits >= modelCost;
+
   const currentModelConfig = modelConfigs?.find(m => m.id === selectedModel);
 
   const getAspectRatiosForModel = (modelId: string) => {
@@ -316,9 +328,10 @@ export default function AiGeneratorPage() {
     onSuccess: (data) => {
       setCurrentImage(data.imageUrl);
       queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       toast({
         title: "Image Generated!",
-        description: "Your AI image has been created successfully.",
+        description: `Your AI image has been created successfully. ${data.creditsUsed} credits used.`,
       });
     },
     onError: (error: Error) => {
@@ -494,13 +507,22 @@ export default function AiGeneratorPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl gradient-glory flex items-center justify-center">
-            <Sparkles className="text-white" size={24} />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl gradient-glory flex items-center justify-center">
+              <Sparkles className="text-white" size={24} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">AI Studio</h1>
+              <p className="text-muted-foreground">Create stunning images with AI</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">AI Studio</h1>
-            <p className="text-muted-foreground">Create stunning images with AI</p>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
+            <Sparkles className="text-primary" size={18} />
+            <div>
+              <p className="text-xs text-muted-foreground">Credits</p>
+              <p className="text-2xl font-bold text-primary" data-testid="text-credits-balance">{userCredits}</p>
+            </div>
           </div>
         </div>
 
@@ -964,25 +986,38 @@ export default function AiGeneratorPage() {
                   </details>
                 )}
 
-                <Button
-                  onClick={handleGenerate}
-                  disabled={generateMutation.isPending}
-                  className="w-full gradient-glory"
-                  size="lg"
-                  data-testid="button-generate"
-                >
-                  {generateMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      Generate Image
-                    </>
+                <div className="space-y-2">
+                  {modelCost > 0 && (
+                    <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 text-sm">
+                      <span className="text-muted-foreground">Cost:</span>
+                      <span className="font-semibold" data-testid="text-model-cost">{modelCost} credits</span>
+                    </div>
                   )}
-                </Button>
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={generateMutation.isPending || !hasEnoughCredits}
+                    className="w-full gradient-glory"
+                    size="lg"
+                    data-testid="button-generate"
+                  >
+                    {generateMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : !hasEnoughCredits ? (
+                      <>
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Insufficient Credits
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Generate Image
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
