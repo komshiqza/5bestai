@@ -627,7 +627,12 @@ export default function AiGeneratorPage() {
                           const credits = pricing?.[pricingKey] || 0;
                           return (
                             <SelectItem key={model.id} value={model.id}>
-                              <span className="text-sm">
+                              {/* Mobile: Model - Price */}
+                              <span className="text-sm md:hidden">
+                                {model.name} - {credits} {credits === 1 ? 'credit' : 'credits'}
+                              </span>
+                              {/* Desktop: Model - Description - Price */}
+                              <span className="text-sm hidden md:inline">
                                 {model.name} - {model.description} - {credits} {credits === 1 ? 'credit' : 'credits'} per image
                               </span>
                             </SelectItem>
