@@ -87,6 +87,17 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsNegativePrompt: true,
     costPerImage: 0.02,
   },
+  "nano-banana": {
+    id: "nano-banana",
+    name: "Nano Banana",
+    description: "Google's Gemini 2.5 Flash Image (fast, versatile)",
+    replicateModel: "google/nano-banana",
+    supportsAspectRatio: false,
+    supportsOutputFormat: true,
+    supportsGoFast: false,
+    supportsNegativePrompt: false,
+    costPerImage: 0.002,
+  },
 };
 
 export interface GenerateImageOptions {
@@ -148,8 +159,13 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       input.aspect_ratio = aspectRatio;
     }
     if (modelConfig.supportsOutputFormat) {
-      input.output_format = outputFormat;
-      input.output_quality = outputQuality;
+      // Nano Banana only supports jpg/png, not webp
+      if (model === "nano-banana") {
+        input.output_format = outputFormat === "webp" ? "jpg" : outputFormat;
+      } else {
+        input.output_format = outputFormat;
+        input.output_quality = outputQuality;
+      }
     }
     if (modelConfig.supportsGoFast && goFast) {
       input.go_fast = goFast;
