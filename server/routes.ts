@@ -2812,12 +2812,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Model pricing not configured" });
       }
 
+      // Calculate total cost (multiply by numImages if provided)
+      const numImages = params.numImages || 1;
+      const totalCost = modelCost * numImages;
+
       // Check if user has enough credits
       const userCredits = await storage.getUserCredits(userId);
-      if (userCredits < modelCost) {
+      if (userCredits < totalCost) {
         return res.status(402).json({ 
           error: "Insufficient credits",
-          required: modelCost,
+          required: totalCost,
           current: userCredits
         });
       }
@@ -2825,39 +2829,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Generating AI image for user ${userId}:`, params.prompt);
 
       // Deduct credits BEFORE generation
-      const deducted = await storage.deductCredits(userId, modelCost);
+      const deducted = await storage.deductCredits(userId, totalCost);
       if (!deducted) {
         return res.status(402).json({ error: "Failed to deduct credits" });
       }
 
       try {
-        // Generate image using Replicate
-        const result = await generateImage(params);
+        // Generate image(s) using Replicate (returns array)
+        const results = await generateImage(params);
 
-        // Save generation to database with credits used
-        const generation = await storage.createAiGeneration({
-          userId,
-          prompt: params.prompt,
-          model: result.parameters.model,
-          imageUrl: result.url,
-          parameters: result.parameters,
-          cloudinaryPublicId: result.cloudinaryPublicId,
-          status: "generated",
-          creditsUsed: modelCost
-        });
+        // Guard against empty results
+        if (!results || results.length === 0) {
+          await storage.addCredits(userId, totalCost);
+          throw new Error("No images were generated");
+        }
 
+        // If we got fewer images than requested, refund the difference
+        const actualCost = modelCost * results.length;
+        if (actualCost < totalCost) {
+          const refundAmount = totalCost - actualCost;
+          await storage.addCredits(userId, refundAmount);
+        }
+
+        // Calculate credits per image based on actual results
+        const creditsPerImage = modelCost;
+
+        // Save all generations to database
+        const generations = await Promise.all(
+          results.map(result => 
+            storage.createAiGeneration({
+              userId,
+              prompt: params.prompt,
+              model: result.parameters.model,
+              imageUrl: result.url,
+              parameters: result.parameters,
+              cloudinaryPublicId: result.cloudinaryPublicId,
+              status: "generated",
+              creditsUsed: creditsPerImage
+            })
+          )
+        );
+
+        // Return all generated images using data from database records
         res.json({ 
-          id: generation.id,
-          imageUrl: result.url,
-          cloudinaryUrl: result.cloudinaryUrl,
-          cloudinaryPublicId: result.cloudinaryPublicId,
-          parameters: result.parameters,
-          creditsUsed: modelCost,
-          creditsRemaining: userCredits - modelCost
+          images: generations.map(gen => ({
+            id: gen.id,
+            imageUrl: gen.imageUrl,
+            cloudinaryUrl: gen.imageUrl, // Already points to Cloudinary if upload succeeded
+            cloudinaryPublicId: gen.cloudinaryPublicId,
+            parameters: gen.parameters,
+          })),
+          creditsUsed: actualCost,
+          creditsRemaining: userCredits - actualCost
         });
       } catch (generationError) {
         // Refund credits if generation failed
-        await storage.addCredits(userId, modelCost);
+        await storage.addCredits(userId, totalCost);
         throw generationError;
       }
     } catch (error) {

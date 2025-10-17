@@ -350,13 +350,20 @@ export default function AiGeneratorPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      setCurrentImage(data.imageUrl);
-      setCurrentGenerationId(data.id);
+      // Handle multiple images - show the first one
+      if (data.images && data.images.length > 0) {
+        setCurrentImage(data.images[0].imageUrl);
+        setCurrentGenerationId(data.images[0].id);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      
+      const imageCount = data.images?.length || 1;
+      const imageText = imageCount > 1 ? `${imageCount} images` : "Image";
+      
       toast({
-        title: "Image Generated!",
-        description: `Your AI image has been created successfully. ${data.creditsUsed} credits used.`,
+        title: `${imageText} Generated!`,
+        description: `Your AI image${imageCount > 1 ? 's have' : ' has'} been created successfully. ${data.creditsUsed} credits used.`,
       });
     },
     onError: (error: Error) => {

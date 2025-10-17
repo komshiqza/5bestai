@@ -266,7 +266,7 @@ export interface GeneratedImage {
   parameters: Record<string, any>;
 }
 
-export async function generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
+export async function generateImage(options: GenerateImageOptions): Promise<GeneratedImage[]> {
   const {
     prompt,
     model = "flux-1.1-pro",
@@ -388,59 +388,72 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       throw new Error("No image generated");
     }
 
-    // Extract URL from Replicate response
-    let imageUrl: string;
+    // Extract URLs from Replicate response (handle both single and multiple images)
+    let imageUrls: string[] = [];
     
     if (Array.isArray(output)) {
-      const firstOutput = output[0];
-      
-      if (typeof firstOutput === 'object' && firstOutput !== null) {
-        if (typeof firstOutput.url === 'function') {
-          const urlResult = await firstOutput.url();
-          imageUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
-        } else if (typeof firstOutput.url === 'string') {
-          imageUrl = firstOutput.url;
+      // Process all images in the array
+      for (const item of output) {
+        let url: string;
+        
+        if (typeof item === 'object' && item !== null) {
+          if (typeof item.url === 'function') {
+            const urlResult = await item.url();
+            url = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
+          } else if (typeof item.url === 'string') {
+            url = item.url;
+          } else {
+            throw new Error("FileOutput object missing url property");
+          }
+        } else if (typeof item === 'string') {
+          url = item;
         } else {
-          throw new Error("FileOutput object missing url property");
+          throw new Error("Invalid output format from Replicate");
         }
-      } else if (typeof firstOutput === 'string') {
-        imageUrl = firstOutput;
-      } else {
-        throw new Error("Invalid output format from Replicate");
+        
+        imageUrls.push(url);
       }
     } else if (typeof output === 'string') {
-      imageUrl = output;
+      imageUrls = [output];
     } else if (typeof output === 'object' && output !== null && typeof output.url === 'function') {
       const urlResult = await output.url();
-      imageUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
+      const url = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
+      imageUrls = [url];
     } else {
       throw new Error("Invalid output format from Replicate");
     }
 
-    console.log("AI image generated successfully:", imageUrl);
+    console.log(`AI image(s) generated successfully: ${imageUrls.length} image(s)`);
 
-    // Upload to Cloudinary
-    let cloudinaryUrl: string | undefined;
-    let cloudinaryPublicId: string | undefined;
+    // Upload all images to Cloudinary
+    const results: GeneratedImage[] = [];
+    
+    for (let i = 0; i < imageUrls.length; i++) {
+      const imageUrl = imageUrls[i];
+      let cloudinaryUrl: string | undefined;
+      let cloudinaryPublicId: string | undefined;
 
-    try {
-      const uploadResult = await downloadAndUploadToCloudinary(imageUrl);
-      cloudinaryUrl = uploadResult.url;
-      cloudinaryPublicId = uploadResult.publicId;
-      console.log("Image uploaded to Cloudinary:", cloudinaryUrl);
-    } catch (uploadError) {
-      console.error("Cloudinary upload failed, using Replicate URL:", uploadError);
+      try {
+        const uploadResult = await downloadAndUploadToCloudinary(imageUrl);
+        cloudinaryUrl = uploadResult.url;
+        cloudinaryPublicId = uploadResult.publicId;
+        console.log(`Image ${i + 1}/${imageUrls.length} uploaded to Cloudinary:`, cloudinaryUrl);
+      } catch (uploadError) {
+        console.error(`Cloudinary upload failed for image ${i + 1}, using Replicate URL:`, uploadError);
+      }
+
+      results.push({
+        url: cloudinaryUrl || imageUrl,
+        cloudinaryUrl,
+        cloudinaryPublicId,
+        parameters: {
+          model: modelConfig.id,
+          ...options, // Include all original parameters
+        },
+      });
     }
 
-    return {
-      url: cloudinaryUrl || imageUrl,
-      cloudinaryUrl,
-      cloudinaryPublicId,
-      parameters: {
-        model: modelConfig.id,
-        ...options, // Include all original parameters
-      },
-    };
+    return results;
   } catch (error) {
     console.error("Replicate API error:", error);
     throw new Error(
