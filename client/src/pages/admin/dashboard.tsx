@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,9 @@ import {
   Edit3,
   Copy,
   Download,
-  Settings
+  Settings,
+  Sparkles,
+  Save
 } from "lucide-react";
 import { useAuth, isAdmin } from "@/lib/auth";
 import { useLocation } from "wouter";
@@ -53,6 +55,15 @@ const settingsFormSchema = z.object({
 });
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
+
+const MODEL_NAMES: Record<string, string> = {
+  "leonardo": "Leonardo Lucid (Fast)",
+  "nano-banana": "Nano Banana (Style Reference)",
+  "flux-1.1-pro": "Flux 1.1 Pro (High Quality)",
+  "sd-3.5-large": "Stable Diffusion 3.5",
+  "ideogram-v3": "Ideogram v3 (Premium)",
+  "upscale": "AI Upscaling (4x)",
+};
 
 export default function AdminDashboard() {
   const { data: user } = useAuth();
@@ -91,6 +102,9 @@ export default function AdminDashboard() {
   // Clear audit logs state
   const [clearLogsDialogOpen, setClearLogsDialogOpen] = useState(false);
   const [clearLogsConfirmText, setClearLogsConfirmText] = useState("");
+
+  // AI Pricing state
+  const [pricingValues, setPricingValues] = useState<Record<string, number>>({});
 
   // Redirect if not admin
   if (!user || !isAdmin(user)) {
@@ -155,6 +169,17 @@ export default function AdminDashboard() {
       return response.json();
     },
   });
+
+  // AI Pricing Settings
+  const { data: pricing, isLoading: loadingPricing } = useQuery<Record<string, number>>({
+    queryKey: ["/api/admin/settings/pricing"],
+  });
+
+  useEffect(() => {
+    if (pricing) {
+      setPricingValues(pricing);
+    }
+  }, [pricing]);
 
   // Settings form
   const settingsForm = useForm<SettingsFormValues>({
@@ -672,6 +697,31 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to update settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update Pricing mutation
+  const updatePricingMutation = useMutation({
+    mutationFn: async () => {
+      const updates = Object.entries(pricingValues).map(([key, value]) =>
+        apiRequest("PUT", `/api/admin/settings/pricing/${key}`, { value })
+      );
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings/pricing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pricing"] });
+      toast({
+        title: "Pricing Updated",
+        description: "AI model pricing has been successfully updated",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update pricing",
         variant: "destructive",
       });
     },
@@ -2399,6 +2449,74 @@ export default function AdminDashboard() {
                     </div>
                   </form>
                 </Form>
+
+                {/* AI Model Pricing */}
+                <div className="mt-8 pt-8 border-t">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Sparkles className="h-5 w-5" />
+                      AI Model Pricing
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Configure credit costs for AI image generation and upscaling
+                    </p>
+                  </div>
+
+                  {loadingPricing ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid gap-4">
+                        {Object.entries(MODEL_NAMES).map(([key, label]) => (
+                          <div key={key} className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <label htmlFor={`pricing-${key}`} className="text-sm font-medium">
+                                {label}
+                              </label>
+                              <p className="text-xs text-muted-foreground">Cost per generation</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id={`pricing-${key}`}
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={pricingValues[key] || 0}
+                                onChange={(e) =>
+                                  setPricingValues({ ...pricingValues, [key]: parseInt(e.target.value) || 0 })
+                                }
+                                className="w-24"
+                                data-testid={`input-pricing-${key}`}
+                              />
+                              <span className="text-sm text-muted-foreground">credits</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end pt-6">
+                        <Button
+                          onClick={() => updatePricingMutation.mutate()}
+                          disabled={updatePricingMutation.isPending}
+                          data-testid="button-save-pricing"
+                        >
+                          {updatePricingMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              Save Pricing
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
