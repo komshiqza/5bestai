@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -297,20 +297,33 @@ export default function AiGeneratorPage() {
   });
 
   // Map model IDs to pricing keys
-  const modelToPricingKey: Record<string, string> = {
+  const modelToPricingKey: Record<string, string> = useMemo(() => ({
     "leonardo-lucid": "leonardo",
     "ideogram-v3": "ideogram-v3",
     "nano-banana": "nano-banana",
     "flux-1.1-pro": "flux-1.1-pro",
     "sd-3.5-large": "sd-3.5-large",
-  };
+  }), []);
 
+  const currentModelConfig = useMemo(() => 
+    modelConfigs?.find(m => m.id === selectedModel),
+    [modelConfigs, selectedModel]
+  );
+  
   const userCredits = userData?.imageCredits || 0;
-  const pricingKey = modelToPricingKey[selectedModel] || selectedModel;
-  const modelCost = pricing?.[pricingKey] || 0;
-  const hasEnoughCredits = userCredits >= modelCost;
-
-  const currentModelConfig = modelConfigs?.find(m => m.id === selectedModel);
+  
+  const { totalCost, hasEnoughCredits } = useMemo(() => {
+    const pricingKey = modelToPricingKey[selectedModel] || selectedModel;
+    const modelCost = pricing?.[pricingKey] || 0;
+    
+    // Calculate total cost (multiply by numImages if model supports it)
+    const total = currentModelConfig?.supportsNumImages ? modelCost * numImages : modelCost;
+    
+    return {
+      totalCost: total,
+      hasEnoughCredits: userCredits >= total
+    };
+  }, [userCredits, pricing, selectedModel, numImages, currentModelConfig, modelToPricingKey]);
 
   const getAspectRatiosForModel = (modelId: string) => {
     if (modelId.includes("ideogram")) return ideogramAspectRatios;
@@ -1033,10 +1046,17 @@ export default function AiGeneratorPage() {
                 )}
 
                 <div className="space-y-2">
-                  {modelCost > 0 && (
+                  {totalCost > 0 && (
                     <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 text-sm">
                       <span className="text-muted-foreground">Cost:</span>
-                      <span className="font-semibold" data-testid="text-model-cost">{modelCost} credits</span>
+                      <span className="font-semibold" data-testid="text-model-cost">
+                        {totalCost} credits
+                        {currentModelConfig?.supportsNumImages && numImages > 1 && (
+                          <span className="text-muted-foreground font-normal ml-1">
+                            ({numImages} images)
+                          </span>
+                        )}
+                      </span>
                     </div>
                   )}
                   <Button
