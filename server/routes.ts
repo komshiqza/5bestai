@@ -2911,6 +2911,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/ai/generations/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const generation = await storage.getAiGeneration(id);
+      if (!generation) {
+        return res.status(404).json({ error: "Generation not found" });
+      }
+
+      if (generation.userId !== userId) {
+        return res.status(403).json({ error: "Not authorized to access this generation" });
+      }
+
+      res.json(generation);
+    } catch (error) {
+      console.error("Error fetching AI generation:", error);
+      res.status(500).json({ error: "Failed to fetch generation" });
+    }
+  });
+
   app.delete("/api/ai/generations/:id", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
