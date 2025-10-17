@@ -2782,6 +2782,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     promptStrength: z.number().min(0).max(1).optional(),
   });
 
+  // Map model IDs to pricing keys
+  const modelToPricingKey = (modelId: string): string => {
+    const mapping: Record<string, string> = {
+      "leonardo-lucid": "leonardo",
+      "ideogram-v3": "ideogram-v3",
+      "nano-banana": "nano-banana",
+      "flux-1.1-pro": "flux-1.1-pro",
+      "sd-3.5-large": "sd-3.5-large",
+    };
+    return mapping[modelId] || modelId;
+  };
+
   app.post("/api/ai/generate", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     // Check rate limit
     const canGenerate = await aiGenerationRateLimiter(req);
@@ -2793,8 +2805,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const modelId = params.model || "flux-1.1-pro";
 
-      // Get model cost from pricing settings
-      const modelCost = await storage.getPricingSetting(modelId);
+      // Get model cost from pricing settings using pricing key
+      const pricingKey = modelToPricingKey(modelId);
+      const modelCost = await storage.getPricingSetting(pricingKey);
       if (!modelCost) {
         return res.status(500).json({ error: "Model pricing not configured" });
       }
