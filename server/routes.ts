@@ -2682,11 +2682,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       id: model.id,
       name: model.name,
       description: model.description,
-      supportsAspectRatio: model.supportsAspectRatio,
-      supportsOutputFormat: model.supportsOutputFormat,
-      supportsGoFast: model.supportsGoFast,
-      supportsNegativePrompt: model.supportsNegativePrompt,
       costPerImage: model.costPerImage,
+      
+      // All capability flags
+      supportsAspectRatio: model.supportsAspectRatio,
+      supportsCustomDimensions: model.supportsCustomDimensions,
+      supportsResolution: model.supportsResolution,
+      supportsOutputFormat: model.supportsOutputFormat,
+      supportsOutputQuality: model.supportsOutputQuality,
+      supportsNegativePrompt: model.supportsNegativePrompt,
+      supportsImageInput: model.supportsImageInput,
+      supportsMask: model.supportsMask,
+      supportsStyleType: model.supportsStyleType,
+      supportsStylePreset: model.supportsStylePreset,
+      supportsMagicPrompt: model.supportsMagicPrompt,
+      supportsPromptUpsampling: model.supportsPromptUpsampling,
+      supportsSafetyTolerance: model.supportsSafetyTolerance,
+      supportsCfg: model.supportsCfg,
+      supportsPromptStrength: model.supportsPromptStrength,
+      supportsLeonardoStyle: model.supportsLeonardoStyle,
+      supportsContrast: model.supportsContrast,
+      supportsGenerationMode: model.supportsGenerationMode,
+      supportsPromptEnhance: model.supportsPromptEnhance,
+      supportsNumImages: model.supportsNumImages,
     }));
     res.json(models);
   });
@@ -2705,13 +2723,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate image validation schema
   const generateImageSchema = z.object({
     prompt: z.string().min(3, "Prompt must be at least 3 characters").max(1000, "Prompt too long"),
-    model: z.enum(["flux-schnell", "flux-dev", "flux-pro", "sdxl-lightning", "sd3", "nano-banana"]).optional(),
-    negativePrompt: z.string().max(500, "Negative prompt too long").optional(),
-    aspectRatio: z.enum(["1:1", "16:9", "9:16", "4:3", "3:2", "21:9"]).optional(),
+    model: z.enum(["ideogram-v3", "nano-banana", "flux-1.1-pro", "sd-3.5-large", "leonardo-lucid"]).optional(),
+    seed: z.number().int().optional(),
+    
+    // Dimension options
+    aspectRatio: z.string().optional(),
+    width: z.number().min(256).max(1440).optional(),
+    height: z.number().min(256).max(1440).optional(),
+    resolution: z.string().optional(),
+    
+    // Output options
     outputFormat: z.enum(["webp", "png", "jpg"]).optional(),
     outputQuality: z.number().min(0).max(100).optional(),
-    goFast: z.boolean().optional(),
-    seed: z.number().int().optional(),
+    
+    // Prompt modifiers
+    negativePrompt: z.string().max(500).optional(),
+    promptUpsampling: z.boolean().optional(),
+    promptEnhance: z.boolean().optional(),
+    magicPromptOption: z.enum(["Auto", "On", "Off"]).optional(),
+    
+    // Image input
+    imageInput: z.union([z.string(), z.array(z.string())]).optional(),
+    mask: z.string().optional(),
+    
+    // Style options (Ideogram)
+    styleType: z.string().optional(),
+    stylePreset: z.string().optional(),
+    styleReferenceImages: z.array(z.string()).optional(),
+    
+    // Leonardo options
+    leonardoStyle: z.string().optional(),
+    contrast: z.enum(["low", "medium", "high"]).optional(),
+    generationMode: z.enum(["standard", "ultra"]).optional(),
+    numImages: z.number().min(1).max(8).optional(),
+    
+    // Flux options
+    safetyTolerance: z.number().min(1).max(6).optional(),
+    
+    // Stable Diffusion options
+    cfg: z.number().min(1).max(10).optional(),
+    promptStrength: z.number().min(0).max(1).optional(),
   });
 
   app.post("/api/ai/generate", authenticateToken, requireApproved, async (req: AuthRequest, res) => {

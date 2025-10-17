@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,11 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Zap, Upload } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import type { AiGeneration } from "@shared/schema";
 
@@ -18,45 +17,30 @@ interface ModelConfig {
   id: string;
   name: string;
   description: string;
-  supportsAspectRatio: boolean;
-  supportsOutputFormat: boolean;
-  supportsGoFast: boolean;
-  supportsNegativePrompt: boolean;
   costPerImage: number;
+  
+  supportsAspectRatio: boolean;
+  supportsCustomDimensions: boolean;
+  supportsResolution: boolean;
+  supportsOutputFormat: boolean;
+  supportsOutputQuality: boolean;
+  supportsNegativePrompt: boolean;
+  supportsImageInput: boolean;
+  supportsMask: boolean;
+  
+  supportsStyleType: boolean;
+  supportsStylePreset: boolean;
+  supportsMagicPrompt: boolean;
+  supportsPromptUpsampling: boolean;
+  supportsSafetyTolerance: boolean;
+  supportsCfg: boolean;
+  supportsPromptStrength: boolean;
+  supportsLeonardoStyle: boolean;
+  supportsContrast: boolean;
+  supportsGenerationMode: boolean;
+  supportsPromptEnhance: boolean;
+  supportsNumImages: boolean;
 }
-
-const stylePresets = {
-  realistic: {
-    name: "Realistic",
-    description: "Photo-realistic images",
-    promptSuffix: ", photorealistic, highly detailed, professional photography, 8k uhd, dslr, soft lighting, high quality",
-  },
-  artistic: {
-    name: "Artistic",
-    description: "Painted and artistic style",
-    promptSuffix: ", digital art, artistic, painterly style, vibrant colors, creative composition, masterpiece",
-  },
-  anime: {
-    name: "Anime",
-    description: "Anime and manga style",
-    promptSuffix: ", anime style, manga art, cel shaded, vibrant colors, expressive, japanese animation style",
-  },
-  fantasy: {
-    name: "Fantasy",
-    description: "Fantasy and magical themes",
-    promptSuffix: ", fantasy art, magical, ethereal, epic, enchanted, mystical atmosphere, dramatic lighting",
-  },
-  abstract: {
-    name: "Abstract",
-    description: "Abstract and experimental",
-    promptSuffix: ", abstract art, geometric shapes, vibrant colors, modern art, creative patterns, artistic composition",
-  },
-  portrait: {
-    name: "Portrait",
-    description: "Focus on faces and portraits",
-    promptSuffix: ", portrait photography, face focus, detailed facial features, professional headshot, studio lighting",
-  },
-};
 
 const aspectRatios = [
   { value: "1:1", label: "Square (1:1)" },
@@ -64,20 +48,129 @@ const aspectRatios = [
   { value: "9:16", label: "Portrait (9:16)" },
   { value: "4:3", label: "Classic (4:3)" },
   { value: "3:2", label: "Photo (3:2)" },
-  { value: "21:9", label: "Cinematic (21:9)" },
+  { value: "2:3", label: "Photo Portrait (2:3)" },
+  { value: "4:5", label: "Portrait (4:5)" },
+  { value: "5:4", label: "Landscape (5:4)" },
+  { value: "21:9", label: "Ultrawide (21:9)" },
+];
+
+const ideogramResolutions = [
+  { value: "None", label: "None (use aspect ratio)" },
+  { value: "1024x1024", label: "1024x1024 (Square)" },
+  { value: "1152x896", label: "1152x896 (Landscape)" },
+  { value: "896x1152", label: "896x1152 (Portrait)" },
+  { value: "1216x832", label: "1216x832 (Wide)" },
+  { value: "832x1216", label: "832x1216 (Tall)" },
+  { value: "1344x768", label: "1344x768 (Ultrawide)" },
+  { value: "768x1344", label: "768x1344 (Ultra Tall)" },
+  { value: "1536x640", label: "1536x640 (Panorama)" },
+  { value: "640x1536", label: "640x1536 (Vertical Panorama)" },
+];
+
+const ideogramStyleTypes = [
+  { value: "None", label: "None" },
+  { value: "Auto", label: "Auto" },
+  { value: "General", label: "General" },
+  { value: "Realistic", label: "Realistic" },
+  { value: "Design", label: "Design" },
+];
+
+const ideogramStylePresets = [
+  { value: "None", label: "None" },
+  { value: "Realistic", label: "Realistic" },
+  { value: "Oil Painting", label: "Oil Painting" },
+  { value: "Watercolor", label: "Watercolor" },
+  { value: "Pop Art", label: "Pop Art" },
+  { value: "Anime", label: "Anime" },
+  { value: "Cubism", label: "Cubism" },
+  { value: "Art Deco", label: "Art Deco" },
+  { value: "Bauhaus", label: "Bauhaus" },
+  { value: "Vintage Poster", label: "Vintage Poster" },
+  { value: "Travel Poster", label: "Travel Poster" },
+  { value: "Magazine Editorial", label: "Magazine Editorial" },
+  { value: "Dramatic Cinema", label: "Dramatic Cinema" },
+  { value: "Golden Hour", label: "Golden Hour" },
+  { value: "Long Exposure", label: "Long Exposure" },
+  { value: "Monochrome", label: "Monochrome" },
+  { value: "Minimal Illustration", label: "Minimal Illustration" },
+  { value: "Flat Art", label: "Flat Art" },
+  { value: "C4D Cartoon", label: "C4D Cartoon" },
+  { value: "Graffiti I", label: "Graffiti I" },
+  { value: "80s Illustration", label: "80s Illustration" },
+  { value: "90s Nostalgia", label: "90s Nostalgia" },
+];
+
+const magicPromptOptions = [
+  { value: "Auto", label: "Auto" },
+  { value: "On", label: "On" },
+  { value: "Off", label: "Off" },
+];
+
+const leonardoStyles = [
+  { value: "none", label: "None" },
+  { value: "bokeh", label: "Bokeh" },
+  { value: "cinematic", label: "Cinematic" },
+  { value: "cinematic_close_up", label: "Cinematic Close Up" },
+  { value: "creative", label: "Creative" },
+  { value: "dynamic", label: "Dynamic" },
+  { value: "fashion", label: "Fashion" },
+  { value: "film", label: "Film" },
+  { value: "food", label: "Food" },
+  { value: "hdr", label: "HDR" },
+  { value: "long_exposure", label: "Long Exposure" },
+  { value: "macro", label: "Macro" },
+  { value: "minimalist", label: "Minimalist" },
+  { value: "monochrome", label: "Monochrome" },
+  { value: "moody", label: "Moody" },
+  { value: "neutral", label: "Neutral" },
+  { value: "portrait", label: "Portrait" },
+  { value: "retro", label: "Retro" },
+  { value: "stock_photo", label: "Stock Photo" },
+  { value: "unprocessed", label: "Unprocessed" },
+  { value: "vibrant", label: "Vibrant" },
+];
+
+const contrastLevels = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
+const generationModes = [
+  { value: "standard", label: "Standard" },
+  { value: "ultra", label: "Ultra" },
 ];
 
 export default function AiGeneratorPage() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState("flux-schnell");
-  const [selectedStyle, setSelectedStyle] = useState<keyof typeof stylePresets>("realistic");
+  const [selectedModel, setSelectedModel] = useState("flux-1.1-pro");
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [outputFormat, setOutputFormat] = useState("webp");
-  const [outputQuality, setOutputQuality] = useState(90);
-  const [goFast, setGoFast] = useState(true);
+  const [outputQuality, setOutputQuality] = useState(80);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  
+  // Ideogram parameters
+  const [resolution, setResolution] = useState("None");
+  const [styleType, setStyleType] = useState("None");
+  const [stylePreset, setStylePreset] = useState("None");
+  const [magicPromptOption, setMagicPromptOption] = useState("Auto");
+  
+  // Flux 1.1 parameters
+  const [promptUpsampling, setPromptUpsampling] = useState(false);
+  const [safetyTolerance, setSafetyTolerance] = useState(2);
+  
+  // Stable Diffusion parameters
+  const [cfg, setCfg] = useState(5);
+  const [promptStrength, setPromptStrength] = useState(0.85);
+  
+  // Leonardo parameters
+  const [leonardoStyle, setLeonardoStyle] = useState("none");
+  const [contrast, setContrast] = useState("medium");
+  const [generationMode, setGenerationMode] = useState("standard");
+  const [promptEnhance, setPromptEnhance] = useState(true);
+  const [numImages, setNumImages] = useState(1);
   
   // Submit to contest wizard modal state
   const [wizardModalOpen, setWizardModalOpen] = useState(false);
@@ -95,19 +188,10 @@ export default function AiGeneratorPage() {
     queryKey: ["/api/ai/generations"],
   });
 
-  // Get current model config
   const currentModelConfig = modelConfigs?.find(m => m.id === selectedModel);
 
   const generateMutation = useMutation({
-    mutationFn: async (params: {
-      prompt: string;
-      model: string;
-      negativePrompt?: string;
-      aspectRatio: string;
-      outputFormat: string;
-      outputQuality: number;
-      goFast: boolean;
-    }) => {
+    mutationFn: async (params: any) => {
       const res = await apiRequest("POST", "/api/ai/generate", params);
       return res.json();
     },
@@ -171,21 +255,76 @@ export default function AiGeneratorPage() {
       return;
     }
 
-    // Add style suffix to prompt
-    const enhancedPrompt = prompt.trim() + stylePresets[selectedStyle].promptSuffix;
-
     const params: any = {
-      prompt: enhancedPrompt,
+      prompt: prompt.trim(),
       model: selectedModel,
-      aspectRatio,
-      outputFormat,
-      outputQuality,
-      goFast,
     };
 
-    // Add negative prompt if model supports it and it's provided
+    // Add aspect ratio if supported
+    if (currentModelConfig?.supportsAspectRatio) {
+      params.aspectRatio = aspectRatio;
+    }
+
+    // Add output format if supported
+    if (currentModelConfig?.supportsOutputFormat) {
+      params.outputFormat = outputFormat;
+    }
+
+    // Add output quality if supported
+    if (currentModelConfig?.supportsOutputQuality) {
+      params.outputQuality = outputQuality;
+    }
+
+    // Add negative prompt if supported and provided
     if (currentModelConfig?.supportsNegativePrompt && negativePrompt.trim()) {
       params.negativePrompt = negativePrompt.trim();
+    }
+
+    // Ideogram parameters
+    if (currentModelConfig?.supportsResolution && resolution !== "None") {
+      params.resolution = resolution;
+    }
+    if (currentModelConfig?.supportsStyleType && styleType !== "None") {
+      params.styleType = styleType;
+    }
+    if (currentModelConfig?.supportsStylePreset && stylePreset !== "None") {
+      params.stylePreset = stylePreset;
+    }
+    if (currentModelConfig?.supportsMagicPrompt) {
+      params.magicPromptOption = magicPromptOption;
+    }
+
+    // Flux 1.1 parameters
+    if (currentModelConfig?.supportsPromptUpsampling) {
+      params.promptUpsampling = promptUpsampling;
+    }
+    if (currentModelConfig?.supportsSafetyTolerance) {
+      params.safetyTolerance = safetyTolerance;
+    }
+
+    // Stable Diffusion parameters
+    if (currentModelConfig?.supportsCfg) {
+      params.cfg = cfg;
+    }
+    if (currentModelConfig?.supportsPromptStrength) {
+      params.promptStrength = promptStrength;
+    }
+
+    // Leonardo parameters
+    if (currentModelConfig?.supportsLeonardoStyle && leonardoStyle !== "none") {
+      params.leonardoStyle = leonardoStyle;
+    }
+    if (currentModelConfig?.supportsContrast) {
+      params.contrast = contrast;
+    }
+    if (currentModelConfig?.supportsGenerationMode) {
+      params.generationMode = generationMode;
+    }
+    if (currentModelConfig?.supportsPromptEnhance) {
+      params.promptEnhance = promptEnhance;
+    }
+    if (currentModelConfig?.supportsNumImages) {
+      params.numImages = numImages;
     }
 
     generateMutation.mutate(params);
@@ -271,22 +410,11 @@ export default function AiGeneratorPage() {
                               <div className="flex-1">
                                 <div className="font-medium">{model.name}</div>
                                 <div className="text-xs text-muted-foreground">
+                                  {model.description}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
                                   ${model.costPerImage.toFixed(3)} per image
                                 </div>
-                              </div>
-                              <div className="flex gap-1 text-xs text-muted-foreground shrink-0">
-                                {model.supportsAspectRatio && (
-                                  <span title="Supports aspect ratio">📐</span>
-                                )}
-                                {model.supportsOutputFormat && (
-                                  <span title="Supports output format">🎨</span>
-                                )}
-                                {model.supportsGoFast && (
-                                  <span title="Supports fast mode">⚡</span>
-                                )}
-                                {model.supportsNegativePrompt && (
-                                  <span title="Supports negative prompt">🚫</span>
-                                )}
                               </div>
                             </div>
                           </SelectItem>
@@ -294,44 +422,16 @@ export default function AiGeneratorPage() {
                       </SelectContent>
                     </Select>
                   )}
-                  {currentModelConfig && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Supports: {[
-                        currentModelConfig.supportsAspectRatio && "Aspect Ratio",
-                        currentModelConfig.supportsOutputFormat && "Output Format",
-                        currentModelConfig.supportsGoFast && "Fast Mode",
-                        currentModelConfig.supportsNegativePrompt && "Negative Prompt"
-                      ].filter(Boolean).join(", ") || "Basic generation"}
-                    </p>
-                  )}
                 </div>
 
-                <Tabs value={selectedStyle} onValueChange={(v) => setSelectedStyle(v as keyof typeof stylePresets)}>
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="realistic" data-testid="tab-realistic">Realistic</TabsTrigger>
-                    <TabsTrigger value="artistic" data-testid="tab-artistic">Artistic</TabsTrigger>
-                    <TabsTrigger value="anime" data-testid="tab-anime">Anime</TabsTrigger>
-                  </TabsList>
-                  <TabsList className="grid w-full grid-cols-3 mt-2">
-                    <TabsTrigger value="fantasy" data-testid="tab-fantasy">Fantasy</TabsTrigger>
-                    <TabsTrigger value="abstract" data-testid="tab-abstract">Abstract</TabsTrigger>
-                    <TabsTrigger value="portrait" data-testid="tab-portrait">Portrait</TabsTrigger>
-                  </TabsList>
-                  
-                  {Object.entries(stylePresets).map(([key, preset]) => (
-                    <TabsContent key={key} value={key} className="mt-4">
-                      <p className="text-sm text-muted-foreground">{preset.description}</p>
-                    </TabsContent>
-                  ))}
-                </Tabs>
-
                 {currentModelConfig && (
-                  <details className="group">
+                  <details className="group" open>
                     <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium">
                       <Settings className="h-4 w-4" />
-                      Advanced Settings
+                      Model Settings
                     </summary>
                     <div className="mt-4 space-y-4 pl-6 border-l-2 border-border">
+                      {/* Aspect Ratio */}
                       {currentModelConfig.supportsAspectRatio && (
                         <div>
                           <Label>Aspect Ratio</Label>
@@ -350,48 +450,273 @@ export default function AiGeneratorPage() {
                         </div>
                       )}
 
-                      {currentModelConfig.supportsOutputFormat && (
-                        <>
-                          <div>
-                            <Label>Output Format</Label>
-                            <Select value={outputFormat} onValueChange={setOutputFormat}>
-                              <SelectTrigger data-testid="select-output-format">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="webp">WebP (Recommended)</SelectItem>
-                                <SelectItem value="png">PNG (High Quality)</SelectItem>
-                                <SelectItem value="jpg">JPG (Compatible)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label>Output Quality: {outputQuality}%</Label>
-                            <Slider
-                              value={[outputQuality]}
-                              onValueChange={([v]) => setOutputQuality(v)}
-                              min={50}
-                              max={100}
-                              step={5}
-                              data-testid="slider-quality"
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">Higher quality = larger file size</p>
-                          </div>
-                        </>
+                      {/* Resolution (Ideogram) */}
+                      {currentModelConfig.supportsResolution && (
+                        <div>
+                          <Label>Resolution</Label>
+                          <Select value={resolution} onValueChange={setResolution}>
+                            <SelectTrigger data-testid="select-resolution">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ideogramResolutions.map((res) => (
+                                <SelectItem key={res.value} value={res.value}>
+                                  {res.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Overrides aspect ratio when set
+                          </p>
+                        </div>
                       )}
 
-                      {currentModelConfig.supportsGoFast && (
+                      {/* Style Type (Ideogram) */}
+                      {currentModelConfig.supportsStyleType && (
+                        <div>
+                          <Label>Style Type</Label>
+                          <Select value={styleType} onValueChange={setStyleType}>
+                            <SelectTrigger data-testid="select-style-type">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ideogramStyleTypes.map((style) => (
+                                <SelectItem key={style.value} value={style.value}>
+                                  {style.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Style Preset (Ideogram) */}
+                      {currentModelConfig.supportsStylePreset && (
+                        <div>
+                          <Label>Style Preset</Label>
+                          <Select value={stylePreset} onValueChange={setStylePreset}>
+                            <SelectTrigger data-testid="select-style-preset">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ideogramStylePresets.map((preset) => (
+                                <SelectItem key={preset.value} value={preset.value}>
+                                  {preset.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Magic Prompt (Ideogram) */}
+                      {currentModelConfig.supportsMagicPrompt && (
+                        <div>
+                          <Label>Magic Prompt</Label>
+                          <Select value={magicPromptOption} onValueChange={setMagicPromptOption}>
+                            <SelectTrigger data-testid="select-magic-prompt">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {magicPromptOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Automatically enhances your prompt
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Leonardo Style */}
+                      {currentModelConfig.supportsLeonardoStyle && (
+                        <div>
+                          <Label>Leonardo Style</Label>
+                          <Select value={leonardoStyle} onValueChange={setLeonardoStyle}>
+                            <SelectTrigger data-testid="select-leonardo-style">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leonardoStyles.map((style) => (
+                                <SelectItem key={style.value} value={style.value}>
+                                  {style.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Contrast (Leonardo) */}
+                      {currentModelConfig.supportsContrast && (
+                        <div>
+                          <Label>Contrast</Label>
+                          <Select value={contrast} onValueChange={setContrast}>
+                            <SelectTrigger data-testid="select-contrast">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {contrastLevels.map((level) => (
+                                <SelectItem key={level.value} value={level.value}>
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Generation Mode (Leonardo) */}
+                      {currentModelConfig.supportsGenerationMode && (
+                        <div>
+                          <Label>Generation Mode</Label>
+                          <Select value={generationMode} onValueChange={setGenerationMode}>
+                            <SelectTrigger data-testid="select-generation-mode">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {generationModes.map((mode) => (
+                                <SelectItem key={mode.value} value={mode.value}>
+                                  {mode.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Output Format */}
+                      {currentModelConfig.supportsOutputFormat && (
+                        <div>
+                          <Label>Output Format</Label>
+                          <Select value={outputFormat} onValueChange={setOutputFormat}>
+                            <SelectTrigger data-testid="select-output-format">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="webp">WebP (Recommended)</SelectItem>
+                              <SelectItem value="png">PNG (High Quality)</SelectItem>
+                              <SelectItem value="jpg">JPG (Compatible)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Output Quality */}
+                      {currentModelConfig.supportsOutputQuality && (
+                        <div>
+                          <Label>Output Quality: {outputQuality}%</Label>
+                          <Slider
+                            value={[outputQuality]}
+                            onValueChange={([v]) => setOutputQuality(v)}
+                            min={50}
+                            max={100}
+                            step={5}
+                            data-testid="slider-quality"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">Higher quality = larger file size</p>
+                        </div>
+                      )}
+
+                      {/* Safety Tolerance (Flux 1.1) */}
+                      {currentModelConfig.supportsSafetyTolerance && (
+                        <div>
+                          <Label>Safety Tolerance: {safetyTolerance}</Label>
+                          <Slider
+                            value={[safetyTolerance]}
+                            onValueChange={([v]) => setSafetyTolerance(v)}
+                            min={1}
+                            max={6}
+                            step={1}
+                            data-testid="slider-safety-tolerance"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            1 = most strict, 6 = most permissive
+                          </p>
+                        </div>
+                      )}
+
+                      {/* CFG (Stable Diffusion) */}
+                      {currentModelConfig.supportsCfg && (
+                        <div>
+                          <Label>CFG Scale: {cfg}</Label>
+                          <Slider
+                            value={[cfg]}
+                            onValueChange={([v]) => setCfg(v)}
+                            min={1}
+                            max={10}
+                            step={0.5}
+                            data-testid="slider-cfg"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            How closely to follow the prompt
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Prompt Strength (Stable Diffusion) */}
+                      {currentModelConfig.supportsPromptStrength && (
+                        <div>
+                          <Label>Prompt Strength: {promptStrength.toFixed(2)}</Label>
+                          <Slider
+                            value={[promptStrength * 100]}
+                            onValueChange={([v]) => setPromptStrength(v / 100)}
+                            min={0}
+                            max={100}
+                            step={5}
+                            data-testid="slider-prompt-strength"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Used for image-to-image generation
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Number of Images (Leonardo) */}
+                      {currentModelConfig.supportsNumImages && (
+                        <div>
+                          <Label>Number of Images: {numImages}</Label>
+                          <Slider
+                            value={[numImages]}
+                            onValueChange={([v]) => setNumImages(v)}
+                            min={1}
+                            max={8}
+                            step={1}
+                            data-testid="slider-num-images"
+                          />
+                        </div>
+                      )}
+
+                      {/* Prompt Upsampling (Flux 1.1) */}
+                      {currentModelConfig.supportsPromptUpsampling && (
                         <div className="flex items-center space-x-2">
                           <Checkbox
-                            id="go-fast"
-                            checked={goFast}
-                            onCheckedChange={(checked) => setGoFast(checked as boolean)}
-                            data-testid="checkbox-go-fast"
+                            id="prompt-upsampling"
+                            checked={promptUpsampling}
+                            onCheckedChange={(checked) => setPromptUpsampling(checked as boolean)}
+                            data-testid="checkbox-prompt-upsampling"
                           />
-                          <Label htmlFor="go-fast" className="flex items-center gap-2 cursor-pointer">
-                            <Zap className="h-4 w-4 text-yellow-500" />
-                            Fast Mode (Optimized fp8)
+                          <Label htmlFor="prompt-upsampling" className="cursor-pointer">
+                            Prompt Upsampling (Auto-enhance prompt)
+                          </Label>
+                        </div>
+                      )}
+
+                      {/* Prompt Enhance (Leonardo) */}
+                      {currentModelConfig.supportsPromptEnhance && (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="prompt-enhance"
+                            checked={promptEnhance}
+                            onCheckedChange={(checked) => setPromptEnhance(checked as boolean)}
+                            data-testid="checkbox-prompt-enhance"
+                          />
+                          <Label htmlFor="prompt-enhance" className="cursor-pointer">
+                            Prompt Enhance
                           </Label>
                         </div>
                       )}

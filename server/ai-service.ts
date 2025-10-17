@@ -18,158 +18,354 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// AI Model configurations
+// Extended AI Model configuration interface
 export interface ModelConfig {
   id: string;
   name: string;
   description: string;
   replicateModel: string;
-  supportsAspectRatio: boolean;
-  supportsOutputFormat: boolean;
-  supportsGoFast: boolean;
-  supportsNegativePrompt: boolean;
   costPerImage: number;
+  
+  // Parameter support flags
+  supportsAspectRatio: boolean;
+  supportsCustomDimensions: boolean; // width/height
+  supportsResolution: boolean; // predefined resolutions
+  supportsOutputFormat: boolean;
+  supportsOutputQuality: boolean;
+  supportsNegativePrompt: boolean;
+  supportsImageInput: boolean; // image-to-image
+  supportsMask: boolean; // inpainting
+  
+  // Model-specific parameter support
+  supportsStyleType: boolean; // Ideogram
+  supportsStylePreset: boolean; // Ideogram
+  supportsMagicPrompt: boolean; // Ideogram
+  supportsPromptUpsampling: boolean; // Flux 1.1
+  supportsSafetyTolerance: boolean; // Flux 1.1
+  supportsCfg: boolean; // Stable Diffusion
+  supportsPromptStrength: boolean; // Stable Diffusion img2img
+  supportsLeonardoStyle: boolean; // Leonardo
+  supportsContrast: boolean; // Leonardo
+  supportsGenerationMode: boolean; // Leonardo
+  supportsPromptEnhance: boolean; // Leonardo
+  supportsNumImages: boolean; // Leonardo
 }
 
 export const AI_MODELS: Record<string, ModelConfig> = {
-  "flux-schnell": {
-    id: "flux-schnell",
-    name: "Flux Schnell",
-    description: "Fastest, most affordable (4 steps)",
-    replicateModel: "black-forest-labs/flux-schnell",
+  "ideogram-v3": {
+    id: "ideogram-v3",
+    name: "Ideogram v3 Quality",
+    description: "High-quality with 60+ art styles, resolution control",
+    replicateModel: "ideogram-ai/ideogram-v3-quality",
+    costPerImage: 0.08,
+    
     supportsAspectRatio: true,
-    supportsOutputFormat: true,
-    supportsGoFast: true,
-    supportsNegativePrompt: false,
-    costPerImage: 0.003,
-  },
-  "flux-dev": {
-    id: "flux-dev",
-    name: "Flux Dev",
-    description: "Balanced quality and speed",
-    replicateModel: "black-forest-labs/flux-dev",
-    supportsAspectRatio: true,
-    supportsOutputFormat: true,
-    supportsGoFast: false,
-    supportsNegativePrompt: false,
-    costPerImage: 0.025,
-  },
-  "flux-pro": {
-    id: "flux-pro",
-    name: "Flux Pro",
-    description: "Highest quality, slower",
-    replicateModel: "black-forest-labs/flux-pro",
-    supportsAspectRatio: true,
-    supportsOutputFormat: true,
-    supportsGoFast: false,
-    supportsNegativePrompt: false,
-    costPerImage: 0.05,
-  },
-  "sdxl-lightning": {
-    id: "sdxl-lightning",
-    name: "SDXL Lightning",
-    description: "Super fast SDXL (4 steps)",
-    replicateModel: "bytedance/sdxl-lightning-4step",
-    supportsAspectRatio: false,
+    supportsCustomDimensions: false,
+    supportsResolution: true,
     supportsOutputFormat: false,
-    supportsGoFast: false,
-    supportsNegativePrompt: true,
-    costPerImage: 0.003,
+    supportsOutputQuality: false,
+    supportsNegativePrompt: false,
+    supportsImageInput: true,
+    supportsMask: true,
+    
+    supportsStyleType: true,
+    supportsStylePreset: true,
+    supportsMagicPrompt: true,
+    supportsPromptUpsampling: false,
+    supportsSafetyTolerance: false,
+    supportsCfg: false,
+    supportsPromptStrength: false,
+    supportsLeonardoStyle: false,
+    supportsContrast: false,
+    supportsGenerationMode: false,
+    supportsPromptEnhance: false,
+    supportsNumImages: false,
   },
-  "sd3": {
-    id: "sd3",
-    name: "Stable Diffusion 3",
-    description: "Great for text in images",
-    replicateModel: "stability-ai/stable-diffusion-3",
-    supportsAspectRatio: true,
-    supportsOutputFormat: false,
-    supportsGoFast: false,
-    supportsNegativePrompt: true,
-    costPerImage: 0.02,
-  },
+  
   "nano-banana": {
     id: "nano-banana",
     name: "Nano Banana",
-    description: "Google's Gemini 2.5 Flash Image (fast, versatile)",
+    description: "Google's Gemini 2.5 Flash - fast, versatile",
     replicateModel: "google/nano-banana",
-    supportsAspectRatio: false,
-    supportsOutputFormat: true,
-    supportsGoFast: false,
-    supportsNegativePrompt: false,
     costPerImage: 0.039,
+    
+    supportsAspectRatio: true,
+    supportsCustomDimensions: false,
+    supportsResolution: false,
+    supportsOutputFormat: true,
+    supportsOutputQuality: false,
+    supportsNegativePrompt: false,
+    supportsImageInput: true,
+    supportsMask: false,
+    
+    supportsStyleType: false,
+    supportsStylePreset: false,
+    supportsMagicPrompt: false,
+    supportsPromptUpsampling: false,
+    supportsSafetyTolerance: false,
+    supportsCfg: false,
+    supportsPromptStrength: false,
+    supportsLeonardoStyle: false,
+    supportsContrast: false,
+    supportsGenerationMode: false,
+    supportsPromptEnhance: false,
+    supportsNumImages: false,
+  },
+  
+  "flux-1.1-pro": {
+    id: "flux-1.1-pro",
+    name: "Flux 1.1 Pro",
+    description: "6x faster than Flux Pro, highest quality",
+    replicateModel: "black-forest-labs/flux-1.1-pro",
+    costPerImage: 0.04,
+    
+    supportsAspectRatio: true,
+    supportsCustomDimensions: true,
+    supportsResolution: false,
+    supportsOutputFormat: true,
+    supportsOutputQuality: true,
+    supportsNegativePrompt: false,
+    supportsImageInput: true,
+    supportsMask: false,
+    
+    supportsStyleType: false,
+    supportsStylePreset: false,
+    supportsMagicPrompt: false,
+    supportsPromptUpsampling: true,
+    supportsSafetyTolerance: true,
+    supportsCfg: false,
+    supportsPromptStrength: false,
+    supportsLeonardoStyle: false,
+    supportsContrast: false,
+    supportsGenerationMode: false,
+    supportsPromptEnhance: false,
+    supportsNumImages: false,
+  },
+  
+  "sd-3.5-large": {
+    id: "sd-3.5-large",
+    name: "Stable Diffusion 3.5 Large",
+    description: "Latest SD with improved quality and detail",
+    replicateModel: "stability-ai/stable-diffusion-3.5-large",
+    costPerImage: 0.055,
+    
+    supportsAspectRatio: true,
+    supportsCustomDimensions: false,
+    supportsResolution: false,
+    supportsOutputFormat: true,
+    supportsOutputQuality: false,
+    supportsNegativePrompt: true,
+    supportsImageInput: true,
+    supportsMask: false,
+    
+    supportsStyleType: false,
+    supportsStylePreset: false,
+    supportsMagicPrompt: false,
+    supportsPromptUpsampling: false,
+    supportsSafetyTolerance: false,
+    supportsCfg: true,
+    supportsPromptStrength: true,
+    supportsLeonardoStyle: false,
+    supportsContrast: false,
+    supportsGenerationMode: false,
+    supportsPromptEnhance: false,
+    supportsNumImages: false,
+  },
+  
+  "leonardo-lucid": {
+    id: "leonardo-lucid",
+    name: "Leonardo Lucid Origin",
+    description: "Professional styles, ultra mode, prompt enhance",
+    replicateModel: "leonardoai/lucid-origin",
+    costPerImage: 0.045,
+    
+    supportsAspectRatio: true,
+    supportsCustomDimensions: false,
+    supportsResolution: false,
+    supportsOutputFormat: false,
+    supportsOutputQuality: false,
+    supportsNegativePrompt: false,
+    supportsImageInput: false,
+    supportsMask: false,
+    
+    supportsStyleType: false,
+    supportsStylePreset: false,
+    supportsMagicPrompt: false,
+    supportsPromptUpsampling: false,
+    supportsSafetyTolerance: false,
+    supportsCfg: false,
+    supportsPromptStrength: false,
+    supportsLeonardoStyle: true,
+    supportsContrast: true,
+    supportsGenerationMode: true,
+    supportsPromptEnhance: true,
+    supportsNumImages: true,
   },
 };
 
 export interface GenerateImageOptions {
   prompt: string;
   model?: string;
-  negativePrompt?: string;
+  seed?: number;
+  
+  // Dimension options
   aspectRatio?: string;
+  width?: number;
+  height?: number;
+  resolution?: string;
+  
+  // Output options
   outputFormat?: string;
   outputQuality?: number;
-  goFast?: boolean;
-  seed?: number;
+  
+  // Prompt modifiers
+  negativePrompt?: string;
+  promptUpsampling?: boolean;
+  promptEnhance?: boolean;
+  magicPromptOption?: string;
+  
+  // Image input
+  imageInput?: string | string[];
+  mask?: string;
+  
+  // Style options (Ideogram)
+  styleType?: string;
+  stylePreset?: string;
+  styleReferenceImages?: string[];
+  
+  // Leonardo options
+  leonardoStyle?: string;
+  contrast?: string;
+  generationMode?: string;
+  numImages?: number;
+  
+  // Flux options
+  safetyTolerance?: number;
+  
+  // Stable Diffusion options
+  cfg?: number;
+  promptStrength?: number;
 }
 
 export interface GeneratedImage {
   url: string;
   cloudinaryUrl?: string;
   cloudinaryPublicId?: string;
-  parameters: {
-    model: string;
-    prompt: string;
-    aspectRatio: string;
-    outputFormat: string;
-    outputQuality: number;
-    goFast: boolean;
-    seed?: number;
-  };
+  parameters: Record<string, any>;
 }
 
 export async function generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
   const {
     prompt,
-    model = "flux-schnell",
-    negativePrompt,
-    aspectRatio = "1:1",
-    outputFormat = "webp",
-    outputQuality = 90,
-    goFast = true,
+    model = "flux-1.1-pro",
     seed,
+    aspectRatio = "1:1",
+    width,
+    height,
+    resolution,
+    outputFormat = "webp",
+    outputQuality = 80,
+    negativePrompt,
+    promptUpsampling = false,
+    promptEnhance = false,
+    magicPromptOption = "Auto",
+    imageInput,
+    mask,
+    styleType,
+    stylePreset,
+    styleReferenceImages,
+    leonardoStyle,
+    contrast = "medium",
+    generationMode = "standard",
+    numImages = 1,
+    safetyTolerance = 2,
+    cfg = 5,
+    promptStrength = 0.85,
   } = options;
 
   // Get model configuration
-  const modelConfig = AI_MODELS[model] || AI_MODELS["flux-schnell"];
+  const modelConfig = AI_MODELS[model] || AI_MODELS["flux-1.1-pro"];
   
-  console.log(`Generating AI image with ${modelConfig.name}...`, { prompt, negativePrompt, model, aspectRatio, outputFormat });
+  console.log(`Generating AI image with ${modelConfig.name}...`, { prompt, model });
 
   try {
-    // Build input parameters based on model capabilities
+    // Build input parameters based on model
     const input: any = {
       prompt,
-      num_outputs: 1,
-      ...(seed !== undefined && { seed }),
     };
 
-    // Add optional parameters based on model support
-    if (modelConfig.supportsNegativePrompt && negativePrompt) {
-      input.negative_prompt = negativePrompt;
+    // Add seed if provided
+    if (seed !== undefined) {
+      input.seed = seed;
     }
-    if (modelConfig.supportsAspectRatio) {
-      input.aspect_ratio = aspectRatio;
+
+    // Model-specific parameter handling
+    switch (model) {
+      case "ideogram-v3":
+        if (resolution && resolution !== "None") {
+          input.resolution = resolution;
+        } else if (aspectRatio) {
+          input.aspect_ratio = aspectRatio;
+        }
+        if (magicPromptOption) input.magic_prompt_option = magicPromptOption;
+        if (styleType && styleType !== "None") input.style_type = styleType;
+        if (stylePreset && stylePreset !== "None") input.style_preset = stylePreset;
+        if (imageInput) input.image = imageInput;
+        if (mask) input.mask = mask;
+        if (styleReferenceImages && styleReferenceImages.length > 0) {
+          input.style_reference_images = styleReferenceImages;
+        }
+        break;
+
+      case "nano-banana":
+        if (aspectRatio) input.aspect_ratio = aspectRatio;
+        if (outputFormat) {
+          // Nano Banana only supports jpg/png
+          input.output_format = outputFormat === "webp" ? "jpg" : outputFormat;
+        }
+        if (imageInput) {
+          // Handle single image or array
+          input.image_input = Array.isArray(imageInput) ? imageInput : [imageInput];
+        }
+        break;
+
+      case "flux-1.1-pro":
+        if (aspectRatio === "custom" && width && height) {
+          input.aspect_ratio = "custom";
+          input.width = width;
+          input.height = height;
+        } else if (aspectRatio) {
+          input.aspect_ratio = aspectRatio;
+        }
+        if (outputFormat) input.output_format = outputFormat;
+        if (outputQuality) input.output_quality = outputQuality;
+        if (promptUpsampling) input.prompt_upsampling = true;
+        if (safetyTolerance) input.safety_tolerance = safetyTolerance;
+        if (imageInput) input.image_prompt = imageInput;
+        break;
+
+      case "sd-3.5-large":
+        if (aspectRatio) input.aspect_ratio = aspectRatio;
+        if (outputFormat) input.output_format = outputFormat;
+        if (negativePrompt) input.negative_prompt = negativePrompt;
+        if (cfg) input.cfg = cfg;
+        if (imageInput) {
+          input.image = imageInput;
+          input.prompt_strength = promptStrength;
+        }
+        break;
+
+      case "leonardo-lucid":
+        if (aspectRatio) input.aspect_ratio = aspectRatio;
+        if (leonardoStyle && leonardoStyle !== "none") input.style = leonardoStyle;
+        if (contrast) input.contrast = contrast;
+        if (generationMode) input.generation_mode = generationMode;
+        if (promptEnhance !== undefined) input.prompt_enhance = promptEnhance;
+        if (numImages) input.num_images = numImages;
+        break;
     }
-    if (modelConfig.supportsOutputFormat) {
-      // Nano Banana only supports jpg/png, not webp
-      if (model === "nano-banana") {
-        input.output_format = outputFormat === "webp" ? "jpg" : outputFormat;
-      } else {
-        input.output_format = outputFormat;
-        input.output_quality = outputQuality;
-      }
-    }
-    if (modelConfig.supportsGoFast && goFast) {
-      input.go_fast = goFast;
-    }
+
+    console.log("Replicate input parameters:", input);
 
     const output = await replicate.run(
       modelConfig.replicateModel as `${string}/${string}`,
@@ -180,36 +376,29 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       throw new Error("No image generated");
     }
 
-    // Extract URL from Replicate FileOutput response
+    // Extract URL from Replicate response
     let imageUrl: string;
     
     if (Array.isArray(output)) {
       const firstOutput = output[0];
       
-      // Handle FileOutput object with url() method
       if (typeof firstOutput === 'object' && firstOutput !== null) {
-        // FileOutput objects have a url() method that returns a URL object
         if (typeof firstOutput.url === 'function') {
           const urlResult = await firstOutput.url();
-          // Extract href from URL object or use directly if string
           imageUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
         } else if (typeof firstOutput.url === 'string') {
           imageUrl = firstOutput.url;
         } else {
           throw new Error("FileOutput object missing url property");
         }
-      } 
-      // Handle direct string URL (backward compatibility)
-      else if (typeof firstOutput === 'string') {
+      } else if (typeof firstOutput === 'string') {
         imageUrl = firstOutput;
-      }
-      else {
+      } else {
         throw new Error("Invalid output format from Replicate");
       }
     } else if (typeof output === 'string') {
       imageUrl = output;
     } else if (typeof output === 'object' && output !== null && typeof output.url === 'function') {
-      // Handle single FileOutput object (not in array)
       const urlResult = await output.url();
       imageUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult);
     } else {
@@ -218,7 +407,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
 
     console.log("AI image generated successfully:", imageUrl);
 
-    // Download image and upload to Cloudinary
+    // Upload to Cloudinary
     let cloudinaryUrl: string | undefined;
     let cloudinaryPublicId: string | undefined;
 
@@ -229,21 +418,15 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
       console.log("Image uploaded to Cloudinary:", cloudinaryUrl);
     } catch (uploadError) {
       console.error("Cloudinary upload failed, using Replicate URL:", uploadError);
-      // Continue with Replicate URL if Cloudinary fails
     }
 
     return {
-      url: cloudinaryUrl || imageUrl, // Prefer Cloudinary URL
+      url: cloudinaryUrl || imageUrl,
       cloudinaryUrl,
       cloudinaryPublicId,
       parameters: {
         model: modelConfig.id,
-        prompt,
-        aspectRatio,
-        outputFormat,
-        outputQuality,
-        goFast,
-        seed,
+        ...options, // Include all original parameters
       },
     };
   } catch (error) {
@@ -266,7 +449,6 @@ async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
   const tempFilePath = path.join(tempDir, `ai-${Date.now()}.png`);
 
   try {
-    // Download image from Replicate CDN
     const response = await fetch(imageUrl);
     if (!response.ok) {
       throw new Error(`Failed to download image: ${response.statusText}`);
@@ -275,7 +457,6 @@ async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
     const buffer = await response.arrayBuffer();
     await writeFileAsync(tempFilePath, Buffer.from(buffer));
 
-    // Upload to Cloudinary
     const result = await cloudinary.uploader.upload(tempFilePath, {
       resource_type: "image",
       folder: "5best-ai-generated",
@@ -283,7 +464,6 @@ async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
       fetch_format: "auto",
     });
 
-    // Cleanup temp file
     await unlinkAsync(tempFilePath);
 
     return {
@@ -291,38 +471,9 @@ async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
       publicId: result.public_id,
     };
   } catch (error) {
-    // Cleanup on error
     if (fs.existsSync(tempFilePath)) {
       await unlinkAsync(tempFilePath);
     }
     throw error;
   }
 }
-
-// Style presets optimized for Flux Schnell (uses prompt engineering instead of negative prompts)
-export const stylePresets = {
-  realistic: {
-    name: "Realistic",
-    promptSuffix: ", photorealistic, highly detailed, professional photography, 8k uhd, dslr, soft lighting, high quality",
-  },
-  artistic: {
-    name: "Artistic",
-    promptSuffix: ", digital art, artistic, painterly style, vibrant colors, creative composition, masterpiece",
-  },
-  anime: {
-    name: "Anime",
-    promptSuffix: ", anime style, manga art, cel shaded, vibrant colors, expressive, japanese animation style",
-  },
-  fantasy: {
-    name: "Fantasy",
-    promptSuffix: ", fantasy art, magical, ethereal, epic, enchanted, mystical atmosphere, dramatic lighting",
-  },
-  abstract: {
-    name: "Abstract",
-    promptSuffix: ", abstract art, geometric shapes, vibrant colors, modern art, creative patterns, artistic composition",
-  },
-  portrait: {
-    name: "Portrait",
-    promptSuffix: ", portrait photography, face focus, detailed facial features, professional headshot, studio lighting",
-  },
-};
