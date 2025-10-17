@@ -64,7 +64,7 @@ export default function ImageEditor() {
         selectable: false,
       });
       fabricCanvas.add(img);
-      img.sendToBack();
+      fabricCanvas.sendObjectToBack(img);
       fabricCanvas.renderAll();
     });
 

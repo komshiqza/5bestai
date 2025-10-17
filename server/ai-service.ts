@@ -488,7 +488,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   }
 }
 
-async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
+async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boolean = false): Promise<{
   url: string;
   publicId: string;
 }> {
@@ -508,12 +508,21 @@ async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
     const buffer = await response.arrayBuffer();
     await writeFileAsync(tempFilePath, Buffer.from(buffer));
 
-    const result = await cloudinary.uploader.upload(tempFilePath, {
+    const uploadOptions: any = {
       resource_type: "image",
       folder: "5best-ai-generated",
-      quality: "auto:good",
+      quality: isUpscaled ? "auto:eco" : "auto:good",
       fetch_format: "auto",
-    });
+    };
+
+    // For upscaled images, add transformation to reduce file size
+    if (isUpscaled) {
+      uploadOptions.transformation = [
+        { quality: 85, fetch_format: "jpg" }
+      ];
+    }
+
+    const result = await cloudinary.uploader.upload(tempFilePath, uploadOptions);
 
     await unlinkAsync(tempFilePath);
 
@@ -566,7 +575,7 @@ export async function upscaleImage(
     let cloudinaryPublicId: string | undefined;
 
     try {
-      const uploadResult = await downloadAndUploadToCloudinary(upscaledUrl);
+      const uploadResult = await downloadAndUploadToCloudinary(upscaledUrl, true);
       cloudinaryUrl = uploadResult.url;
       cloudinaryPublicId = uploadResult.publicId;
       console.log("Upscaled image uploaded to Cloudinary:", cloudinaryUrl);

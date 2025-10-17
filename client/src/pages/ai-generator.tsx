@@ -277,6 +277,7 @@ export default function AiGeneratorPage() {
   // Submit to contest wizard modal state
   const [wizardModalOpen, setWizardModalOpen] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<AiGeneration | null>(null);
+  const [upscalingId, setUpscalingId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -392,11 +393,13 @@ export default function AiGeneratorPage() {
 
   const upscaleMutation = useMutation({
     mutationFn: async (params: { generationId: string; scale?: number; faceEnhance?: boolean }) => {
+      setUpscalingId(params.generationId);
       const res = await apiRequest("POST", "/api/ai/upscale", params);
       return res.json();
     },
     onSuccess: (data, variables) => {
       setCurrentImage(data.upscaledImageUrl);
+      setUpscalingId(null);
       
       queryClient.setQueryData(["/api/ai/generations"], (old: AiGeneration[] | undefined) => {
         if (!old) return old;
@@ -415,6 +418,7 @@ export default function AiGeneratorPage() {
       });
     },
     onError: (error: Error) => {
+      setUpscalingId(null);
       toast({
         title: "Upscaling Failed",
         description: error.message,
@@ -1115,10 +1119,10 @@ export default function AiGeneratorPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => upscaleMutation.mutate({ generationId: currentGenerationId })}
-                                disabled={upscaleMutation.isPending || !canUpscale}
+                                disabled={upscalingId === currentGenerationId || !canUpscale}
                                 data-testid="button-upscale-current"
                               >
-                                {upscaleMutation.isPending ? (
+                                {upscalingId === currentGenerationId ? (
                                   <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                     Upscaling...
@@ -1214,10 +1218,14 @@ export default function AiGeneratorPage() {
                               size="sm"
                               variant="secondary"
                               onClick={() => upscaleMutation.mutate({ generationId: gen.id })}
-                              disabled={upscaleMutation.isPending || userCredits < (pricing?.["upscale"] || 0)}
+                              disabled={upscalingId === gen.id || userCredits < (pricing?.["upscale"] || 0)}
                               data-testid={`button-upscale-${gen.id}`}
                             >
-                              <Sparkles className="h-4 w-4" />
+                              {upscalingId === gen.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-4 w-4" />
+                              )}
                             </Button>
                           )}
                           <Button
