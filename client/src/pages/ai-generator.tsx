@@ -612,21 +612,16 @@ export default function AiGeneratorPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {modelConfigs?.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            <div className="flex items-start justify-between gap-3 w-full">
-                              <div className="flex-1">
-                                <div className="font-medium">{model.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {model.description}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  ${model.costPerImage.toFixed(3)} per image
-                                </div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {modelConfigs?.map((model) => {
+                          const credits = pricing?.[model.id] || 0;
+                          return (
+                            <SelectItem key={model.id} value={model.id}>
+                              <span className="text-sm">
+                                {model.name} - {model.description} - {credits} {credits === 1 ? 'кредит' : 'кредита'} на генерирано изображение
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   )}
