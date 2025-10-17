@@ -2968,6 +2968,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upscale AI generation image
+  const upscaleSchema = z.object({
+    generationId: z.string(),
+    scale: z.number().min(2).max(10).optional(),
+    faceEnhance: z.boolean().optional()
+  });
+
+  app.post("/api/ai/upscale", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const params = upscaleSchema.parse(req.body);
+
+      // Get AI generation
+      const generation = await storage.getAiGeneration(params.generationId);
+      if (!generation) {
+        return res.status(404).json({ error: "AI generation not found" });
+      }
+
+      if (generation.userId !== userId) {
+        return res.status(403).json({ error: "Not authorized to upscale this generation" });
+      }
+
+      if (generation.isUpscaled) {
+        return res.status(400).json({ error: "This image has already been upscaled" });
+      }
+
+      // Get upscale cost from pricing settings
+      const upscaleCost = await storage.getPricingSetting("upscale");
+      if (!upscaleCost) {
+        return res.status(500).json({ error: "Upscaling pricing not configured" });
+      }
+
+      // Check if user has enough credits
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < upscaleCost) {
+        return res.status(402).json({ 
+          error: `Insufficient credits. Upscaling costs ${upscaleCost} credits. You have ${userCredits} credits.` 
+        });
+      }
+
+      // Deduct credits before upscaling
+      await storage.deductCredits(userId, upscaleCost);
+      
+      let upscaledImageUrl: string;
+      let cloudinaryPublicId: string | undefined;
+
+      try {
+        // Call upscaling service
+        const { upscaleImage } = await import("./ai-service");
+        const result = await upscaleImage(generation.imageUrl, {
+          scale: params.scale,
+          faceEnhance: params.faceEnhance
+        });
+
+        upscaledImageUrl = result.url;
+        cloudinaryPublicId = result.cloudinaryPublicId;
+
+        // Update generation record
+        await storage.updateAiGeneration(params.generationId, {
+          editedImageUrl: upscaledImageUrl,
+          isUpscaled: true,
+          creditsUsed: generation.creditsUsed + upscaleCost
+        });
+
+        const updatedCredits = await storage.getUserCredits(userId);
+
+        res.json({
+          message: "Image upscaled successfully",
+          upscaledImageUrl,
+          cloudinaryPublicId,
+          creditsUsed: upscaleCost,
+          creditsRemaining: updatedCredits
+        });
+      } catch (error) {
+        // Refund credits if upscaling failed
+        await storage.addCredits(userId, upscaleCost);
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error upscaling image:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid parameters", details: error.errors });
+      }
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to upscale image" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

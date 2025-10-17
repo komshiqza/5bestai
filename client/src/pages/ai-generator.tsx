@@ -244,6 +244,7 @@ export default function AiGeneratorPage() {
   const [outputFormat, setOutputFormat] = useState("webp");
   const [outputQuality, setOutputQuality] = useState(80);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [currentGenerationId, setCurrentGenerationId] = useState<string | null>(null);
   
   // New parameters
   const [seed, setSeed] = useState<number>(0);
@@ -327,6 +328,7 @@ export default function AiGeneratorPage() {
     },
     onSuccess: (data) => {
       setCurrentImage(data.imageUrl);
+      setCurrentGenerationId(data.id);
       queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       toast({
@@ -352,6 +354,39 @@ export default function AiGeneratorPage() {
       toast({
         title: "Deleted",
         description: "Image removed from your history.",
+      });
+    },
+  });
+
+  const upscaleMutation = useMutation({
+    mutationFn: async (params: { generationId: string; scale?: number; faceEnhance?: boolean }) => {
+      const res = await apiRequest("POST", "/api/ai/upscale", params);
+      return res.json();
+    },
+    onSuccess: (data, variables) => {
+      setCurrentImage(data.upscaledImageUrl);
+      
+      queryClient.setQueryData(["/api/ai/generations"], (old: AiGeneration[] | undefined) => {
+        if (!old) return old;
+        return old.map(gen => 
+          gen.id === variables.generationId 
+            ? { ...gen, editedImageUrl: data.upscaledImageUrl, isUpscaled: true }
+            : gen
+        );
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      toast({
+        title: "Upscaling Complete!",
+        description: `Your image has been upscaled to 4x resolution. ${data.creditsUsed} credits used.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upscaling Failed",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -1022,7 +1057,7 @@ export default function AiGeneratorPage() {
             </Card>
 
             {/* Current Result */}
-            {currentImage && (
+            {currentImage && currentGenerationId && (
               <Card data-testid="card-current-result">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
@@ -1030,15 +1065,48 @@ export default function AiGeneratorPage() {
                       <ImageIcon className="h-5 w-5" />
                       Generated Image
                     </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(currentImage, `ai-generated-${Date.now()}.${outputFormat}`)}
-                      data-testid="button-download-current"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
+                    <div className="flex gap-2">
+                      {(() => {
+                        const currentGen = generations?.find(g => g.id === currentGenerationId);
+                        const upscaleCost = pricing?.["upscale"] || 0;
+                        const canUpscale = currentGen && !currentGen.isUpscaled && userCredits >= upscaleCost;
+                        
+                        return (
+                          <>
+                            {currentGen && !currentGen.isUpscaled && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => upscaleMutation.mutate({ generationId: currentGenerationId })}
+                                disabled={upscaleMutation.isPending || !canUpscale}
+                                data-testid="button-upscale-current"
+                              >
+                                {upscaleMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Upscaling...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    Upscale (4x)
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownload(currentImage, `ai-generated-${Date.now()}.${outputFormat}`)}
+                              data-testid="button-download-current"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </Button>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1078,21 +1146,35 @@ export default function AiGeneratorPage() {
                         data-testid={`generation-${gen.id}`}
                       >
                         <img
-                          src={gen.imageUrl}
+                          src={gen.editedImageUrl || gen.imageUrl}
                           alt={gen.prompt}
                           className="w-full aspect-square object-cover cursor-pointer"
-                          onClick={() => setCurrentImage(gen.imageUrl)}
+                          onClick={() => {
+                            setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+                            setCurrentGenerationId(gen.id);
+                          }}
                           data-testid={`img-generation-${gen.id}`}
                         />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => handleDownload(gen.imageUrl, `${gen.id}.webp`)}
+                            onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl, `${gen.id}.webp`)}
                             data-testid={`button-download-${gen.id}`}
                           >
                             <Download className="h-4 w-4" />
                           </Button>
+                          {!gen.isUpscaled && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => upscaleMutation.mutate({ generationId: gen.id })}
+                              disabled={upscaleMutation.isPending || userCredits < (pricing?.["upscale"] || 0)}
+                              data-testid={`button-upscale-${gen.id}`}
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="default"

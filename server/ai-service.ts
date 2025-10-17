@@ -489,3 +489,61 @@ async function downloadAndUploadToCloudinary(imageUrl: string): Promise<{
     throw error;
   }
 }
+
+export async function upscaleImage(
+  imageUrl: string,
+  options?: { scale?: number; faceEnhance?: boolean }
+): Promise<{
+  url: string;
+  cloudinaryUrl?: string;
+  cloudinaryPublicId?: string;
+}> {
+  try {
+    console.log("Starting image upscaling with Real-ESRGAN:", imageUrl);
+
+    const input: any = {
+      image: imageUrl,
+      scale: options?.scale || 4,
+    };
+
+    if (options?.faceEnhance !== undefined) {
+      input.face_enhance = options.faceEnhance;
+    }
+
+    const output = await replicate.run(
+      "nightmareai/real-esrgan:c15c48c0e85a93f3d4e283ac6ca684ce180d94d1975783663c747e7bfa6f5e5c",
+      { input }
+    );
+
+    const upscaledUrl = typeof output === "string" ? output : (output as any)?.output || output;
+
+    if (!upscaledUrl) {
+      throw new Error("Real-ESRGAN did not return a valid image URL");
+    }
+
+    console.log("Real-ESRGAN upscaling completed:", upscaledUrl);
+
+    let cloudinaryUrl: string | undefined;
+    let cloudinaryPublicId: string | undefined;
+
+    try {
+      const uploadResult = await downloadAndUploadToCloudinary(upscaledUrl);
+      cloudinaryUrl = uploadResult.url;
+      cloudinaryPublicId = uploadResult.publicId;
+      console.log("Upscaled image uploaded to Cloudinary:", cloudinaryUrl);
+    } catch (uploadError) {
+      console.error("Cloudinary upload failed, using Replicate URL:", uploadError);
+    }
+
+    return {
+      url: cloudinaryUrl || upscaledUrl,
+      cloudinaryUrl,
+      cloudinaryPublicId,
+    };
+  } catch (error) {
+    console.error("Real-ESRGAN upscaling error:", error);
+    throw new Error(
+      `Failed to upscale image: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
