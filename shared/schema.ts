@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   gloryBalance: integer("glory_balance").notNull().default(0),
   solBalance: integer("sol_balance").notNull().default(0),
   usdcBalance: integer("usdc_balance").notNull().default(0),
+  imageCredits: integer("image_credits").notNull().default(100), // Credits for AI image generation and upscaling
   withdrawalAddress: varchar("withdrawal_address", { length: 255 }), // Solana withdrawal address
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
@@ -58,6 +59,7 @@ export const submissions = pgTable("submissions", {
   tags: text("tags").array(),
   status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, rejected
   votesCount: integer("votes_count").notNull().default(0),
+  isEnhanced: boolean("is_enhanced").notNull().default(false), // True if edited or upscaled via built-in editor
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userContestIdx: index("submissions_user_contest_idx").on(table.userId, table.contestId),
@@ -415,6 +417,10 @@ export const aiGenerations = pgTable("ai_generations", {
   parameters: jsonb("parameters"), // Store generation parameters (width, height, steps, etc.)
   cloudinaryPublicId: varchar("cloudinary_public_id", { length: 255 }),
   status: varchar("status", { length: 50 }).notNull().default("generated"), // generated, saved, submitted
+  editedImageUrl: text("edited_image_url"), // URL of edited version (if edited via built-in editor)
+  isEdited: boolean("is_edited").notNull().default(false), // True if edited via built-in editor
+  isUpscaled: boolean("is_upscaled").notNull().default(false), // True if upscaled via AI upscaling
+  creditsUsed: integer("credits_used").notNull().default(0), // Credits deducted for this generation
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userIdx: index("ai_generations_user_idx").on(table.userId),
@@ -436,6 +442,22 @@ export const insertSiteSettingsSchema = createInsertSchema(siteSettings).omit({
 
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;
 export type SiteSettings = typeof siteSettings.$inferSelect;
+
+// Pricing Settings table (key-value store for model costs and upscale pricing)
+export const pricingSettings = pgTable("pricing_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key", { length: 255 }).notNull().unique(), // e.g., "leonardo", "nano-banana", "upscale"
+  value: integer("value").notNull(), // Credit cost
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+});
+
+export const insertPricingSettingSchema = createInsertSchema(pricingSettings).omit({
+  id: true,
+  updatedAt: true
+});
+
+export type InsertPricingSetting = z.infer<typeof insertPricingSettingSchema>;
+export type PricingSetting = typeof pricingSettings.$inferSelect;
 
 export const insertAiGenerationSchema = createInsertSchema(aiGenerations).omit({
   id: true,

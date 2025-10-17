@@ -22,6 +22,8 @@ import {
   type InsertSiteSettings,
   type AiGeneration,
   type InsertAiGeneration,
+  type PricingSetting,
+  type InsertPricingSetting,
   type SubmissionWithUser,
   type ContestWithStats,
   type UserWithStats,
@@ -35,7 +37,8 @@ import {
   cashoutRequests,
   cashoutEvents,
   siteSettings,
-  aiGenerations
+  aiGenerations,
+  pricingSettings
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -119,6 +122,17 @@ export interface IStorage {
   getAiGeneration(id: string): Promise<AiGeneration | undefined>;
   getAiGenerations(userId: string, limit?: number): Promise<AiGeneration[]>;
   deleteAiGeneration(id: string): Promise<void>;
+  updateAiGeneration(id: string, updates: Partial<AiGeneration>): Promise<AiGeneration | undefined>;
+  
+  // Image Credits
+  getUserCredits(userId: string): Promise<number>;
+  deductCredits(userId: string, amount: number): Promise<boolean>;
+  addCredits(userId: string, amount: number): Promise<void>;
+  
+  // Pricing Settings
+  getPricingSetting(key: string): Promise<number | undefined>;
+  getAllPricingSettings(): Promise<Map<string, number>>;
+  updatePricingSetting(key: string, value: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -147,6 +161,7 @@ export class MemStorage implements IStorage {
       gloryBalance: 0,
       solBalance: 0,
       usdcBalance: 0,
+      imageCredits: 100,
       withdrawalAddress: null,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -176,6 +191,7 @@ export class MemStorage implements IStorage {
         gloryBalance: userData.gloryBalance,
         solBalance: 0,
         usdcBalance: 0,
+        imageCredits: 100,
         withdrawalAddress: null,
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
         updatedAt: new Date()
@@ -229,6 +245,7 @@ export class MemStorage implements IStorage {
       gloryBalance: 0,
       solBalance: 0,
       usdcBalance: 0,
+      imageCredits: 100,
       withdrawalAddress: insertUser.withdrawalAddress || null,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -454,6 +471,7 @@ export class MemStorage implements IStorage {
       cloudinaryPublicId: insertSubmission.cloudinaryPublicId || null,
       cloudinaryResourceType: insertSubmission.cloudinaryResourceType || null,
       votesCount: 0,
+      isEnhanced: false,
       createdAt: new Date()
     };
     this.submissions.set(id, submission);
@@ -732,6 +750,36 @@ export class MemStorage implements IStorage {
   async deleteAiGeneration(id: string): Promise<void> {
     throw new Error("MemStorage AI generation methods not implemented");
   }
+
+  async updateAiGeneration(id: string, updates: Partial<AiGeneration>): Promise<AiGeneration | undefined> {
+    throw new Error("MemStorage AI generation methods not implemented");
+  }
+
+  // Image Credits (MemStorage - not used in production)
+  async getUserCredits(userId: string): Promise<number> {
+    throw new Error("MemStorage credit methods not implemented");
+  }
+
+  async deductCredits(userId: string, amount: number): Promise<boolean> {
+    throw new Error("MemStorage credit methods not implemented");
+  }
+
+  async addCredits(userId: string, amount: number): Promise<void> {
+    throw new Error("MemStorage credit methods not implemented");
+  }
+
+  // Pricing Settings (MemStorage - not used in production)
+  async getPricingSetting(key: string): Promise<number | undefined> {
+    throw new Error("MemStorage pricing methods not implemented");
+  }
+
+  async getAllPricingSettings(): Promise<Map<string, number>> {
+    throw new Error("MemStorage pricing methods not implemented");
+  }
+
+  async updatePricingSetting(key: string, value: number): Promise<void> {
+    throw new Error("MemStorage pricing methods not implemented");
+  }
 }
 
 export class DbStorage implements IStorage {
@@ -756,6 +804,21 @@ export class DbStorage implements IStorage {
         status: "approved",
         gloryBalance: 0
       });
+    }
+
+    // Seed pricing settings if they don't exist
+    const existingPricing = await db.query.pricingSettings.findFirst();
+    if (!existingPricing) {
+      const defaultPricing = [
+        { key: "leonardo", value: 1 },
+        { key: "nano-banana", value: 12 },
+        { key: "flux-1.1-pro", value: 12 },
+        { key: "sd-3.5-large", value: 20 },
+        { key: "ideogram-v3", value: 27 },
+        { key: "upscale", value: 5 }
+      ];
+
+      await db.insert(pricingSettings).values(defaultPricing);
     }
   }
 
@@ -1473,6 +1536,78 @@ export class DbStorage implements IStorage {
 
   async deleteAiGeneration(id: string): Promise<void> {
     await db.delete(aiGenerations).where(eq(aiGenerations.id, id));
+  }
+
+  async updateAiGeneration(id: string, updates: Partial<AiGeneration>): Promise<AiGeneration | undefined> {
+    const [updated] = await db.update(aiGenerations)
+      .set(updates)
+      .where(eq(aiGenerations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Image Credits
+  async getUserCredits(userId: string): Promise<number> {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { imageCredits: true }
+    });
+    return user?.imageCredits || 0;
+  }
+
+  async deductCredits(userId: string, amount: number): Promise<boolean> {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { imageCredits: true }
+    });
+
+    if (!user || user.imageCredits < amount) {
+      return false; // Insufficient credits
+    }
+
+    await db.update(users)
+      .set({ imageCredits: user.imageCredits - amount, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+
+    return true;
+  }
+
+  async addCredits(userId: string, amount: number): Promise<void> {
+    await db.update(users)
+      .set({ 
+        imageCredits: sql`${users.imageCredits} + ${amount}`,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  // Pricing Settings
+  async getPricingSetting(key: string): Promise<number | undefined> {
+    const setting = await db.query.pricingSettings.findFirst({
+      where: eq(pricingSettings.key, key)
+    });
+    return setting?.value;
+  }
+
+  async getAllPricingSettings(): Promise<Map<string, number>> {
+    const settings = await db.query.pricingSettings.findMany();
+    const map = new Map<string, number>();
+    settings.forEach(s => map.set(s.key, s.value));
+    return map;
+  }
+
+  async updatePricingSetting(key: string, value: number): Promise<void> {
+    const existing = await db.query.pricingSettings.findFirst({
+      where: eq(pricingSettings.key, key)
+    });
+
+    if (existing) {
+      await db.update(pricingSettings)
+        .set({ value, updatedAt: new Date() })
+        .where(eq(pricingSettings.key, key));
+    } else {
+      await db.insert(pricingSettings).values({ key, value });
+    }
   }
 }
 
