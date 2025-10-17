@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import type { AiGeneration } from "@shared/schema";
 
@@ -27,6 +28,8 @@ interface ModelConfig {
   supportsNegativePrompt: boolean;
   supportsImageInput: boolean;
   supportsMask: boolean;
+  supportsSeed: boolean;
+  supportsStyleReferenceImages: boolean;
   
   supportsStyleType: boolean;
   supportsStylePreset: boolean;
@@ -42,7 +45,80 @@ interface ModelConfig {
   supportsNumImages: boolean;
 }
 
-const aspectRatios = [
+const ideogramAspectRatios = [
+  { value: "1:3", label: "Tall (1:3)" },
+  { value: "3:1", label: "Wide (3:1)" },
+  { value: "1:2", label: "Tall (1:2)" },
+  { value: "2:1", label: "Wide (2:1)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "10:16", label: "Portrait (10:16)" },
+  { value: "16:10", label: "Landscape (16:10)" },
+  { value: "2:3", label: "Portrait (2:3)" },
+  { value: "3:2", label: "Landscape (3:2)" },
+  { value: "3:4", label: "Portrait (3:4)" },
+  { value: "4:3", label: "Landscape (4:3)" },
+  { value: "4:5", label: "Portrait (4:5)" },
+  { value: "5:4", label: "Landscape (5:4)" },
+  { value: "1:1", label: "Square (1:1)" },
+];
+
+const nanoBananaAspectRatios = [
+  { value: "match_input_image", label: "Match Input Image" },
+  { value: "1:1", label: "Square (1:1)" },
+  { value: "2:3", label: "Portrait (2:3)" },
+  { value: "3:2", label: "Landscape (3:2)" },
+  { value: "3:4", label: "Portrait (3:4)" },
+  { value: "4:3", label: "Landscape (4:3)" },
+  { value: "4:5", label: "Portrait (4:5)" },
+  { value: "5:4", label: "Landscape (5:4)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "21:9", label: "Ultrawide (21:9)" },
+];
+
+const flux11AspectRatios = [
+  { value: "custom", label: "Custom (set width/height)" },
+  { value: "1:1", label: "Square (1:1)" },
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "3:2", label: "Landscape (3:2)" },
+  { value: "2:3", label: "Portrait (2:3)" },
+  { value: "4:5", label: "Portrait (4:5)" },
+  { value: "5:4", label: "Landscape (5:4)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "3:4", label: "Portrait (3:4)" },
+  { value: "4:3", label: "Landscape (4:3)" },
+];
+
+const sd35AspectRatios = [
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "1:1", label: "Square (1:1)" },
+  { value: "21:9", label: "Ultrawide (21:9)" },
+  { value: "2:3", label: "Portrait (2:3)" },
+  { value: "3:2", label: "Landscape (3:2)" },
+  { value: "4:5", label: "Portrait (4:5)" },
+  { value: "5:4", label: "Landscape (5:4)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "9:21", label: "Ultra Tall (9:21)" },
+];
+
+const leonardoAspectRatios = [
+  { value: "1:1", label: "Square (1:1)" },
+  { value: "16:9", label: "Landscape (16:9)" },
+  { value: "9:16", label: "Portrait (9:16)" },
+  { value: "3:2", label: "Landscape (3:2)" },
+  { value: "2:3", label: "Portrait (2:3)" },
+  { value: "4:5", label: "Portrait (4:5)" },
+  { value: "5:4", label: "Landscape (5:4)" },
+  { value: "3:4", label: "Portrait (3:4)" },
+  { value: "4:3", label: "Landscape (4:3)" },
+  { value: "2:1", label: "Wide (2:1)" },
+  { value: "1:2", label: "Tall (1:2)" },
+  { value: "3:1", label: "Wide (3:1)" },
+  { value: "1:3", label: "Tall (1:3)" },
+];
+
+const defaultAspectRatios = [
   { value: "1:1", label: "Square (1:1)" },
   { value: "16:9", label: "Landscape (16:9)" },
   { value: "9:16", label: "Portrait (9:16)" },
@@ -141,6 +217,24 @@ const generationModes = [
   { value: "ultra", label: "Ultra" },
 ];
 
+async function uploadToCloudinary(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/upload", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to upload file");
+  }
+
+  const data = await response.json();
+  return data.url;
+}
+
 export default function AiGeneratorPage() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
@@ -150,6 +244,11 @@ export default function AiGeneratorPage() {
   const [outputFormat, setOutputFormat] = useState("webp");
   const [outputQuality, setOutputQuality] = useState(80);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  
+  // New parameters
+  const [seed, setSeed] = useState<number>(0);
+  const [imageInput, setImageInput] = useState<File | null>(null);
+  const [styleReferenceImages, setStyleReferenceImages] = useState<File[]>([]);
   
   // Ideogram parameters
   const [resolution, setResolution] = useState("None");
@@ -189,6 +288,25 @@ export default function AiGeneratorPage() {
   });
 
   const currentModelConfig = modelConfigs?.find(m => m.id === selectedModel);
+
+  const getAspectRatiosForModel = (modelId: string) => {
+    if (modelId.includes("ideogram")) return ideogramAspectRatios;
+    if (modelId.includes("nano-banana")) return nanoBananaAspectRatios;
+    if (modelId.includes("flux-1.1")) return flux11AspectRatios;
+    if (modelId.includes("sd-3.5") || modelId.includes("stable-diffusion")) return sd35AspectRatios;
+    if (modelId.includes("leonardo")) return leonardoAspectRatios;
+    return defaultAspectRatios;
+  };
+
+  const aspectRatiosForCurrentModel = getAspectRatiosForModel(selectedModel);
+
+  const getImageInputLabel = () => {
+    if (selectedModel.includes("sd-3.5")) return "Image for img2img";
+    if (selectedModel.includes("flux-1.1")) return "Image Prompt (Redux)";
+    if (selectedModel.includes("ideogram")) return "Inpainting Image";
+    if (selectedModel.includes("nano-banana")) return "Reference Images";
+    return "Image Input";
+  };
 
   const generateMutation = useMutation({
     mutationFn: async (params: any) => {
@@ -245,7 +363,7 @@ export default function AiGeneratorPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!prompt.trim()) {
       toast({
         title: "Prompt Required",
@@ -255,79 +373,112 @@ export default function AiGeneratorPage() {
       return;
     }
 
-    const params: any = {
-      prompt: prompt.trim(),
-      model: selectedModel,
-    };
+    try {
+      const params: any = {
+        prompt: prompt.trim(),
+        model: selectedModel,
+      };
 
-    // Add aspect ratio if supported
-    if (currentModelConfig?.supportsAspectRatio) {
-      params.aspectRatio = aspectRatio;
-    }
+      // Upload imageInput if present
+      if (imageInput) {
+        toast({
+          title: "Uploading image...",
+          description: "Please wait while we upload your image.",
+        });
+        params.imageInput = await uploadToCloudinary(imageInput);
+      }
 
-    // Add output format if supported
-    if (currentModelConfig?.supportsOutputFormat) {
-      params.outputFormat = outputFormat;
-    }
+      // Upload styleReferenceImages if present
+      if (styleReferenceImages.length > 0) {
+        toast({
+          title: "Uploading style references...",
+          description: `Uploading ${styleReferenceImages.length} image(s)...`,
+        });
+        params.styleReferenceImages = await Promise.all(
+          styleReferenceImages.map(file => uploadToCloudinary(file))
+        );
+      }
 
-    // Add output quality if supported
-    if (currentModelConfig?.supportsOutputQuality) {
-      params.outputQuality = outputQuality;
-    }
+      // Add seed if not 0 (0 = random)
+      if (currentModelConfig?.supportsSeed && seed !== 0) {
+        params.seed = seed;
+      }
 
-    // Add negative prompt if supported and provided
-    if (currentModelConfig?.supportsNegativePrompt && negativePrompt.trim()) {
-      params.negativePrompt = negativePrompt.trim();
-    }
+      // Add aspect ratio if supported
+      if (currentModelConfig?.supportsAspectRatio) {
+        params.aspectRatio = aspectRatio;
+      }
 
-    // Ideogram parameters
-    if (currentModelConfig?.supportsResolution && resolution !== "None") {
-      params.resolution = resolution;
-    }
-    if (currentModelConfig?.supportsStyleType && styleType !== "None") {
-      params.styleType = styleType;
-    }
-    if (currentModelConfig?.supportsStylePreset && stylePreset !== "None") {
-      params.stylePreset = stylePreset;
-    }
-    if (currentModelConfig?.supportsMagicPrompt) {
-      params.magicPromptOption = magicPromptOption;
-    }
+      // Add output format if supported
+      if (currentModelConfig?.supportsOutputFormat) {
+        params.outputFormat = outputFormat;
+      }
 
-    // Flux 1.1 parameters
-    if (currentModelConfig?.supportsPromptUpsampling) {
-      params.promptUpsampling = promptUpsampling;
-    }
-    if (currentModelConfig?.supportsSafetyTolerance) {
-      params.safetyTolerance = safetyTolerance;
-    }
+      // Add output quality if supported
+      if (currentModelConfig?.supportsOutputQuality) {
+        params.outputQuality = outputQuality;
+      }
 
-    // Stable Diffusion parameters
-    if (currentModelConfig?.supportsCfg) {
-      params.cfg = cfg;
-    }
-    if (currentModelConfig?.supportsPromptStrength) {
-      params.promptStrength = promptStrength;
-    }
+      // Add negative prompt if supported and provided
+      if (currentModelConfig?.supportsNegativePrompt && negativePrompt.trim()) {
+        params.negativePrompt = negativePrompt.trim();
+      }
 
-    // Leonardo parameters
-    if (currentModelConfig?.supportsLeonardoStyle && leonardoStyle !== "none") {
-      params.leonardoStyle = leonardoStyle;
-    }
-    if (currentModelConfig?.supportsContrast) {
-      params.contrast = contrast;
-    }
-    if (currentModelConfig?.supportsGenerationMode) {
-      params.generationMode = generationMode;
-    }
-    if (currentModelConfig?.supportsPromptEnhance) {
-      params.promptEnhance = promptEnhance;
-    }
-    if (currentModelConfig?.supportsNumImages) {
-      params.numImages = numImages;
-    }
+      // Ideogram parameters
+      if (currentModelConfig?.supportsResolution && resolution !== "None") {
+        params.resolution = resolution;
+      }
+      if (currentModelConfig?.supportsStyleType && styleType !== "None") {
+        params.styleType = styleType;
+      }
+      if (currentModelConfig?.supportsStylePreset && stylePreset !== "None") {
+        params.stylePreset = stylePreset;
+      }
+      if (currentModelConfig?.supportsMagicPrompt) {
+        params.magicPromptOption = magicPromptOption;
+      }
 
-    generateMutation.mutate(params);
+      // Flux 1.1 parameters
+      if (currentModelConfig?.supportsPromptUpsampling) {
+        params.promptUpsampling = promptUpsampling;
+      }
+      if (currentModelConfig?.supportsSafetyTolerance) {
+        params.safetyTolerance = safetyTolerance;
+      }
+
+      // Stable Diffusion parameters
+      if (currentModelConfig?.supportsCfg) {
+        params.cfg = cfg;
+      }
+      if (currentModelConfig?.supportsPromptStrength) {
+        params.promptStrength = promptStrength;
+      }
+
+      // Leonardo parameters
+      if (currentModelConfig?.supportsLeonardoStyle && leonardoStyle !== "none") {
+        params.leonardoStyle = leonardoStyle;
+      }
+      if (currentModelConfig?.supportsContrast) {
+        params.contrast = contrast;
+      }
+      if (currentModelConfig?.supportsGenerationMode) {
+        params.generationMode = generationMode;
+      }
+      if (currentModelConfig?.supportsPromptEnhance) {
+        params.promptEnhance = promptEnhance;
+      }
+      if (currentModelConfig?.supportsNumImages) {
+        params.numImages = numImages;
+      }
+
+      generateMutation.mutate(params);
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload files",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDownload = (url: string, filename: string) => {
@@ -440,7 +591,7 @@ export default function AiGeneratorPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {aspectRatios.map((ratio) => (
+                              {aspectRatiosForCurrentModel.map((ratio) => (
                                 <SelectItem key={ratio.value} value={ratio.value}>
                                   {ratio.label}
                                 </SelectItem>
@@ -718,6 +869,95 @@ export default function AiGeneratorPage() {
                           <Label htmlFor="prompt-enhance" className="cursor-pointer">
                             Prompt Enhance
                           </Label>
+                        </div>
+                      )}
+
+                      {/* Seed Control */}
+                      {currentModelConfig.supportsSeed && (
+                        <div>
+                          <Label htmlFor="seed">Seed (0 = random)</Label>
+                          <Input
+                            id="seed"
+                            type="number"
+                            min={0}
+                            max={2147483647}
+                            value={seed}
+                            onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
+                            data-testid="input-seed"
+                          />
+                        </div>
+                      )}
+
+                      {/* Image Input Upload */}
+                      {currentModelConfig.supportsImageInput && (
+                        <div>
+                          <Label htmlFor="image-input">{getImageInputLabel()}</Label>
+                          {!imageInput ? (
+                            <div className="mt-2">
+                              <Input
+                                id="image-input"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) setImageInput(file);
+                                }}
+                                data-testid="input-image-upload"
+                              />
+                            </div>
+                          ) : (
+                            <div className="mt-2 flex items-center gap-2 p-2 border rounded-md">
+                              <span className="flex-1 text-sm truncate">{imageInput.name}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setImageInput(null)}
+                                data-testid="button-remove-image"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Style Reference Images Upload */}
+                      {currentModelConfig.supportsStyleReferenceImages && (
+                        <div>
+                          <Label htmlFor="style-references">Style Reference Images</Label>
+                          <div className="mt-2">
+                            <Input
+                              id="style-references"
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                setStyleReferenceImages([...styleReferenceImages, ...files]);
+                                e.target.value = '';
+                              }}
+                              data-testid="input-style-references"
+                            />
+                          </div>
+                          {styleReferenceImages.length > 0 && (
+                            <div className="mt-2 space-y-2">
+                              {styleReferenceImages.map((file, index) => (
+                                <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                                  <span className="flex-1 text-sm truncate">{file.name}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setStyleReferenceImages(styleReferenceImages.filter((_, i) => i !== index));
+                                    }}
+                                    data-testid={`button-remove-style-ref-${index}`}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
