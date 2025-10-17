@@ -161,6 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       gloryBalance: user.gloryBalance,
       solBalance: user.solBalance,
       usdcBalance: user.usdcBalance,
+      imageCredits: user.imageCredits,
       avatarUrl: user.avatarUrl,
       withdrawalAddress: user.withdrawalAddress,
       createdAt: user.createdAt
@@ -2776,30 +2777,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const params = generateImageSchema.parse(req.body);
       const userId = req.user!.id;
+      const modelId = params.model || "flux-1.1-pro";
+
+      // Get model cost from pricing settings
+      const modelCost = await storage.getPricingSetting(modelId);
+      if (!modelCost) {
+        return res.status(500).json({ error: "Model pricing not configured" });
+      }
+
+      // Check if user has enough credits
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < modelCost) {
+        return res.status(402).json({ 
+          error: "Insufficient credits",
+          required: modelCost,
+          current: userCredits
+        });
+      }
 
       console.log(`Generating AI image for user ${userId}:`, params.prompt);
 
-      // Generate image using Replicate
-      const result = await generateImage(params);
+      // Deduct credits BEFORE generation
+      const deducted = await storage.deductCredits(userId, modelCost);
+      if (!deducted) {
+        return res.status(402).json({ error: "Failed to deduct credits" });
+      }
 
-      // Save generation to database
-      const generation = await storage.createAiGeneration({
-        userId,
-        prompt: params.prompt,
-        model: result.parameters.model,
-        imageUrl: result.url,
-        parameters: result.parameters,
-        cloudinaryPublicId: result.cloudinaryPublicId,
-        status: "generated"
-      });
+      try {
+        // Generate image using Replicate
+        const result = await generateImage(params);
 
-      res.json({ 
-        id: generation.id,
-        imageUrl: result.url,
-        cloudinaryUrl: result.cloudinaryUrl,
-        cloudinaryPublicId: result.cloudinaryPublicId,
-        parameters: result.parameters
-      });
+        // Save generation to database with credits used
+        const generation = await storage.createAiGeneration({
+          userId,
+          prompt: params.prompt,
+          model: result.parameters.model,
+          imageUrl: result.url,
+          parameters: result.parameters,
+          cloudinaryPublicId: result.cloudinaryPublicId,
+          status: "generated",
+          creditsUsed: modelCost
+        });
+
+        res.json({ 
+          id: generation.id,
+          imageUrl: result.url,
+          cloudinaryUrl: result.cloudinaryUrl,
+          cloudinaryPublicId: result.cloudinaryPublicId,
+          parameters: result.parameters,
+          creditsUsed: modelCost,
+          creditsRemaining: userCredits - modelCost
+        });
+      } catch (generationError) {
+        // Refund credits if generation failed
+        await storage.addCredits(userId, modelCost);
+        throw generationError;
+      }
     } catch (error) {
       console.error("AI generation error:", error);
       if (error instanceof z.ZodError) {
