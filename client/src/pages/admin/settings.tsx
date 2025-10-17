@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Sparkles } from "lucide-react";
 
 // Settings form schema
 const settingsFormSchema = z.object({
@@ -23,8 +23,18 @@ const settingsFormSchema = z.object({
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
+const MODEL_NAMES: Record<string, string> = {
+  "leonardo": "Leonardo Lucid (Fast)",
+  "nano-banana": "Nano Banana (Style Reference)",
+  "flux-1.1-pro": "Flux 1.1 Pro (High Quality)",
+  "sd-3.5-large": "Stable Diffusion 3.5",
+  "ideogram-v3": "Ideogram v3 (Premium)",
+  "upscale": "AI Upscaling (4x)",
+};
+
 export default function AdminSettings() {
   const { toast } = useToast();
+  const [pricingValues, setPricingValues] = useState<Record<string, number>>({});
 
   // Fetch current settings
   const { data: settings, isLoading } = useQuery<{
@@ -33,6 +43,17 @@ export default function AdminSettings() {
   }>({
     queryKey: ["/api/admin/settings"],
   });
+
+  // Fetch pricing settings
+  const { data: pricing, isLoading: loadingPricing } = useQuery<Record<string, number>>({
+    queryKey: ["/api/admin/settings/pricing"],
+  });
+
+  useEffect(() => {
+    if (pricing) {
+      setPricingValues(pricing);
+    }
+  }, [pricing]);
 
   // Form setup
   const form = useForm<SettingsFormValues>({
@@ -60,6 +81,31 @@ export default function AdminSettings() {
       toast({
         title: "Error",
         description: error.message || "Failed to update settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update pricing mutation
+  const updatePricingMutation = useMutation({
+    mutationFn: async () => {
+      const updates = Object.entries(pricingValues).map(([key, value]) =>
+        apiRequest("PUT", `/api/admin/settings/pricing/${key}`, { value })
+      );
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings/pricing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pricing"] });
+      toast({
+        title: "Pricing Updated",
+        description: "AI model pricing has been successfully updated",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update pricing",
         variant: "destructive",
       });
     },
@@ -171,6 +217,73 @@ export default function AdminSettings() {
             </div>
           </form>
         </Form>
+
+        {/* AI Model Pricing */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              AI Model Pricing
+            </CardTitle>
+            <CardDescription>Configure credit costs for AI image generation and upscaling</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingPricing ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4">
+                  {Object.entries(MODEL_NAMES).map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <label htmlFor={`pricing-${key}`} className="text-sm font-medium">
+                          {label}
+                        </label>
+                        <p className="text-xs text-muted-foreground">Cost per generation</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id={`pricing-${key}`}
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={pricingValues[key] || 0}
+                          onChange={(e) =>
+                            setPricingValues({ ...pricingValues, [key]: parseInt(e.target.value) || 0 })
+                          }
+                          className="w-24"
+                          data-testid={`input-pricing-${key}`}
+                        />
+                        <span className="text-sm text-muted-foreground">credits</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={() => updatePricingMutation.mutate()}
+                    disabled={updatePricingMutation.isPending}
+                    data-testid="button-save-pricing"
+                  >
+                    {updatePricingMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Pricing
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

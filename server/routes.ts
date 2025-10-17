@@ -2968,6 +2968,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin pricing management
+  app.get("/api/admin/settings/pricing", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const allPricing = await storage.getAllPricingSettings();
+      const pricingObject: Record<string, number> = {};
+      allPricing.forEach((value, key) => {
+        pricingObject[key] = value;
+      });
+      res.json(pricingObject);
+    } catch (error) {
+      console.error("Error fetching pricing settings:", error);
+      res.status(500).json({ error: "Failed to fetch pricing settings" });
+    }
+  });
+
+  app.put("/api/admin/settings/pricing/:key", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { key } = req.params;
+      const { value } = z.object({ value: z.number().min(0) }).parse(req.body);
+      
+      await storage.updatePricingSetting(key, value);
+      res.json({ message: "Pricing updated successfully", key, value });
+    } catch (error) {
+      console.error("Error updating pricing:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid value", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update pricing" });
+    }
+  });
+
   // Upscale AI generation image
   const upscaleSchema = z.object({
     generationId: z.string(),
