@@ -37,9 +37,11 @@ export interface ModelConfig {
   supportsMask: boolean; // inpainting
   
   // Model-specific parameter support
+  supportsSeed: boolean; // Random seed for reproducibility
   supportsStyleType: boolean; // Ideogram
   supportsStylePreset: boolean; // Ideogram
   supportsMagicPrompt: boolean; // Ideogram
+  supportsStyleReferenceImages: boolean; // Ideogram
   supportsPromptUpsampling: boolean; // Flux 1.1
   supportsSafetyTolerance: boolean; // Flux 1.1
   supportsCfg: boolean; // Stable Diffusion
@@ -68,9 +70,11 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsImageInput: true,
     supportsMask: true,
     
+    supportsSeed: true,
     supportsStyleType: true,
     supportsStylePreset: true,
     supportsMagicPrompt: true,
+    supportsStyleReferenceImages: true,
     supportsPromptUpsampling: false,
     supportsSafetyTolerance: false,
     supportsCfg: false,
@@ -98,9 +102,11 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsImageInput: true,
     supportsMask: false,
     
+    supportsSeed: false,
     supportsStyleType: false,
     supportsStylePreset: false,
     supportsMagicPrompt: false,
+    supportsStyleReferenceImages: false,
     supportsPromptUpsampling: false,
     supportsSafetyTolerance: false,
     supportsCfg: false,
@@ -128,9 +134,11 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsImageInput: true,
     supportsMask: false,
     
+    supportsSeed: true,
     supportsStyleType: false,
     supportsStylePreset: false,
     supportsMagicPrompt: false,
+    supportsStyleReferenceImages: false,
     supportsPromptUpsampling: true,
     supportsSafetyTolerance: true,
     supportsCfg: false,
@@ -158,9 +166,11 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsImageInput: true,
     supportsMask: false,
     
+    supportsSeed: true,
     supportsStyleType: false,
     supportsStylePreset: false,
     supportsMagicPrompt: false,
+    supportsStyleReferenceImages: false,
     supportsPromptUpsampling: false,
     supportsSafetyTolerance: false,
     supportsCfg: true,
@@ -188,9 +198,11 @@ export const AI_MODELS: Record<string, ModelConfig> = {
     supportsImageInput: false,
     supportsMask: false,
     
+    supportsSeed: false,
     supportsStyleType: false,
     supportsStylePreset: false,
     supportsMagicPrompt: false,
+    supportsStyleReferenceImages: false,
     supportsPromptUpsampling: false,
     supportsSafetyTolerance: false,
     supportsCfg: false,
