@@ -613,8 +613,18 @@ export async function upscaleImage(
       
       if (outputObj.url && typeof outputObj.url === "function") {
         console.log("Calling .url() method...");
-        upscaledUrl = await outputObj.url();
-        console.log("Result from .url():", upscaledUrl, "Type:", typeof upscaledUrl);
+        const urlResult = await outputObj.url();
+        console.log("Result from .url():", urlResult, "Type:", typeof urlResult);
+        // .url() can return a URL object, extract the href string
+        if (typeof urlResult === "string") {
+          upscaledUrl = urlResult;
+        } else if (urlResult && urlResult.href) {
+          upscaledUrl = urlResult.href;
+        } else if (urlResult && typeof urlResult.toString === "function") {
+          upscaledUrl = urlResult.toString();
+        } else {
+          throw new Error(`Invalid URL result from .url() method: ${typeof urlResult}`);
+        }
       } else if (outputObj.url && typeof outputObj.url === "string") {
         console.log("Using .url string property");
         upscaledUrl = outputObj.url;
