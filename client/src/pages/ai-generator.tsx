@@ -279,6 +279,7 @@ export default function AiGeneratorPage() {
   const [wizardModalOpen, setWizardModalOpen] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<AiGeneration | null>(null);
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -579,20 +580,42 @@ export default function AiGeneratorPage() {
     return 'png'; // Default extension
   };
 
-  const handleDownload = (url: string, filename?: string) => {
+  const handleDownload = async (url: string, generationId: string, filename?: string) => {
     try {
+      setDownloadingId(generationId);
+      
+      // Use proxy endpoint to ensure download works with CORS
+      const downloadUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
       // Auto-generate filename with correct extension if not provided
       const extension = getFileExtension(url);
       const finalFilename = filename || `ai-generated-${Date.now()}.${extension}`;
       
-      // Direct download - browser will show native download progress
       const link = document.createElement("a");
-      link.href = url;
+      link.href = blobUrl;
       link.download = finalFilename;
-      link.target = "_blank"; // Fallback if download attribute doesn't work
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      
+      toast({
+        title: "Download Complete",
+        description: "Image saved successfully",
+      });
     } catch (error) {
       console.error("Download failed:", error);
       toast({
@@ -600,6 +623,8 @@ export default function AiGeneratorPage() {
         description: error instanceof Error ? error.message : "Failed to download image",
         variant: "destructive",
       });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -1100,12 +1125,17 @@ export default function AiGeneratorPage() {
                         <div className="flex gap-1">
                           {/* Download */}
                           <button
-                            onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl)}
-                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                            onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id)}
+                            disabled={downloadingId === gen.id}
+                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30 disabled:opacity-50"
                             title="Download"
                             data-testid={`button-download-${gen.id}`}
                           >
-                            <span className="material-symbols-outlined text-base">download</span>
+                            {downloadingId === gen.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <span className="material-symbols-outlined text-base">download</span>
+                            )}
                           </button>
                           {/* Edit */}
                           <button
