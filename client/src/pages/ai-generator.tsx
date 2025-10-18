@@ -282,7 +282,7 @@ export default function AiGeneratorPage() {
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxGeneration, setLightboxGeneration] = useState<AiGeneration | null>(null);
+  const [lightboxGenerationId, setLightboxGenerationId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -295,6 +295,12 @@ export default function AiGeneratorPage() {
   const { data: generations, isLoading: loadingHistory } = useQuery<AiGeneration[]>({
     queryKey: ["/api/ai/generations"],
   });
+
+  // Derive lightbox generation from query data
+  const lightboxGeneration = useMemo(() => {
+    if (!lightboxGenerationId || !generations) return null;
+    return generations.find(gen => gen.id === lightboxGenerationId) || null;
+  }, [lightboxGenerationId, generations]);
 
   const { data: userData } = useQuery<any>({
     queryKey: ["/api/me"],
@@ -1209,7 +1215,7 @@ export default function AiGeneratorPage() {
                             className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setLightboxGeneration(gen);
+                              setLightboxGenerationId(gen.id);
                               setLightboxOpen(true);
                             }}
                             title="View Fullscreen"
@@ -1278,7 +1284,7 @@ export default function AiGeneratorPage() {
         generation={lightboxGeneration}
         onClose={() => {
           setLightboxOpen(false);
-          setLightboxGeneration(null);
+          setLightboxGenerationId(null);
         }}
         onDownload={handleDownload}
         onEdit={(generationId) => setLocation(`/image-editor/${generationId}`)}
