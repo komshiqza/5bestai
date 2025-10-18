@@ -11,7 +11,7 @@ import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
 import { ContestScheduler } from "./contest-scheduler";
-import { verifyTransaction, solanaConnection } from "./solana";
+import { verifyTransaction, solanaConnection, solanaConnectionProcessed } from "./solana";
 import { findReference } from "@solana/pay";
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
@@ -509,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find transaction using reference
       console.log("🔎 [PAYMENT] Searching blockchain for reference...");
-      const signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'processed' });
+      const signatureInfo = await findReference(solanaConnectionProcessed, referenceKey, { finality: 'processed' });
       
       if (!signatureInfo || !signatureInfo.signature) {
         console.log("⚠️ [PAYMENT] No transaction found for reference");
@@ -3482,7 +3482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("🔎 [SUBSCRIPTION] Searching blockchain for reference...");
       let signatureInfo;
       try {
-        signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'processed' });
+        signatureInfo = await findReference(solanaConnectionProcessed, referenceKey, { finality: 'processed' });
       } catch (error: any) {
         // FindReferenceError is expected when transaction hasn't been sent yet
         if (error.name === 'FindReferenceError' || error.message?.includes('not found')) {

@@ -7,6 +7,9 @@ const endpoint = process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC_ENDPOINT |
 
 export const solanaConnection = new Connection(endpoint, 'confirmed');
 
+// Separate connection with 'processed' commitment for fast findReference() detection
+export const solanaConnectionProcessed = new Connection(endpoint, 'processed');
+
 export async function verifySolanaSignature(
   publicKey: string,
   signature: string,
