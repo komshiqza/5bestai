@@ -462,6 +462,7 @@ export default function MySubmissions() {
         open={proEditModalOpen}
         onOpenChange={setProEditModalOpen}
         imageUrl={proEditImageUrl}
+        submissionId={proEditSubmissionId || undefined}
       />
     </div>
   );

@@ -12,6 +12,7 @@ interface ProEditModalProps {
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
   submissionId?: string;
+  generationId?: string;
 }
 
 interface Preset {
@@ -46,7 +47,7 @@ const PRESETS: Preset[] = [
   }
 ];
 
-export function ProEditModal({ open, onOpenChange, imageUrl, submissionId }: ProEditModalProps) {
+export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, generationId }: ProEditModalProps) {
   const { toast } = useToast();
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -62,7 +63,8 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId }: Pro
         body: JSON.stringify({
           imageUrl,
           preset,
-          submissionId
+          submissionId,
+          generationId
         })
       });
       

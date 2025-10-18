@@ -1333,6 +1333,7 @@ export default function AiGeneratorPage() {
         open={proEditModalOpen}
         onOpenChange={setProEditModalOpen}
         imageUrl={proEditImageUrl}
+        generationId={proEditGenerationId || undefined}
       />
     </div>
   );

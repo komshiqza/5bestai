@@ -570,6 +570,7 @@ export const images = pgTable("images", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   submissionId: varchar("submission_id").references(() => submissions.id, { onDelete: "set null" }), // Link to submission if created from one
+  generationId: varchar("generation_id").references(() => aiGenerations.id, { onDelete: "set null" }), // Link to AI generation if created from one
   originalUrl: text("original_url").notNull(), // URL of the original uploaded image
   currentVersionId: varchar("current_version_id"), // Points to the active version
   title: varchar("title", { length: 255 }),
@@ -581,7 +582,8 @@ export const images = pgTable("images", {
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 }, (table) => ({
   userIdx: index("images_user_idx").on(table.userId),
-  submissionIdx: index("images_submission_idx").on(table.submissionId)
+  submissionIdx: index("images_submission_idx").on(table.submissionId),
+  generationIdx: index("images_generation_idx").on(table.generationId)
 }));
 
 // Pro Edit: Image Versions table (non-destructive editing history)

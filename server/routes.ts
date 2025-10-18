@@ -3809,7 +3809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/edits", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const userId = req.user!.id;
-      const { imageUrl, preset, submissionId } = req.body;
+      const { imageUrl, preset, submissionId, generationId } = req.body;
 
       console.log(`[ProEdit] Creating edit job for user ${userId}, preset: ${preset}`);
 
@@ -3843,6 +3843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const image = await storage.createImage({
         userId,
         submissionId: submissionId || null,
+        generationId: generationId || null,
         originalUrl: imageUrl,
         currentVersionId: null
       });
