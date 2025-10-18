@@ -564,16 +564,28 @@ export default function AiGeneratorPage() {
     }
   };
 
-  const handleDownload = async (url: string, filename: string) => {
+  // Helper to get file extension from URL
+  const getFileExtension = (url: string): string => {
     try {
-      // Use proxy endpoint for external URLs (Replicate) to bypass CORS
-      const isExternalUrl = !url.includes('cloudinary.com');
-      const downloadUrl = isExternalUrl 
-        ? `/api/proxy-download?url=${encodeURIComponent(url)}`
-        : url;
+      const urlPath = new URL(url).pathname;
+      const ext = urlPath.split('.').pop()?.toLowerCase();
+      if (ext && ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
+        return ext;
+      }
+    } catch (e) {
+      // Invalid URL, fallback to default
+    }
+    return 'png'; // Default extension
+  };
+
+  const handleDownload = async (url: string, filename?: string) => {
+    try {
+      // Use proxy endpoint for all downloads to ensure consistent behavior
+      const downloadUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
       
       const response = await fetch(downloadUrl, {
-        credentials: 'include', // Include auth cookies for proxy endpoint
+        credentials: 'include',
+        cache: 'no-store', // Prevent browser caching
       });
       
       if (!response.ok) {
@@ -583,9 +595,13 @@ export default function AiGeneratorPage() {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
+      // Auto-generate filename with correct extension if not provided
+      const extension = getFileExtension(url);
+      const finalFilename = filename || `ai-generated-${Date.now()}.${extension}`;
+      
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = filename;
+      link.download = finalFilename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1165,7 +1181,7 @@ export default function AiGeneratorPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDownload(currentImage, `ai-generated-${Date.now()}.${outputFormat}`)}
+                              onClick={() => handleDownload(currentImage)}
                               data-testid="button-download-current"
                             >
                               <Download className="h-4 w-4 mr-2" />
@@ -1227,7 +1243,7 @@ export default function AiGeneratorPage() {
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl, `${gen.id}.webp`)}
+                            onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl)}
                             data-testid={`button-download-${gen.id}`}
                           >
                             <Download className="h-4 w-4" />

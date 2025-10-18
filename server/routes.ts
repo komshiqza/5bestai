@@ -3222,6 +3222,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Fetched image: ${contentType}, size: ${contentLength || 'unknown'}`);
       
+      // Prevent browser caching to avoid 304 Not Modified responses
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', 'attachment');
       if (contentLength) {
