@@ -24,6 +24,13 @@ import {
   type InsertAiGeneration,
   type PricingSetting,
   type InsertPricingSetting,
+  type SubscriptionTier,
+  type InsertSubscriptionTier,
+  type UserSubscription,
+  type InsertUserSubscription,
+  type UserSubscriptionWithTier,
+  type SubscriptionTransaction,
+  type InsertSubscriptionTransaction,
   type SubmissionWithUser,
   type ContestWithStats,
   type UserWithStats,
@@ -38,7 +45,10 @@ import {
   cashoutEvents,
   siteSettings,
   aiGenerations,
-  pricingSettings
+  pricingSettings,
+  subscriptionTiers,
+  userSubscriptions,
+  subscriptionTransactions
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -133,6 +143,32 @@ export interface IStorage {
   getPricingSetting(key: string): Promise<number | undefined>;
   getAllPricingSettings(): Promise<Map<string, number>>;
   updatePricingSetting(key: string, value: number): Promise<void>;
+  
+  // Subscription Tiers
+  getSubscriptionTiers(): Promise<SubscriptionTier[]>;
+  getSubscriptionTier(id: string): Promise<SubscriptionTier | undefined>;
+  getSubscriptionTierBySlug(slug: string): Promise<SubscriptionTier | undefined>;
+  createSubscriptionTier(tier: InsertSubscriptionTier): Promise<SubscriptionTier>;
+  updateSubscriptionTier(id: string, updates: Partial<SubscriptionTier>): Promise<SubscriptionTier | undefined>;
+  deleteSubscriptionTier(id: string): Promise<void>;
+  
+  // User Subscriptions
+  getUserSubscription(userId: string): Promise<UserSubscriptionWithTier | undefined>;
+  getUserSubscriptionById(id: string): Promise<UserSubscriptionWithTier | undefined>;
+  createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription>;
+  updateUserSubscription(id: string, updates: Partial<UserSubscription>): Promise<UserSubscription | undefined>;
+  cancelUserSubscription(subscriptionId: string): Promise<void>;
+  
+  // Subscription Transactions
+  createSubscriptionTransaction(transaction: InsertSubscriptionTransaction): Promise<SubscriptionTransaction>;
+  getSubscriptionTransactions(filters: { userId?: string; subscriptionId?: string }): Promise<SubscriptionTransaction[]>;
+  
+  // Helper Methods
+  canUserAccessModel(userId: string, modelSlug: string): Promise<boolean>;
+  canUserEdit(userId: string): Promise<boolean>;
+  canUserUpscale(userId: string): Promise<boolean>;
+  getUserTierCommissions(userId: string): Promise<{ promptCommission: number; imageCommission: number }>;
+  grantMonthlyCredits(userId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -779,6 +815,82 @@ export class MemStorage implements IStorage {
 
   async updatePricingSetting(key: string, value: number): Promise<void> {
     throw new Error("MemStorage pricing methods not implemented");
+  }
+
+  // Subscription Tiers (MemStorage - not used in production)
+  async getSubscriptionTiers(): Promise<SubscriptionTier[]> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async getSubscriptionTier(id: string): Promise<SubscriptionTier | undefined> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async getSubscriptionTierBySlug(slug: string): Promise<SubscriptionTier | undefined> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async createSubscriptionTier(tier: InsertSubscriptionTier): Promise<SubscriptionTier> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async updateSubscriptionTier(id: string, updates: Partial<SubscriptionTier>): Promise<SubscriptionTier | undefined> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async deleteSubscriptionTier(id: string): Promise<void> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  // User Subscriptions (MemStorage - not used in production)
+  async getUserSubscription(userId: string): Promise<UserSubscriptionWithTier | undefined> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async getUserSubscriptionById(id: string): Promise<UserSubscriptionWithTier | undefined> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async updateUserSubscription(id: string, updates: Partial<UserSubscription>): Promise<UserSubscription | undefined> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async cancelUserSubscription(subscriptionId: string): Promise<void> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  // Subscription Transactions (MemStorage - not used in production)
+  async createSubscriptionTransaction(transaction: InsertSubscriptionTransaction): Promise<SubscriptionTransaction> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async getSubscriptionTransactions(filters: { userId?: string; subscriptionId?: string }): Promise<SubscriptionTransaction[]> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  // Helper Methods (MemStorage - not used in production)
+  async canUserAccessModel(userId: string, modelSlug: string): Promise<boolean> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async canUserEdit(userId: string): Promise<boolean> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async canUserUpscale(userId: string): Promise<boolean> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async getUserTierCommissions(userId: string): Promise<{ promptCommission: number; imageCommission: number }> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async grantMonthlyCredits(userId: string): Promise<void> {
+    throw new Error("MemStorage subscription methods not implemented");
   }
 }
 
@@ -1608,6 +1720,204 @@ export class DbStorage implements IStorage {
     } else {
       await db.insert(pricingSettings).values({ key, value });
     }
+  }
+
+  // Subscription Tiers
+  async getSubscriptionTiers(): Promise<SubscriptionTier[]> {
+    const result = await db.query.subscriptionTiers.findMany({
+      where: eq(subscriptionTiers.isActive, true),
+      orderBy: [subscriptionTiers.sortOrder]
+    });
+    return result;
+  }
+
+  async getSubscriptionTier(id: string): Promise<SubscriptionTier | undefined> {
+    const result = await db.query.subscriptionTiers.findFirst({
+      where: eq(subscriptionTiers.id, id)
+    });
+    return result;
+  }
+
+  async getSubscriptionTierBySlug(slug: string): Promise<SubscriptionTier | undefined> {
+    const result = await db.query.subscriptionTiers.findFirst({
+      where: eq(subscriptionTiers.slug, slug)
+    });
+    return result;
+  }
+
+  async createSubscriptionTier(tier: InsertSubscriptionTier): Promise<SubscriptionTier> {
+    const [newTier] = await db.insert(subscriptionTiers).values(tier).returning();
+    return newTier as SubscriptionTier;
+  }
+
+  async updateSubscriptionTier(id: string, updates: Partial<SubscriptionTier>): Promise<SubscriptionTier | undefined> {
+    const [tier] = await db.update(subscriptionTiers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subscriptionTiers.id, id))
+      .returning();
+    return tier;
+  }
+
+  async deleteSubscriptionTier(id: string): Promise<void> {
+    await db.delete(subscriptionTiers).where(eq(subscriptionTiers.id, id));
+  }
+
+  // User Subscriptions
+  async getUserSubscription(userId: string): Promise<UserSubscriptionWithTier | undefined> {
+    const subscription = await db.query.userSubscriptions.findFirst({
+      where: and(
+        eq(userSubscriptions.userId, userId),
+        eq(userSubscriptions.status, 'active')
+      )
+    });
+
+    if (!subscription) {
+      // Default to free tier if no subscription exists
+      const freeTier = await this.getSubscriptionTierBySlug('free');
+      if (!freeTier) return undefined;
+      
+      return {
+        id: '',
+        userId,
+        tierId: freeTier.id,
+        status: 'active',
+        paymentMethod: null,
+        stripeSubscriptionId: null,
+        stripeCustomerId: null,
+        paymentTxHash: null,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+        creditsGranted: 0,
+        creditsGrantedAt: null,
+        cancelAtPeriodEnd: false,
+        cancelledAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        tier: freeTier
+      };
+    }
+
+    const tier = await db.query.subscriptionTiers.findFirst({
+      where: eq(subscriptionTiers.id, subscription.tierId)
+    });
+
+    if (!tier) return undefined;
+
+    return {
+      ...subscription,
+      tier
+    };
+  }
+
+  async getUserSubscriptionById(id: string): Promise<UserSubscriptionWithTier | undefined> {
+    const subscription = await db.query.userSubscriptions.findFirst({
+      where: eq(userSubscriptions.id, id)
+    });
+
+    if (!subscription) return undefined;
+
+    const tier = await db.query.subscriptionTiers.findFirst({
+      where: eq(subscriptionTiers.id, subscription.tierId)
+    });
+
+    if (!tier) return undefined;
+
+    return {
+      ...subscription,
+      tier
+    };
+  }
+
+  async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
+    const [newSubscription] = await db.insert(userSubscriptions).values(subscription).returning();
+    return newSubscription as UserSubscription;
+  }
+
+  async updateUserSubscription(id: string, updates: Partial<UserSubscription>): Promise<UserSubscription | undefined> {
+    const [subscription] = await db.update(userSubscriptions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userSubscriptions.id, id))
+      .returning();
+    return subscription;
+  }
+
+  async cancelUserSubscription(subscriptionId: string): Promise<void> {
+    await db.update(userSubscriptions)
+      .set({ 
+        cancelAtPeriodEnd: true, 
+        cancelledAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(userSubscriptions.id, subscriptionId));
+  }
+
+  // Subscription Transactions
+  async createSubscriptionTransaction(transaction: InsertSubscriptionTransaction): Promise<SubscriptionTransaction> {
+    const [newTransaction] = await db.insert(subscriptionTransactions).values(transaction).returning();
+    return newTransaction as SubscriptionTransaction;
+  }
+
+  async getSubscriptionTransactions(filters: { userId?: string; subscriptionId?: string }): Promise<SubscriptionTransaction[]> {
+    const conditions = [];
+    if (filters.userId) conditions.push(eq(subscriptionTransactions.userId, filters.userId));
+    if (filters.subscriptionId) conditions.push(eq(subscriptionTransactions.subscriptionId, filters.subscriptionId));
+
+    const result = await db.query.subscriptionTransactions.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      orderBy: [desc(subscriptionTransactions.createdAt)]
+    });
+    return result;
+  }
+
+  // Helper Methods
+  async canUserAccessModel(userId: string, modelSlug: string): Promise<boolean> {
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription) return false;
+
+    const allowedModels = subscription.tier.allowedModels || [];
+    return allowedModels.includes(modelSlug);
+  }
+
+  async canUserEdit(userId: string): Promise<boolean> {
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription) return false;
+    return subscription.tier.canEdit;
+  }
+
+  async canUserUpscale(userId: string): Promise<boolean> {
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription) return false;
+    return subscription.tier.canUpscale;
+  }
+
+  async getUserTierCommissions(userId: string): Promise<{ promptCommission: number; imageCommission: number }> {
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription) {
+      return { promptCommission: 0, imageCommission: 0 };
+    }
+    return {
+      promptCommission: subscription.tier.promptCommission,
+      imageCommission: subscription.tier.imageCommission
+    };
+  }
+
+  async grantMonthlyCredits(userId: string): Promise<void> {
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription || !subscription.id) return;
+
+    const monthlyCredits = subscription.tier.monthlyCredits;
+    
+    // Add credits to user account
+    await this.addCredits(userId, monthlyCredits);
+
+    // Update subscription with grant timestamp
+    await db.update(userSubscriptions)
+      .set({
+        creditsGranted: monthlyCredits,
+        creditsGrantedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(userSubscriptions.id, subscription.id));
   }
 }
 

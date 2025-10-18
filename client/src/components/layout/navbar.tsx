@@ -6,7 +6,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles } from "lucide-react";
+import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles, CreditCard } from "lucide-react";
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 export function Navbar() {
@@ -156,12 +156,20 @@ export function Navbar() {
                     </DropdownMenuItem>
                   </Link>
                   {isAdmin(user) && (
-                    <Link href="/admin" data-testid="link-admin">
-                      <DropdownMenuItem>
-                        <Shield className="w-4 h-4 mr-2" />
-                        Admin Dashboard
-                      </DropdownMenuItem>
-                    </Link>
+                    <>
+                      <Link href="/admin" data-testid="link-admin">
+                        <DropdownMenuItem>
+                          <Shield className="w-4 h-4 mr-2" />
+                          Admin Dashboard
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/admin/subscription-tiers" data-testid="link-admin-tiers">
+                        <DropdownMenuItem>
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Subscription Tiers
+                        </DropdownMenuItem>
+                      </Link>
+                    </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">

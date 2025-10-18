@@ -24,6 +24,7 @@ import MySubmissions from "@/pages/my-submissions";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContestDetail from "@/pages/admin/contest-detail";
 import AdminSettings from "@/pages/admin/settings";
+import AdminSubscriptionTiers from "@/pages/admin/subscription-tiers";
 import RoadmapPage from "@/pages/roadmap";
 import AiGeneratorPage from "@/pages/ai-generator";
 import ImageEditor from "@/pages/image-editor";
@@ -70,6 +71,7 @@ function Router() {
                 <Route path="/admin" component={AdminDashboard} />
                 <Route path="/admin/dashboard" component={AdminDashboard} />
                 <Route path="/admin/settings" component={AdminSettings} />
+                <Route path="/admin/subscription-tiers" component={AdminSubscriptionTiers} />
                 <Route path="/admin/contest/:id" component={AdminContestDetail} />
                 <Route component={NotFound} />
               </Switch>

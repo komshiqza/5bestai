@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import * as ed25519 from "@noble/ed25519";
 import { storage } from "./storage";
+import { db } from "./db";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
@@ -31,7 +32,12 @@ import {
   rejectCashoutSchema,
   bulkCashoutIdsSchema,
   bulkRejectCashoutSchema,
-  insertSiteSettingsSchema
+  insertSiteSettingsSchema,
+  subscriptionTiers,
+  type SubscriptionTier,
+  type UserSubscriptionWithTier,
+  type UserSubscription,
+  type SubscriptionTransaction
 } from "@shared/schema";
 
 // Create contest scheduler instance
@@ -3241,6 +3247,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Proxy download error:", error);
       res.status(500).json({ 
         error: error instanceof Error ? error.message : "Failed to download image" 
+      });
+    }
+  });
+
+  // ============================================================================
+  // SUBSCRIPTION API ENDPOINTS
+  // ============================================================================
+
+  // Public Tier Endpoints
+  // GET /api/tiers - Get all active tiers (public, no auth required)
+  app.get("/api/tiers", async (req, res) => {
+    try {
+      console.log("Fetching active subscription tiers");
+      const tiers = await storage.getSubscriptionTiers(); // Returns only active tiers
+      res.json(tiers);
+    } catch (error) {
+      console.error("Error fetching subscription tiers:", error);
+      res.status(500).json({ error: "Failed to fetch subscription tiers" });
+    }
+  });
+
+  // User Subscription Endpoints (authenticated)
+  // GET /api/subscription - Get current user's subscription with tier details
+  app.get("/api/subscription", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      console.log(`Fetching subscription for user: ${userId}`);
+      
+      const subscription = await storage.getUserSubscription(userId);
+      
+      if (!subscription) {
+        return res.json(null);
+      }
+      
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error fetching user subscription:", error);
+      res.status(500).json({ error: "Failed to fetch subscription" });
+    }
+  });
+
+  // POST /api/subscription/subscribe - Subscribe to a tier
+  app.post("/api/subscription/subscribe", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { tierId, paymentMethod } = req.body;
+
+      // Validate input
+      if (!tierId || typeof tierId !== 'string') {
+        return res.status(400).json({ error: "tierId is required" });
+      }
+
+      if (!paymentMethod || !["stripe", "usdc"].includes(paymentMethod)) {
+        return res.status(400).json({ error: "paymentMethod must be 'stripe' or 'usdc'" });
+      }
+
+      console.log(`User ${userId} subscribing to tier ${tierId} with payment method: ${paymentMethod}`);
+
+      // Check if tier exists
+      const tier = await storage.getSubscriptionTier(tierId);
+      if (!tier) {
+        return res.status(404).json({ error: "Subscription tier not found" });
+      }
+
+      if (!tier.isActive) {
+        return res.status(400).json({ error: "This subscription tier is not currently available" });
+      }
+
+      // Check if user already has an active subscription
+      const existingSubscription = await storage.getUserSubscription(userId);
+      if (existingSubscription && existingSubscription.status === "active") {
+        return res.status(400).json({ error: "You already have an active subscription" });
+      }
+
+      // Calculate subscription period (30 days)
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setDate(periodEnd.getDate() + 30); // 30 days from now
+
+      console.log(`Creating subscription: period start=${now.toISOString()}, period end=${periodEnd.toISOString()}`);
+
+      // Create subscription (without payment processing for now)
+      const subscription = await storage.createUserSubscription({
+        userId,
+        tierId,
+        status: "active",
+        paymentMethod,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        creditsGranted: 0,
+        cancelAtPeriodEnd: false
+      });
+
+      console.log(`Subscription created successfully: ${subscription.id}`);
+
+      res.status(201).json(subscription);
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to create subscription" 
+      });
+    }
+  });
+
+  // DELETE /api/subscription/cancel - Cancel subscription at period end
+  app.delete("/api/subscription/cancel", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      console.log(`User ${userId} requesting subscription cancellation`);
+
+      // Get user's active subscription
+      const subscription = await storage.getUserSubscription(userId);
+      
+      if (!subscription) {
+        return res.status(404).json({ error: "No active subscription found" });
+      }
+
+      if (subscription.status !== "active") {
+        return res.status(400).json({ error: "Subscription is not active" });
+      }
+
+      if (subscription.cancelAtPeriodEnd) {
+        return res.status(400).json({ error: "Subscription is already scheduled for cancellation" });
+      }
+
+      // Cancel subscription at period end
+      await storage.cancelUserSubscription(subscription.id);
+      
+      console.log(`Subscription ${subscription.id} scheduled for cancellation at period end`);
+
+      res.json({ message: "Subscription will be cancelled at period end" });
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to cancel subscription" 
+      });
+    }
+  });
+
+  // GET /api/subscription/transactions - Get user's payment history
+  app.get("/api/subscription/transactions", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      console.log(`Fetching subscription transactions for user: ${userId}`);
+
+      const transactions = await storage.getSubscriptionTransactions({ userId });
+      
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching subscription transactions:", error);
+      res.status(500).json({ error: "Failed to fetch payment history" });
+    }
+  });
+
+  // Admin Tier Management (authenticated + admin)
+  // GET /api/admin/tiers - Get all tiers including inactive (admin only)
+  app.get("/api/admin/tiers", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      console.log("Admin fetching all subscription tiers (including inactive)");
+      // Query all tiers directly from database (including inactive)
+      const tiers = await db.query.subscriptionTiers.findMany({
+        orderBy: [subscriptionTiers.sortOrder]
+      });
+      res.json(tiers);
+    } catch (error) {
+      console.error("Error fetching all subscription tiers:", error);
+      res.status(500).json({ error: "Failed to fetch subscription tiers" });
+    }
+  });
+
+  // PUT /api/admin/tiers/:id - Update tier configuration (admin only)
+  app.put("/api/admin/tiers/:id", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const tierId = req.params.id;
+      const updates = req.body;
+
+      console.log(`Admin updating tier ${tierId}:`, updates);
+
+      // Validate tier exists
+      const existingTier = await storage.getSubscriptionTier(tierId);
+      if (!existingTier) {
+        return res.status(404).json({ error: "Subscription tier not found" });
+      }
+
+      // Update tier
+      const updatedTier = await storage.updateSubscriptionTier(tierId, updates);
+      
+      if (!updatedTier) {
+        return res.status(500).json({ error: "Failed to update tier" });
+      }
+
+      console.log(`Tier ${tierId} updated successfully`);
+
+      res.json(updatedTier);
+    } catch (error) {
+      console.error("Error updating subscription tier:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to update subscription tier" 
       });
     }
   });
