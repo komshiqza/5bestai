@@ -156,18 +156,9 @@ export function SubscriptionSolanaPayment({
       return;
     }
 
-    if (!walletDetected) {
-      toast({
-        title: "No Wallet Extension Found",
-        description: "Please install Phantom or Solflare browser extension first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Mobile: use deep link to wallet
+    // Mobile: always use deep link (works with or without extension)
     if (isMobile) {
       // Use Phantom universal link for better mobile UX
       const phantomDeepLink = `https://phantom.app/ul/v1/browse/${encodeURIComponent(paymentUrl)}?ref=${encodeURIComponent(window.location.origin)}`;
@@ -175,7 +166,7 @@ export function SubscriptionSolanaPayment({
       window.location.href = phantomDeepLink;
       
       toast({
-        title: "Opening Phantom Wallet",
+        title: "Opening Wallet",
         description: "Redirecting to your mobile wallet...",
       });
       
@@ -190,8 +181,19 @@ export function SubscriptionSolanaPayment({
       return;
     }
 
-    // Desktop: Try wallet integration
-    try {
+    // Desktop: Check for wallet extension
+    if (!walletDetected) {
+      // No extension found, open in browser instead
+      toast({
+        title: "Opening Payment Link",
+        description: "Opening Solana Pay link in your browser...",
+      });
+      window.open(paymentUrl, '_blank');
+      return;
+    }
+
+    // Desktop with extension: Try wallet integration
+    try{
       const win = window as any;
       
       if (win.solana && win.solana.isPhantom) {
