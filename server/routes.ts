@@ -2836,6 +2836,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const modelId = params.model || "flux-1.1-pro";
 
+      // Check tier-based model access
+      const hasModelAccess = await storage.canUserAccessModel(userId, modelId);
+      if (!hasModelAccess) {
+        return res.status(403).json({ 
+          error: "Your subscription tier does not have access to this AI model. Please upgrade your plan to use this model.",
+          model: modelId
+        });
+      }
+
       // Get model cost from pricing settings using pricing key
       const pricingKey = modelToPricingKey(modelId);
       const modelCost = await storage.getPricingSetting(pricingKey);
@@ -3103,6 +3112,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const params = upscaleSchema.parse(req.body);
 
+      // Check tier-based upscale permission
+      const canUpscale = await storage.canUserUpscale(userId);
+      if (!canUpscale) {
+        return res.status(403).json({ 
+          error: "Your subscription tier does not have access to AI upscaling. Please upgrade your plan to use this feature."
+        });
+      }
+
       // Get AI generation
       const generation = await storage.getAiGeneration(params.generationId);
       if (!generation) {
@@ -3185,6 +3202,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id;
       const { generationId } = req.body;
+
+      // Check tier-based edit permission
+      const canEdit = await storage.canUserEdit(userId);
+      if (!canEdit) {
+        return res.status(403).json({ 
+          error: "Your subscription tier does not have access to image editing. Please upgrade your plan to use this feature."
+        });
+      }
 
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });
