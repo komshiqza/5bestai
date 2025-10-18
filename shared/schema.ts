@@ -463,3 +463,140 @@ export const insertAiGenerationSchema = createInsertSchema(aiGenerations).omit({
   id: true,
   createdAt: true
 });
+
+// Subscription Tiers table
+export const subscriptionTiers = pgTable("subscription_tiers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: varchar("slug", { length: 100 }).notNull().unique(), // free, starter, creator, pro, studio
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  priceUsd: integer("price_usd").notNull().default(0), // Price in cents (0 for free tier)
+  monthlyCredits: integer("monthly_credits").notNull().default(0),
+  
+  // Feature flags
+  canEdit: boolean("can_edit").notNull().default(false),
+  canUpscale: boolean("can_upscale").notNull().default(false),
+  
+  // AI model access (array of model slugs)
+  allowedModels: text("allowed_models").array().notNull().default(sql`ARRAY[]::text[]`),
+  
+  // Commission rates (percentage as integer, e.g., 15 = 15%)
+  promptCommission: integer("prompt_commission").notNull().default(0), // % from prompt sales
+  imageCommission: integer("image_commission").notNull().default(0), // % from image/video sales
+  
+  // Additional features (stored as JSON for flexibility)
+  features: jsonb("features"), // { maxSubmissionsPerContest: 10, prioritySupport: true, etc. }
+  
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0), // For display ordering
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+}, (table) => ({
+  slugIdx: index("subscription_tiers_slug_idx").on(table.slug),
+  sortOrderIdx: index("subscription_tiers_sort_order_idx").on(table.sortOrder)
+}));
+
+// User Subscriptions table
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tierId: varchar("tier_id").notNull().references(() => subscriptionTiers.id, { onDelete: "restrict" }),
+  
+  status: varchar("status", { length: 50 }).notNull().default("active"), // active, cancelled, expired, pending
+  paymentMethod: varchar("payment_method", { length: 50 }), // stripe, usdc, sol
+  
+  // Stripe-specific fields
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  
+  // Crypto payment fields
+  paymentTxHash: varchar("payment_tx_hash", { length: 255 }), // Solana transaction hash
+  
+  // Subscription period
+  currentPeriodStart: timestamp("current_period_start").notNull(),
+  currentPeriodEnd: timestamp("current_period_end").notNull(),
+  
+  // Credit tracking
+  creditsGranted: integer("credits_granted").notNull().default(0), // Credits granted for this billing period
+  creditsGrantedAt: timestamp("credits_granted_at"), // When credits were last granted
+  
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  cancelledAt: timestamp("cancelled_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+}, (table) => ({
+  userIdx: index("user_subscriptions_user_idx").on(table.userId),
+  tierIdx: index("user_subscriptions_tier_idx").on(table.tierId),
+  statusIdx: index("user_subscriptions_status_idx").on(table.status),
+  stripeSubscriptionIdx: index("user_subscriptions_stripe_subscription_idx").on(table.stripeSubscriptionId),
+  currentPeriodEndIdx: index("user_subscriptions_current_period_end_idx").on(table.currentPeriodEnd)
+}));
+
+// Subscription Transactions table (payment history)
+export const subscriptionTransactions = pgTable("subscription_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subscriptionId: varchar("subscription_id").notNull().references(() => userSubscriptions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tierId: varchar("tier_id").notNull().references(() => subscriptionTiers.id, { onDelete: "restrict" }),
+  
+  amountCents: integer("amount_cents").notNull(), // Amount in cents (for USD pricing)
+  currency: varchar("currency", { length: 20 }).notNull().default("USD"), // USD, USDC, SOL
+  
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // stripe, usdc, sol
+  paymentStatus: varchar("payment_status", { length: 50 }).notNull().default("pending"), // pending, completed, failed, refunded
+  
+  // Stripe fields
+  stripeInvoiceId: varchar("stripe_invoice_id", { length: 255 }),
+  stripeChargeId: varchar("stripe_charge_id", { length: 255 }),
+  
+  // Crypto fields
+  txHash: varchar("tx_hash", { length: 255 }), // Solana transaction hash
+  walletAddress: varchar("wallet_address", { length: 255 }), // Payer's wallet address
+  
+  metadata: jsonb("metadata"), // Additional transaction data
+  
+  createdAt: timestamp("created_at").notNull().defaultNow()
+}, (table) => ({
+  subscriptionIdx: index("subscription_transactions_subscription_idx").on(table.subscriptionId),
+  userIdx: index("subscription_transactions_user_idx").on(table.userId),
+  statusIdx: index("subscription_transactions_status_idx").on(table.paymentStatus),
+  createdAtIdx: index("subscription_transactions_created_at_idx").on(table.createdAt),
+  txHashIdx: index("subscription_transactions_tx_hash_idx").on(table.txHash)
+}));
+
+// Insert schemas
+export const insertSubscriptionTierSchema = createInsertSchema(subscriptionTiers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertSubscriptionTransactionSchema = createInsertSchema(subscriptionTransactions).omit({
+  id: true,
+  createdAt: true
+});
+
+// Export types
+export type InsertSubscriptionTier = z.infer<typeof insertSubscriptionTierSchema>;
+export type SubscriptionTier = typeof subscriptionTiers.$inferSelect;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertSubscriptionTransaction = z.infer<typeof insertSubscriptionTransactionSchema>;
+export type SubscriptionTransaction = typeof subscriptionTransactions.$inferSelect;
+
+// Extended types with relations
+export type UserSubscriptionWithTier = UserSubscription & {
+  tier: SubscriptionTier;
+};
+
+export type SubscriptionTransactionWithDetails = SubscriptionTransaction & {
+  tier: SubscriptionTier;
+  user: Pick<User, 'id' | 'username' | 'email'>;
+};
