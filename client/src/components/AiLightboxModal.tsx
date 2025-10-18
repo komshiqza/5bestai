@@ -45,12 +45,7 @@ export function AiLightboxModal({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         (document.activeElement as HTMLElement)?.blur();
-        // Go back in history to clean up the state we pushed
-        if (window.history.state?.modal === 'ai-lightbox') {
-          window.history.back();
-        } else {
-          onClose();
-        }
+        onClose();
       }
     };
 
@@ -70,15 +65,6 @@ export function AiLightboxModal({
     };
   }, [isOpen, onClose]);
 
-  const handleClose = () => {
-    // Clean up history state before closing
-    if (window.history.state?.modal === 'ai-lightbox') {
-      window.history.back();
-    } else {
-      onClose();
-    }
-  };
-
   if (!isOpen || !generation) return null;
 
   const imageUrl = generation.editedImageUrl || generation.imageUrl;
@@ -86,7 +72,7 @@ export function AiLightboxModal({
   return (
     <div 
       className="fixed inset-0 z-[100] bg-black"
-      onClick={handleClose}
+      onClick={onClose}
       data-testid="ai-lightbox-overlay"
     >
       {/* Full-screen image */}
@@ -187,7 +173,7 @@ export function AiLightboxModal({
 
       {/* Top Right - Close Icon */}
       <button
-        onClick={handleClose}
+        onClick={onClose}
         className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 sm:p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-all duration-300 border border-white/20 z-30"
         data-testid="button-close-lightbox"
       >

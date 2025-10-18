@@ -1125,80 +1125,108 @@ export default function AiGeneratorPage() {
                           src={gen.editedImageUrl || gen.imageUrl}
                           data-testid={`img-generation-${gen.id}`}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
-                        <div className="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
-                        <div className="flex gap-1">
-                          {/* Expand/View */}
-                          <button
-                            onClick={() => {
-                              setLightboxGeneration(gen);
-                              setLightboxOpen(true);
-                            }}
-                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
-                            title="View Fullscreen"
-                            data-testid={`button-expand-${gen.id}`}
-                          >
-                            <Maximize2 className="h-4 w-4" />
-                          </button>
+                        
+                        {/* Top Left - Action Buttons */}
+                        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex flex-row gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           {/* Download */}
-                          <button
-                            onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id)}
+                          <GlassButton
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id);
+                            }}
                             disabled={downloadingId === gen.id}
-                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30 disabled:opacity-50"
                             title="Download"
                             data-testid={`button-download-${gen.id}`}
                           >
                             {downloadingId === gen.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                             ) : (
-                              <span className="material-symbols-outlined text-base">download</span>
+                              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                             )}
-                          </button>
+                          </GlassButton>
+                          
                           {/* Edit */}
-                          <button
-                            onClick={() => setLocation(`/image-editor/${gen.id}`)}
-                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                          <GlassButton
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocation(`/image-editor/${gen.id}`);
+                            }}
                             title="Edit"
                             data-testid={`button-edit-${gen.id}`}
                           >
-                            <span className="material-symbols-outlined text-base">edit</span>
-                          </button>
+                            <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </GlassButton>
+                          
                           {/* Upscale */}
                           {!gen.isUpscaled && (
-                            <button
-                              onClick={() => upscaleMutation.mutate({ generationId: gen.id })}
+                            <GlassButton
+                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                upscaleMutation.mutate({ generationId: gen.id });
+                              }}
                               disabled={upscalingId === gen.id || userCredits < (pricing?.["upscale"] || 0)}
-                              className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30 disabled:opacity-50"
                               title="Upscale 4x"
                               data-testid={`button-upscale-${gen.id}`}
                             >
                               {upscalingId === gen.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                               ) : (
-                                <span className="material-symbols-outlined text-base">auto_awesome</span>
+                                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
                               )}
-                            </button>
+                            </GlassButton>
                           )}
+                          
                           {/* Upload to Contest */}
-                          <button
-                            onClick={() => handleOpenSubmitWizard(gen)}
-                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                          <GlassButton
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenSubmitWizard(gen);
+                            }}
                             title="Upload to Contest"
                             data-testid={`button-submit-${gen.id}`}
                           >
-                            <span className="material-symbols-outlined text-base">upload</span>
-                          </button>
-                          </div>
-                          {/* Delete */}
-                          <button
-                            onClick={() => deleteMutation.mutate(gen.id)}
+                            <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </GlassButton>
+                        </div>
+                        
+                        {/* Top Right - Expand Button */}
+                        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <GlassButton
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxGeneration(gen);
+                              setLightboxOpen(true);
+                            }}
+                            title="View Fullscreen"
+                            data-testid={`button-expand-${gen.id}`}
+                          >
+                            <Maximize2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </GlassButton>
+                        </div>
+                        
+                        {/* Bottom Right - Delete Button */}
+                        <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <GlassButton
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteMutation.mutate(gen.id);
+                            }}
                             disabled={deleteMutation.isPending}
-                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
                             title="Delete"
                             data-testid={`button-delete-${gen.id}`}
                           >
-                            <span className="material-symbols-outlined text-base">delete</span>
-                          </button>
+                            {deleteMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            )}
+                          </GlassButton>
                         </div>
                       </div>
 
