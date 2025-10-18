@@ -182,7 +182,7 @@ export default function ImageEditor() {
 
       queryClient.invalidateQueries({ queryKey: [`/api/ai/generations/${id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
-      setLocation("/ai-studio");
+      setLocation("/ai-generator");
     } catch (error) {
       console.error("Save error:", error);
       toast({
@@ -207,7 +207,7 @@ export default function ImageEditor() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <p className="text-muted-foreground mb-4">Generation not found</p>
-        <Button onClick={() => setLocation("/ai-studio")} data-testid="button-back-to-studio">
+        <Button onClick={() => setLocation("/ai-generator")} data-testid="button-back-to-studio">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to AI Studio
         </Button>
@@ -223,7 +223,7 @@ export default function ImageEditor() {
           <p className="text-muted-foreground">Edit and enhance your AI-generated image</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setLocation("/ai-studio")} data-testid="button-cancel">
+          <Button variant="outline" onClick={() => setLocation("/ai-generator")} data-testid="button-cancel">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Cancel
           </Button>
