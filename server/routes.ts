@@ -3204,10 +3204,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "URL parameter is required" });
       }
 
+      console.log("Proxy download request for URL:", url);
+
       // Fetch the image from external URL
       const response = await fetch(url);
       
       if (!response.ok) {
+        console.error(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
         return res.status(response.status).json({ 
           error: `Failed to fetch image: ${response.statusText}` 
         });
@@ -3217,6 +3220,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contentType = response.headers.get('content-type') || 'application/octet-stream';
       const contentLength = response.headers.get('content-length');
       
+      console.log(`Fetched image: ${contentType}, size: ${contentLength || 'unknown'}`);
+      
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', 'attachment');
       if (contentLength) {
@@ -3225,6 +3230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Stream the image data to the response
       const buffer = await response.arrayBuffer();
+      console.log(`Sending buffer of size: ${buffer.byteLength} bytes`);
       res.send(Buffer.from(buffer));
     } catch (error) {
       console.error("Proxy download error:", error);
