@@ -509,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find transaction using reference
       console.log("🔎 [PAYMENT] Searching blockchain for reference...");
-      const signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'confirmed' });
+      const signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'processed' });
       
       if (!signatureInfo || !signatureInfo.signature) {
         console.log("⚠️ [PAYMENT] No transaction found for reference");
@@ -3482,7 +3482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("🔎 [SUBSCRIPTION] Searching blockchain for reference...");
       let signatureInfo;
       try {
-        signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'confirmed' });
+        signatureInfo = await findReference(solanaConnection, referenceKey, { finality: 'processed' });
       } catch (error: any) {
         // FindReferenceError is expected when transaction hasn't been sent yet
         if (error.name === 'FindReferenceError' || error.message?.includes('not found')) {
