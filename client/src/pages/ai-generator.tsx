@@ -682,35 +682,12 @@ export default function AiGeneratorPage() {
                   {loadingModels ? (
                     <div className="h-10 rounded-md border border-input bg-muted/50 animate-pulse" />
                   ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {modelConfigs?.slice(0, 3).map((model) => {
-                        const pricingKey = modelToPricingKey[model.id] || model.id;
-                        const credits = pricing?.[pricingKey] || 0;
-                        const isSelected = selectedModel === model.id;
-                        return (
-                          <button
-                            key={model.id}
-                            onClick={() => setSelectedModel(model.id)}
-                            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border p-3 text-center text-xs font-medium transition-all ${
-                              isSelected
-                                ? 'border-primary bg-primary/20 text-primary'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                            data-testid={`select-model-${model.id}`}
-                          >
-                            {model.name.split(' ')[0]}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {!loadingModels && modelConfigs && modelConfigs.length > 3 && (
                     <Select value={selectedModel} onValueChange={setSelectedModel}>
-                      <SelectTrigger className="mt-2" data-testid="select-model">
+                      <SelectTrigger data-testid="select-model">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {modelConfigs.map((model) => {
+                        {modelConfigs?.map((model) => {
                           const pricingKey = modelToPricingKey[model.id] || model.id;
                           const credits = pricing?.[pricingKey] || 0;
                           return (
@@ -738,7 +715,7 @@ export default function AiGeneratorPage() {
                         value={[numImages]}
                         onValueChange={(value) => setNumImages(value[0])}
                         min={1}
-                        max={4}
+                        max={8}
                         step={1}
                         className="mt-2"
                       />
