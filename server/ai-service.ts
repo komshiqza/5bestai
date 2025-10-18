@@ -595,10 +595,34 @@ export async function upscaleImage(
       { input }
     );
 
-    const upscaledUrl = typeof output === "string" ? output : (output as any)?.output || output;
+    console.log("Real-ESRGAN raw output:", output);
+    console.log("Real-ESRGAN output type:", typeof output);
 
-    if (!upscaledUrl) {
-      throw new Error("Real-ESRGAN did not return a valid image URL");
+    let upscaledUrl: string;
+    
+    // Replicate can return different types depending on the model
+    if (typeof output === "string") {
+      upscaledUrl = output;
+    } else if (Array.isArray(output) && output.length > 0) {
+      upscaledUrl = output[0];
+    } else if (output && typeof output === "object") {
+      // Try to extract URL from FileOutput or other object types
+      const outputObj = output as any;
+      if (outputObj.url && typeof outputObj.url === "function") {
+        upscaledUrl = await outputObj.url();
+      } else if (outputObj.url && typeof outputObj.url === "string") {
+        upscaledUrl = outputObj.url;
+      } else if (outputObj.output) {
+        upscaledUrl = outputObj.output;
+      } else {
+        throw new Error(`Unsupported Real-ESRGAN output format: ${typeof output}`);
+      }
+    } else {
+      throw new Error(`Real-ESRGAN did not return a valid image URL. Got: ${typeof output}`);
+    }
+
+    if (!upscaledUrl || typeof upscaledUrl !== "string") {
+      throw new Error(`Failed to extract valid URL from Real-ESRGAN output: ${upscaledUrl}`);
     }
 
     console.log("Real-ESRGAN upscaling completed:", upscaledUrl);
