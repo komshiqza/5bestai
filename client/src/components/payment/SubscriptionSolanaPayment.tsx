@@ -226,7 +226,7 @@ export function SubscriptionSolanaPayment({
         const { Connection, PublicKey, Transaction } = await import('@solana/web3.js');
         const { 
           getAssociatedTokenAddress, 
-          createTransferInstruction,
+          createTransferCheckedInstruction,
           createAssociatedTokenAccountInstruction,
           getAccount
         } = await import('@solana/spl-token');
@@ -284,12 +284,14 @@ export function SubscriptionSolanaPayment({
           const usdcDecimals = 6;
           const transferAmount = Math.round(amount * Math.pow(10, usdcDecimals));
           
-          // Create USDC transfer instruction
-          let transferInstruction = createTransferInstruction(
-            senderTokenAccount,
-            recipientTokenAccount,
-            sender,
-            transferAmount
+          // Create USDC transfer instruction (using TransferChecked for proper validation)
+          let transferInstruction = createTransferCheckedInstruction(
+            senderTokenAccount,     // source
+            usdcMint,              // mint
+            recipientTokenAccount, // destination
+            sender,                // owner
+            transferAmount,        // amount
+            usdcDecimals          // decimals
           );
           
           // Add reference BEFORE adding to transaction (Solana Pay spec)
