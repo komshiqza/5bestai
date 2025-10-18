@@ -181,3 +181,74 @@ Preferred communication style: Simple, everyday language.
 - **date-fns**: Date manipulation and formatting
 - **nanoid**: Unique ID generation for sessions/tokens
 - **multer**: Multipart form data handling for file uploads
+
+### Blockchain & Payment Integration
+- **Solana Web3.js**: Blockchain interaction for mainnet Solana payments
+- **@solana/pay**: Solana Pay protocol for USDC subscription payments
+- **SPL Token**: USDC token standard (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v mint address)
+
+## Subscription System
+
+### 5-Tier Subscription Model
+The platform implements a comprehensive subscription system with 5 tiers:
+- **Free**: Basic access with limited features
+- **Starter**: Entry-level paid tier
+- **Creator**: Mid-tier for active creators
+- **Pro**: Advanced tier with premium features
+- **Studio**: Enterprise-level access
+
+### Subscription Features
+Each tier is admin-configurable with:
+- **Pricing**: Monthly/annual pricing in USD (stored as cents)
+- **Credits**: AI generation credits per billing cycle
+- **AI Model Access**: Specific models available (Leonardo, Flux, Ideogram, Stable Diffusion, Nano Banana)
+- **Permissions**: Edit/upscale capabilities for AI-generated images
+- **Commission Rates**: Marketplace sales commission percentage
+- **Limits**: Max submissions per contest, file size limits
+
+### USDC Payment Flow (Solana Pay)
+**Implementation** (October 2025):
+- Users can purchase subscriptions with USDC on Solana mainnet
+- Payment processed via Solana Pay protocol with QR code and wallet integration
+- Server-side verification of SPL token transfers
+
+**Security Architecture**:
+1. **Platform Wallet**: Fetched SERVER-SIDE via `storage.getSiteSettings()` to prevent client manipulation
+2. **Amount Verification**: Backend converts tier.priceUsd (cents) to USDC dollars and verifies exact match
+3. **SPL Token Parsing**: `verifyUSDCTransaction()` extracts token balance changes from transaction metadata
+4. **Reference-based Polling**: Frontend polls with unique reference key until transaction confirmed
+
+**Payment Workflow**:
+1. User clicks "Get Started" on pricing page
+2. SubscriptionSolanaPayment component generates Solana Pay URL with USDC amount and platform wallet
+3. QR code displayed for mobile wallets, deep link for browser extensions
+4. User completes payment in Phantom/Solflare/other Solana wallet
+5. Frontend polls `/api/subscription/purchase-crypto` endpoint every 3 seconds
+6. Backend uses `findReference()` to detect transaction on-chain
+7. `verifyUSDCTransaction()` verifies correct amount sent to platform wallet
+8. Backend creates/updates subscription, grants credits, logs transaction
+9. Frontend redirects to /subscription with success message
+
+**API Endpoints**:
+- `POST /api/subscription/purchase-crypto`: Polling endpoint for payment verification
+  - Input: `reference` (unique transaction identifier), `tierId`, `currency` (USDC)
+  - Output: `{found: boolean, subscription?: Subscription}` or error
+  - Error Handling: Returns `{found: false}` during polling (FindReferenceError), validates transaction details
+- `GET /api/settings/platform-wallet`: Public endpoint returning platform USDC wallet address for QR display
+
+**Transaction Verification** (`server/solana.ts`):
+- `verifyUSDCTransaction()`: Parses SPL token balance changes from Solana transaction
+- Extracts sender/receiver from `preTokenBalances`/`postTokenBalances`
+- Returns amount in whole USDC (uiAmountString), not base units (6 decimals)
+- Verifies recipient matches platform wallet address
+
+**Components**:
+- `SubscriptionSolanaPayment.tsx`: Crypto payment modal with QR code, wallet detection, polling logic
+- Payment modal integrated into pricing page with crypto/Stripe toggle (Stripe TBD)
+
+**Recent Changes** (October 18, 2025):
+- Fixed cents-to-USDC conversion (tier.priceUsd / 100)
+- Implemented server-side platform wallet fetch for security
+- Created SPL token verification using token balance deltas
+- Added FindReferenceError handling for polling gracefully
+- Confirmed production-ready by architect review
