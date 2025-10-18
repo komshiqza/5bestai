@@ -12,8 +12,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2 } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
+import { AiLightboxModal } from "@/components/AiLightboxModal";
 import type { AiGeneration } from "@shared/schema";
 
 interface ModelConfig {
@@ -280,6 +281,8 @@ export default function AiGeneratorPage() {
   const [selectedGeneration, setSelectedGeneration] = useState<AiGeneration | null>(null);
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxGeneration, setLightboxGeneration] = useState<AiGeneration | null>(null);
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -1111,18 +1114,32 @@ export default function AiGeneratorPage() {
                   {generations.map((gen) => (
                     <div
                       key={gen.id}
-                      className="group relative aspect-square overflow-hidden rounded-xl"
+                      className="group"
                       data-testid={`generation-${gen.id}`}
                     >
-                      <img
-                        alt={gen.prompt}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        src={gen.editedImageUrl || gen.imageUrl}
-                        data-testid={`img-generation-${gen.id}`}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
-                      <div className="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+                      {/* Image Container */}
+                      <div className="relative aspect-square overflow-hidden rounded-xl">
+                        <img
+                          alt={gen.prompt}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          src={gen.editedImageUrl || gen.imageUrl}
+                          data-testid={`img-generation-${gen.id}`}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                        <div className="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
                         <div className="flex gap-1">
+                          {/* Expand/View */}
+                          <button
+                            onClick={() => {
+                              setLightboxGeneration(gen);
+                              setLightboxOpen(true);
+                            }}
+                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                            title="View Fullscreen"
+                            data-testid={`button-expand-${gen.id}`}
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </button>
                           {/* Download */}
                           <button
                             onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id)}
@@ -1171,17 +1188,25 @@ export default function AiGeneratorPage() {
                           >
                             <span className="material-symbols-outlined text-base">upload</span>
                           </button>
+                          </div>
+                          {/* Delete */}
+                          <button
+                            onClick={() => deleteMutation.mutate(gen.id)}
+                            disabled={deleteMutation.isPending}
+                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                            title="Delete"
+                            data-testid={`button-delete-${gen.id}`}
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                          </button>
                         </div>
-                        {/* Delete */}
-                        <button
-                          onClick={() => deleteMutation.mutate(gen.id)}
-                          disabled={deleteMutation.isPending}
-                          className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
-                          title="Delete"
-                          data-testid={`button-delete-${gen.id}`}
-                        >
-                          <span className="material-symbols-outlined text-base">delete</span>
-                        </button>
+                      </div>
+
+                      {/* Prompt Text */}
+                      <div className="mt-2 px-1">
+                        <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-prompt-${gen.id}`}>
+                          {gen.prompt}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -1205,6 +1230,32 @@ export default function AiGeneratorPage() {
               }
             : undefined
         }
+      />
+
+      {/* AI Lightbox Modal */}
+      <AiLightboxModal
+        isOpen={lightboxOpen}
+        generation={lightboxGeneration}
+        onClose={() => {
+          setLightboxOpen(false);
+          setLightboxGeneration(null);
+        }}
+        onDownload={handleDownload}
+        onEdit={(generationId) => setLocation(`/image-editor/${generationId}`)}
+        onUpscale={(generationId) => upscaleMutation.mutate({ generationId })}
+        onUploadToContest={(generation) => {
+          setLightboxOpen(false);
+          handleOpenSubmitWizard(generation);
+        }}
+        onDelete={(generationId) => {
+          deleteMutation.mutate(generationId);
+          setLightboxOpen(false);
+        }}
+        downloadingId={downloadingId}
+        upscalingId={upscalingId}
+        deletingPending={deleteMutation.isPending}
+        userCredits={userCredits}
+        upscalePrice={pricing?.["upscale"] || 0}
       />
     </div>
   );
