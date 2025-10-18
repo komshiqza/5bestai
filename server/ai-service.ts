@@ -519,11 +519,10 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
     let result: any;
     try {
       if (isUpscaled) {
-        uploadOptions.chunk_size = 6000000; // 6MB chunks for reliable upload
         uploadOptions.transformation = [
           { quality: 80, fetch_format: "jpg" } // Light compression to balance quality and size
         ];
-        console.log("Using upload_stream (chunk upload) for upscaled image");
+        console.log("Using upload_stream for upscaled image");
         
         // Create read stream and upload using stream API for proper synchronization
         result = await new Promise((resolve, reject) => {
