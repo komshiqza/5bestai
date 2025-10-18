@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { X, Download, Pencil, Upload, Trash2, Maximize2, Loader2 } from "lucide-react";
+import { X, Download, Pencil, Upload, Trash2, Maximize2, Loader2, Sparkles } from "lucide-react";
 import type { AiGeneration } from "@shared/schema";
 
 interface AiLightboxModalProps {
@@ -134,7 +134,7 @@ export function AiLightboxModal({
             {upscalingId === generation.id ? (
               <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
             ) : (
-              <Maximize2 className="h-5 w-5 sm:h-6 sm:w-6" />
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
             )}
           </button>
         )}
