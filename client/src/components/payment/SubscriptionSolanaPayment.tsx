@@ -220,7 +220,7 @@ export function SubscriptionSolanaPayment({
         const referenceParam = url.searchParams.get('reference');
         const splToken = url.searchParams.get('spl-token'); // USDC mint address
         
-        // Import Solana web3.js and SPL token
+        // Import Solana web3.js, SPL token, and Solana Pay
         const { Connection, PublicKey, Transaction } = await import('@solana/web3.js');
         const { 
           getAssociatedTokenAddress, 
@@ -228,6 +228,7 @@ export function SubscriptionSolanaPayment({
           createAssociatedTokenAccountInstruction,
           getAccount
         } = await import('@solana/spl-token');
+        const { findReference } = await import('@solana/pay');
         
         const rpcUrl = import.meta.env.VITE_HELIUS_RPC_URL || 'https://api.mainnet-beta.solana.com';
         const connection = new Connection(rpcUrl, 'confirmed');
@@ -282,38 +283,55 @@ export function SubscriptionSolanaPayment({
           const transferAmount = Math.round(amount * Math.pow(10, usdcDecimals));
           
           // Create USDC transfer instruction
-          const transferInstruction = createTransferInstruction(
+          let transferInstruction = createTransferInstruction(
             senderTokenAccount,
             recipientTokenAccount,
             sender,
             transferAmount
           );
           
-          // Add reference as account key (Solana Pay spec)
+          // Add reference BEFORE adding to transaction (Solana Pay spec)
           if (referenceParam) {
-            transferInstruction.keys.push({
-              pubkey: new PublicKey(referenceParam),
-              isSigner: false,
-              isWritable: false,
-            });
+            const referenceKey = new PublicKey(referenceParam);
+            // Clone the instruction with reference added to keys
+            transferInstruction = {
+              ...transferInstruction,
+              keys: [
+                ...transferInstruction.keys,
+                {
+                  pubkey: referenceKey,
+                  isSigner: false,
+                  isWritable: false,
+                }
+              ]
+            };
+            console.log("Added reference to USDC transfer:", referenceParam);
           }
           
           transaction.add(transferInstruction);
         } else {
           // Fallback to SOL transfer (not expected for subscriptions)
           const { SystemProgram, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
-          const transferInstruction = SystemProgram.transfer({
+          let transferInstruction = SystemProgram.transfer({
             fromPubkey: walletResponse.publicKey,
             toPubkey: new PublicKey(recipientAddress),
             lamports: Math.round(amount * LAMPORTS_PER_SOL),
           });
           
           if (referenceParam) {
-            transferInstruction.keys.push({
-              pubkey: new PublicKey(referenceParam),
-              isSigner: false,
-              isWritable: false,
-            });
+            const referenceKey = new PublicKey(referenceParam);
+            transferInstruction = {
+              ...transferInstruction,
+              keys: [
+                ...transferInstruction.keys,
+                {
+                  pubkey: referenceKey,
+                  isSigner: false,
+                  isWritable: false,
+                }
+              ]
+            };
+            console.log("Added reference to SOL transaction:", referenceParam);
           }
           
           transaction.add(transferInstruction);
