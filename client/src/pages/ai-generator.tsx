@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { GlassButton } from "@/components/GlassButton";
+import { GlassButton } from "@/components/ui/glass-button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -1130,7 +1130,9 @@ export default function AiGeneratorPage() {
                         <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex flex-row gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           {/* Download */}
                           <GlassButton
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id);
@@ -1148,7 +1150,9 @@ export default function AiGeneratorPage() {
                           
                           {/* Edit */}
                           <GlassButton
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
                             onClick={(e) => {
                               e.stopPropagation();
                               setLocation(`/image-editor/${gen.id}`);
@@ -1162,7 +1166,9 @@ export default function AiGeneratorPage() {
                           {/* Upscale */}
                           {!gen.isUpscaled && (
                             <GlassButton
-                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 upscaleMutation.mutate({ generationId: gen.id });
@@ -1181,7 +1187,9 @@ export default function AiGeneratorPage() {
                           
                           {/* Upload to Contest */}
                           <GlassButton
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenSubmitWizard(gen);
@@ -1196,7 +1204,9 @@ export default function AiGeneratorPage() {
                         {/* Top Right - Expand Button */}
                         <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           <GlassButton
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
                             onClick={(e) => {
                               e.stopPropagation();
                               setLightboxGeneration(gen);
@@ -1212,7 +1222,9 @@ export default function AiGeneratorPage() {
                         {/* Bottom Right - Delete Button */}
                         <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           <GlassButton
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteMutation.mutate(gen.id);
