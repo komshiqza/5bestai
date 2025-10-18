@@ -178,7 +178,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/me", authenticateToken, async (req: AuthRequest, res) => {
-    const user = await storage.getUser(req.user!.id);
+    const userId = req.user!.id;
+
+    // Auto-refresh subscription credits if period has expired
+    try {
+      await storage.refreshSubscriptionIfNeeded(userId);
+    } catch (error) {
+      console.error("Failed to refresh subscription:", error);
+      // Continue even if refresh fails - don't block user request
+    }
+
+    const user = await storage.getUser(userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -2836,6 +2846,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const modelId = params.model || "flux-1.1-pro";
 
+      // Auto-refresh subscription credits if period has expired
+      try {
+        await storage.refreshSubscriptionIfNeeded(userId);
+      } catch (error) {
+        console.error("Failed to refresh subscription in AI generation:", error);
+      }
+
       // Check tier-based model access
       const hasModelAccess = await storage.canUserAccessModel(userId, modelId);
       if (!hasModelAccess) {
@@ -3111,6 +3128,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id;
       const params = upscaleSchema.parse(req.body);
+
+      // Auto-refresh subscription credits if period has expired
+      try {
+        await storage.refreshSubscriptionIfNeeded(userId);
+      } catch (error) {
+        console.error("Failed to refresh subscription in upscale:", error);
+      }
 
       // Check tier-based upscale permission
       const canUpscale = await storage.canUserUpscale(userId);

@@ -169,6 +169,7 @@ export interface IStorage {
   canUserUpscale(userId: string): Promise<boolean>;
   getUserTierCommissions(userId: string): Promise<{ promptCommission: number; imageCommission: number }>;
   grantMonthlyCredits(userId: string): Promise<void>;
+  refreshSubscriptionIfNeeded(userId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -890,6 +891,10 @@ export class MemStorage implements IStorage {
   }
 
   async grantMonthlyCredits(userId: string): Promise<void> {
+    throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  async refreshSubscriptionIfNeeded(userId: string): Promise<boolean> {
     throw new Error("MemStorage subscription methods not implemented");
   }
 }
@@ -1918,6 +1923,92 @@ export class DbStorage implements IStorage {
         updatedAt: new Date()
       })
       .where(eq(userSubscriptions.id, subscription.id));
+  }
+
+  async refreshSubscriptionIfNeeded(userId: string): Promise<boolean> {
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription || !subscription.id) return false;
+
+    const now = new Date();
+    let periodEnd = new Date(subscription.currentPeriodEnd);
+
+    // Check if subscription period has expired
+    if (periodEnd > now) {
+      return false; // Period still active, no refresh needed
+    }
+
+    // Check if subscription is canceled - finalize cancellation instead of renewing
+    if (subscription.status !== "active" || subscription.cancelAtPeriodEnd) {
+      console.log(`[Subscription] Finalizing canceled subscription for user ${userId}`);
+      
+      // Set subscription to canceled status
+      await db.update(userSubscriptions)
+        .set({
+          status: "canceled",
+          canceledAt: now,
+          updatedAt: now
+        })
+        .where(eq(userSubscriptions.id, subscription.id));
+
+      return false; // No refresh, subscription is now canceled
+    }
+
+    // Calculate how many months to advance (handle long gaps)
+    let newPeriodStart = new Date(subscription.currentPeriodEnd);
+    let newPeriodEnd = new Date(subscription.currentPeriodEnd);
+    let monthsToAdd = 1;
+
+    // Advance period until it's in the future
+    while (newPeriodEnd <= now) {
+      newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+      monthsToAdd++;
+    }
+
+    // Update start to be end of last period
+    newPeriodStart = new Date(newPeriodEnd);
+    newPeriodStart.setMonth(newPeriodStart.getMonth() - 1);
+
+    // Reset user credits to monthly allowance
+    const monthlyCredits = subscription.tier.monthlyCredits;
+    await db.update(users)
+      .set({ 
+        imageCredits: monthlyCredits,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+
+    // Update subscription period
+    await db.update(userSubscriptions)
+      .set({
+        currentPeriodStart: newPeriodStart,
+        currentPeriodEnd: newPeriodEnd,
+        creditsGranted: monthlyCredits,
+        creditsGrantedAt: now,
+        updatedAt: now
+      })
+      .where(eq(userSubscriptions.id, subscription.id));
+
+    // Create transaction record
+    await this.createSubscriptionTransaction({
+      userId,
+      subscriptionId: subscription.id,
+      tierId: subscription.tierId,
+      amount: 0, // Auto-refresh doesn't charge
+      currency: "USD",
+      paymentMethod: "auto-renewal",
+      status: "completed",
+      transactionType: "auto-renewal",
+      metadata: {
+        creditsGranted: monthlyCredits,
+        periodStart: newPeriodStart.toISOString(),
+        periodEnd: newPeriodEnd.toISOString(),
+        monthsAdvanced: monthsToAdd - 1
+      }
+    });
+
+    console.log(`[Subscription] Auto-refreshed credits for user ${userId}: ${monthlyCredits} credits, advanced ${monthsToAdd - 1} months, new period: ${newPeriodStart.toISOString()} - ${newPeriodEnd.toISOString()}`);
+
+    return true; // Refresh performed
   }
 }
 
