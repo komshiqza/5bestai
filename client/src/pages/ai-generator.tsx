@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, Zap } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2 } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
 import { ProEditModal } from "@/components/pro-edit/ProEditModal";
@@ -1161,19 +1161,21 @@ export default function AiGeneratorPage() {
                             )}
                           </GlassButton>
                           
-                          {/* Edit */}
+                          {/* Edit (Pro Edit) */}
                           <GlassButton
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setLocation(`/image-editor/${gen.id}`);
+                              setProEditImageUrl(gen.editedImageUrl || gen.imageUrl);
+                              setProEditGenerationId(gen.id);
+                              setProEditModalOpen(true);
                             }}
                             title="Edit"
                             data-testid={`button-edit-${gen.id}`}
                           >
-                            <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
                           </GlassButton>
                           
                           {/* Upscale */}
@@ -1197,23 +1199,6 @@ export default function AiGeneratorPage() {
                               )}
                             </GlassButton>
                           )}
-                          
-                          {/* Pro Edit */}
-                          <GlassButton
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProEditImageUrl(gen.editedImageUrl || gen.imageUrl);
-                              setProEditGenerationId(gen.id);
-                              setProEditModalOpen(true);
-                            }}
-                            title="Pro Edit"
-                            data-testid={`button-pro-edit-${gen.id}`}
-                          >
-                            <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
-                          </GlassButton>
                           
                           {/* Upload to Contest */}
                           <GlassButton
