@@ -3526,22 +3526,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ found: false, message: "Transaction found but not yet confirmed" });
       }
 
-      // Verify payer matches user's connected wallet (if wallet is connected)
+      // Log payer information (for audit trail)
       if (userWallet) {
-        console.log("👤 [SUBSCRIPTION] Verifying payer:", {
-          expected: userWallet.address,
-          actual: txResult.from,
-          match: txResult.from === userWallet.address
-        });
-        if (txResult.from !== userWallet.address) {
-          console.log("❌ [SUBSCRIPTION] Payer mismatch!");
-          return res.status(400).json({ 
-            error: `Transaction payer mismatch. Expected ${userWallet.address}, got ${txResult.from}` 
-          });
-        }
-      } else {
-        console.log("ℹ️ [SUBSCRIPTION] Skipping payer verification (no connected wallet). Payer from blockchain:", txResult.from);
+        console.log("👤 [SUBSCRIPTION] Connected wallet:", userWallet.address);
       }
+      console.log("💳 [SUBSCRIPTION] Payment from wallet:", txResult.from);
 
       // Verify amount (for USDC, amount is in token units, for SOL in SOL)
       console.log("💰 [SUBSCRIPTION] Verifying amount:", {

@@ -1,0 +1,544 @@
+injected.js:27 🚀 openInWallet called for subscription!
+injected.js:27 Added reference to USDC transfer: CuQausGWfcVcftRbFVvC1x1V1WBMj9BjVhqC6SAKN4dn
+injected.js:27 Transaction details: {instructions: 1, feePayer: '5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd', recentBlockhash: '9bvLsdAFbMCGsVtspWoehWt1q713rAtvbUnpYehSjsjK'}
+injected.js:27 ✅ Subscription payment sent: viS8GsUbAygEod1DGQGNmCzmT2Rcp1DVV6eKyiRJdYndyAF4gNpNgnW3jJDU1mCCF1CVoF7PRakCxWpHdPcjH2D
+injected.js:27 ✅ Subscription payment successful: viS8GsUbAygEod1DGQGNmCzmT2Rcp1DVV6eKyiRJdYndyAF4gNpNgnW3jJDU1mCCF1CVoF7PRakCxWpHdPcjH2D
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+6380-7c7108cb3749972a.js:1 Unrecognized feature: 'pointer-lock'.
+(anonymous) @ 6380-7c7108cb3749972a.js:1
+(anonymous) @ main-3225b017e7bd30a2.js:1
+n @ main-3225b017e7bd30a2.js:1
+u @ main-3225b017e7bd30a2.js:1
+(anonymous) @ main-3225b017e7bd30a2.js:1
+(anonymous) @ main-3225b017e7bd30a2.js:1
+(anonymous) @ 6380-7c7108cb3749972a.js:1
+(anonymous) @ 6380-7c7108cb3749972a.js:1
+(anonymous) @ main-3225b017e7bd30a2.js:1
+n @ main-3225b017e7bd30a2.js:1
+u @ main-3225b017e7bd30a2.js:1
+(anonymous) @ main-3225b017e7bd30a2.js:1
+(anonymous) @ main-3225b017e7bd30a2.js:1
+(anonymous) @ 6380-7c7108cb3749972a.js:1
+navigateTo @ 6380-7c7108cb3749972a.js:1
+refresh @ 6380-7c7108cb3749972a.js:1
+(anonymous) @ 6380-7c7108cb3749972a.js:1
+(anonymous) @ _app-fc14f1c3cbc28537.js:4
+(anonymous) @ _app-fc14f1c3cbc28537.js:4
+onClick @ _app-fc14f1c3cbc28537.js:4
+push.75409.r.d.c @ _app-fc14f1c3cbc28537.js:4
+eB @ framework-1619f60ffc35a6ff.js:1
+eH @ framework-1619f60ffc35a6ff.js:1
+(anonymous) @ framework-1619f60ffc35a6ff.js:1
+re @ framework-1619f60ffc35a6ff.js:1
+rt @ framework-1619f60ffc35a6ff.js:1
+(anonymous) @ framework-1619f60ffc35a6ff.js:1
+uT @ framework-1619f60ffc35a6ff.js:1
+eM @ framework-1619f60ffc35a6ff.js:1
+ru @ framework-1619f60ffc35a6ff.js:1
+tB @ framework-1619f60ffc35a6ff.js:1
+tD @ framework-1619f60ffc35a6ff.js:1
+n @ _app-fc14f1c3cbc28537.js:28
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+injected.js:27 🚀 openInWallet called for subscription!
+injected.js:27 Added reference to USDC transfer: D44krFHJJ4Airy4r38oQgfHVTB7MjJ6xNwfwewU7H3A4
+injected.js:27 Transaction details: {instructions: 1, feePayer: '5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd', recentBlockhash: '7zNBsQRRft3DKgJCdJBxUewqdsbvMHJ35GA5BWueTddD'}
+injected.js:27 ✅ Subscription payment sent: RpGhyDAspqwiHPCqiWxd1XLbeKXiAfP9enzaciTH9RGY9c4R45dzWZn8LdywK5kaQDUsPPLxePRhYhmCppaLxfF
+injected.js:27 ✅ Subscription payment successful: RpGhyDAspqwiHPCqiWxd1XLbeKXiAfP9enzaciTH9RGY9c4R45dzWZn8LdywK5kaQDUsPPLxePRhYhmCppaLxfF
+_app-fc14f1c3cbc28537.js:28 [Coframe] Mutation callback infinite loop protection triggered, disconnecting mutation observer {0: MutationRecord, 1: MutationRecord, 2: MutationRecord, 3: MutationRecord}
+overrideMethod @ hook.js:608
+(anonymous) @ _app-fc14f1c3cbc28537.js:28
+o @ cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1760815904854%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252F%2540RosenKanev%252F5best-ai%2522%252C%2522trackingOnly%2522%253Atrue%257D:10
+error @ cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1760815904854%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252F%2540RosenKanev%252F5best-ai%2522%252C%2522trackingOnly%2522%253Atrue%257D:10
+(anonymous) @ cf.js?config=%257B%2522projectId%2522%253A%252268c9ad4d4cddb58cf3a1f93d%2522%252C%2522startTime%2522%253A1760815904854%252C%2522timeoutMs%2522%253A1000%252C%2522currentUrl%2522%253A%2522https%253A%252F%252Freplit.com%252F%2540RosenKanev%252F5best-ai%2522%252C%2522trackingOnly%2522%253Atrue%257D:10
+childList
+e @ framework-1619f60ffc35a6ff.js:1
+oK @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+oQ @ framework-1619f60ffc35a6ff.js:1
+oq @ framework-1619f60ffc35a6ff.js:1
+injected.js:27 [vite] server connection lost. Polling for restart...
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+injected.js:27 [vite] server connection lost. Polling for restart...
+injected.js:27 [vite] server connection lost. Polling for restart...
+injected.js:27 🚀 openInWallet called for subscription!
+injected.js:27 Added reference to USDC transfer: FUFXKLHqfDbkUC8hk1edCdvrQMrywoGXeym6eJQ2o5nV
+injected.js:27 Transaction details: {instructions: 1, feePayer: '5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd', recentBlockhash: 'A3HXNYp1EFUDA9NjfitDBxyzwGQSFNGvxMKUKqLAMrh6'}
+injected.js:27 ✅ Subscription payment sent: 5pDfLv1dBRJxwP6Vmr664G1mT3ohZWnHTGaNoJGFp7jdqhfSHQkQn5iZjVQi7ZJAggfaCDAvmbvAFML8Tn54FPkM
+injected.js:27 ✅ Subscription payment successful: 5pDfLv1dBRJxwP6Vmr664G1mT3ohZWnHTGaNoJGFp7jdqhfSHQkQn5iZjVQi7ZJAggfaCDAvmbvAFML8Tn54FPkM
+injected.js:27 [vite] server connection lost. Polling for restart...
+injected.js:27 🚀 openInWallet called for subscription!
+injected.js:27 Added reference to USDC transfer: E3f4iQz2mRY1BrFULNDcBWbAdEYmR6YUjPWAnWc1Hkd2
+injected.js:27 Transaction details: {instructions: 1, feePayer: '5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd', recentBlockhash: '2LgdxU3QjdAqqaL8mSiDfFSRLz85ApDF7kwjENiawAEr'}
+injected.js:27 ✅ Subscription payment sent: 3U7mKeG4bwQxb5sCtgX5NxRGdQ4W7z6KS5CDMLsLHz2MjUxhfk4UyfTYX1aiKY2722zT6vmt4uC8w9BQKritdRcF
+injected.js:27 ✅ Subscription payment successful: 3U7mKeG4bwQxb5sCtgX5NxRGdQ4W7z6KS5CDMLsLHz2MjUxhfk4UyfTYX1aiKY2722zT6vmt4uC8w9BQKritdRcF
+injected.js:27 [vite] server connection lost. Polling for restart...
+injected.js:27 🚀 openInWallet called for subscription!
+injected.js:27 Added reference to USDC transfer: 2qjk8XNhRRt8hkdZcLXeovJV9ZnRAbMc5rA7i7Ljk4CP
+injected.js:27 Transaction details: {instructions: 1, feePayer: '5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd', recentBlockhash: 'S39fGXkdcjbtYJmC2MDHrmHqqZb62W4Y4D6NddgDCeg'}
+injected.js:27 ✅ Subscription payment sent: 4EqxEJgxNHvGkJxadZHnx2FcmBZsx6xR1Vaw9L1JDF4udACjQtCdNvPJ4G9FAirWYcQEmqA5L4PmfexWY4ACwfxs
+injected.js:204  POST https://bf3927e5-2c84-40c4-be6a-76b30e41246d-00-55zph1oaqpi3.janeway.replit.dev/api/subscription/purchase-crypto 400 (Bad Request)
+apply @ injected.js:204
+apiRequest @ queryClient.ts:15
+(anonymous) @ SubscriptionSolanaPayment.tsx:445
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:27 💥 Error checking subscription payment: Error: 400: {"error":"Transaction payer mismatch. Expected CDhwScxmQsXu8KerTYwHTqyz5Pj6xYmKwcTGQakuJ5Js, got 5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async SubscriptionSolanaPayment.tsx:445:21
+(anonymous) @ injected.js:27
+(anonymous) @ SubscriptionSolanaPayment.tsx:472
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:204  POST https://bf3927e5-2c84-40c4-be6a-76b30e41246d-00-55zph1oaqpi3.janeway.replit.dev/api/subscription/purchase-crypto 400 (Bad Request)
+apply @ injected.js:204
+apiRequest @ queryClient.ts:15
+(anonymous) @ SubscriptionSolanaPayment.tsx:445
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:27 💥 Error checking subscription payment: Error: 400: {"error":"Transaction payer mismatch. Expected CDhwScxmQsXu8KerTYwHTqyz5Pj6xYmKwcTGQakuJ5Js, got 5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async SubscriptionSolanaPayment.tsx:445:21
+(anonymous) @ injected.js:27
+(anonymous) @ SubscriptionSolanaPayment.tsx:472
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:204  POST https://bf3927e5-2c84-40c4-be6a-76b30e41246d-00-55zph1oaqpi3.janeway.replit.dev/api/subscription/purchase-crypto 400 (Bad Request)
+apply @ injected.js:204
+apiRequest @ queryClient.ts:15
+(anonymous) @ SubscriptionSolanaPayment.tsx:445
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:27 💥 Error checking subscription payment: Error: 400: {"error":"Transaction payer mismatch. Expected CDhwScxmQsXu8KerTYwHTqyz5Pj6xYmKwcTGQakuJ5Js, got 5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async SubscriptionSolanaPayment.tsx:445:21
+(anonymous) @ injected.js:27
+(anonymous) @ SubscriptionSolanaPayment.tsx:472
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
