@@ -644,15 +644,24 @@ export async function upscaleImage(
 
     console.log("Real-ESRGAN upscaling completed:", upscaledUrl);
 
-    // Use Replicate URL directly for upscaled images to preserve full quality
-    // Cloudinary free tier has 10MB limit and upscaled images are typically 15-25MB
-    // Compressing them defeats the purpose of upscaling
-    console.log("Using Replicate URL directly for upscaled image (preserves full quality)");
+    // Upload upscaled image to Cloudinary with quality optimization
+    // Use quality:85 to balance file size (<10MB for free tier) and quality
+    let cloudinaryUrl: string | undefined;
+    let cloudinaryPublicId: string | undefined;
+
+    try {
+      const uploadResult = await downloadAndUploadToCloudinary(upscaledUrl, true);
+      cloudinaryUrl = uploadResult.url;
+      cloudinaryPublicId = uploadResult.publicId;
+      console.log("Upscaled image uploaded to Cloudinary:", cloudinaryUrl);
+    } catch (uploadError) {
+      console.error("Cloudinary upload failed for upscaled image, using Replicate URL:", uploadError);
+    }
 
     return {
-      url: upscaledUrl,
-      cloudinaryUrl: undefined,
-      cloudinaryPublicId: undefined,
+      url: cloudinaryUrl || upscaledUrl,
+      cloudinaryUrl,
+      cloudinaryPublicId,
     };
   } catch (error) {
     console.error("Real-ESRGAN upscaling error:", error);
