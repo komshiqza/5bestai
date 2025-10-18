@@ -29,7 +29,7 @@ export function SubscriptionSolanaPayment({
   const [paymentUrl, setPaymentUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [timeoutSeconds, setTimeoutSeconds] = useState<number>(120); // 2 minutes
+  const [timeoutSeconds, setTimeoutSeconds] = useState<number>(300); // 5 minutes
   const [walletDetected, setWalletDetected] = useState<boolean>(false);
   const [recipient, setRecipient] = useState<string>(recipientProp || "");
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -405,7 +405,7 @@ export function SubscriptionSolanaPayment({
     if (pollingIntervalRef.current) return;
 
     let pollCount = 0;
-    const maxPolls = 40; // 2 minutes
+    const maxPolls = 100; // 5 minutes (enough time for user to complete wallet transaction)
     
     const interval = setInterval(async () => {
       try {
