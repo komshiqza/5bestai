@@ -579,35 +579,20 @@ export default function AiGeneratorPage() {
     return 'png'; // Default extension
   };
 
-  const handleDownload = async (url: string, filename?: string) => {
+  const handleDownload = (url: string, filename?: string) => {
     try {
-      // Use proxy endpoint for all downloads to ensure consistent behavior
-      const downloadUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
-      
-      const response = await fetch(downloadUrl, {
-        credentials: 'include',
-        cache: 'no-store', // Prevent browser caching
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.statusText}`);
-      }
-      
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
       // Auto-generate filename with correct extension if not provided
       const extension = getFileExtension(url);
       const finalFilename = filename || `ai-generated-${Date.now()}.${extension}`;
       
+      // Direct download - browser will show native download progress
       const link = document.createElement("a");
-      link.href = blobUrl;
+      link.href = url;
       link.download = finalFilename;
+      link.target = "_blank"; // Fallback if download attribute doesn't work
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (error) {
       console.error("Download failed:", error);
       toast({
