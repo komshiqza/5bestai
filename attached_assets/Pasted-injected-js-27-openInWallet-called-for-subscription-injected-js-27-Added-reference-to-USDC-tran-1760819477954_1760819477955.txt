@@ -1,0 +1,154 @@
+injected.js:27 🚀 openInWallet called for subscription!
+injected.js:27 Added reference to USDC transfer: A77z3js5deLFzUXcUj1fqkc5kUVv55LAC9ibZFzxZdxN
+injected.js:27 Transaction details: {instructions: 1, feePayer: '5FctTVyx6a7jgqcezuUD1bJdnYs4MARUeCcmYoZgwrjd', recentBlockhash: '7hujGixDBFkfyAw7WSfYqvwyhv7u6paTva5YnBGVJ4Dk'}
+injected.js:27 ✅ Subscription payment sent: 5LZMenpKm9GTpFXSJ9c5s5uZPBBQSBV2AcsmvcGyqSZjwAoJWG9wwtUTqZnzG8mou9oawbPjpEsP373Jy6w99Ybw
+injected.js:204  POST https://bf3927e5-2c84-40c4-be6a-76b30e41246d-00-55zph1oaqpi3.janeway.replit.dev/api/subscription/purchase-crypto 400 (Bad Request)
+apply @ injected.js:204
+apiRequest @ queryClient.ts:15
+(anonymous) @ SubscriptionSolanaPayment.tsx:445
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:27 💥 Error checking subscription payment: Error: 400: {"error":"insert or update on table \"subscription_transactions\" violates foreign key constraint \"subscription_transactions_subscription_id_user_subscriptions_id\""}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async SubscriptionSolanaPayment.tsx:445:21
+(anonymous) @ injected.js:27
+(anonymous) @ SubscriptionSolanaPayment.tsx:472
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:204  POST https://bf3927e5-2c84-40c4-be6a-76b30e41246d-00-55zph1oaqpi3.janeway.replit.dev/api/subscription/purchase-crypto 400 (Bad Request)
+apply @ injected.js:204
+apiRequest @ queryClient.ts:15
+(anonymous) @ SubscriptionSolanaPayment.tsx:445
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:27 💥 Error checking subscription payment: Error: 400: {"error":"insert or update on table \"subscription_transactions\" violates foreign key constraint \"subscription_transactions_subscription_id_user_subscriptions_id\""}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async SubscriptionSolanaPayment.tsx:445:21
+(anonymous) @ injected.js:27
+(anonymous) @ SubscriptionSolanaPayment.tsx:472
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:204  POST https://bf3927e5-2c84-40c4-be6a-76b30e41246d-00-55zph1oaqpi3.janeway.replit.dev/api/subscription/purchase-crypto 400 (Bad Request)
+apply @ injected.js:204
+apiRequest @ queryClient.ts:15
+(anonymous) @ SubscriptionSolanaPayment.tsx:445
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449
+injected.js:27 💥 Error checking subscription payment: Error: 400: {"error":"insert or update on table \"subscription_transactions\" violates foreign key constraint \"subscription_transactions_subscription_id_user_subscriptions_id\""}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async SubscriptionSolanaPayment.tsx:445:21
+(anonymous) @ injected.js:27
+(anonymous) @ SubscriptionSolanaPayment.tsx:472
+setInterval
+(anonymous) @ SubscriptionSolanaPayment.tsx:430
+(anonymous) @ SubscriptionSolanaPayment.tsx:377
+await in (anonymous)
+onClick @ SubscriptionSolanaPayment.tsx:606
+callCallback2 @ chunk-NFC5BX5N.js?v=823bbda5:3674
+invokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=823bbda5:3699
+invokeGuardedCallback @ chunk-NFC5BX5N.js?v=823bbda5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=823bbda5:3736
+executeDispatch @ chunk-NFC5BX5N.js?v=823bbda5:7014
+processDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=823bbda5:7034
+processDispatchQueue @ chunk-NFC5BX5N.js?v=823bbda5:7043
+dispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=823bbda5:7051
+(anonymous) @ chunk-NFC5BX5N.js?v=823bbda5:7174
+batchedUpdates$1 @ chunk-NFC5BX5N.js?v=823bbda5:18913
+batchedUpdates @ chunk-NFC5BX5N.js?v=823bbda5:3579
+dispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=823bbda5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=823bbda5:5478
+dispatchEvent @ chunk-NFC5BX5N.js?v=823bbda5:5472
+dispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=823bbda5:5449

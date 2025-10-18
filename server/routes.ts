@@ -3569,7 +3569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let subscription: UserSubscriptionWithTier;
 
-      if (existingSubscription) {
+      if (existingSubscription && existingSubscription.id) {
         // Update existing subscription
         console.log("📝 [SUBSCRIPTION] Updating existing subscription...");
         await storage.updateUserSubscription(existingSubscription.id, {
