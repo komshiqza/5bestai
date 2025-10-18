@@ -118,3 +118,95 @@ export async function verifyTransaction(signature: string): Promise<{
     return { confirmed: false };
   }
 }
+
+// Verify USDC SPL token transaction
+export async function verifyUSDCTransaction(signature: string, expectedRecipient: string): Promise<{
+  confirmed: boolean;
+  amount?: number;
+  from?: string;
+  to?: string;
+}> {
+  try {
+    const tx = await solanaConnection.getTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+
+    if (!tx || !tx.meta) {
+      console.log("Transaction not found or no metadata");
+      return { confirmed: false };
+    }
+
+    // Check for token balance changes (SPL token transfers)
+    const preTokenBalances = tx.meta.preTokenBalances || [];
+    const postTokenBalances = tx.meta.postTokenBalances || [];
+
+    // USDC mainnet mint address
+    const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+
+    // Find USDC token transfers
+    let senderAddress: string | undefined;
+    let receiverAddress: string | undefined;
+    let transferAmount: number | undefined;
+
+    // Look for balance decreases (sender) and increases (receiver)
+    for (let i = 0; i < preTokenBalances.length; i++) {
+      const preBalance = preTokenBalances[i];
+      const postBalance = postTokenBalances.find(p => p.accountIndex === preBalance.accountIndex);
+      
+      if (preBalance.mint === USDC_MINT && postBalance) {
+        const preAmount = parseFloat(preBalance.uiTokenAmount.uiAmountString || "0");
+        const postAmount = parseFloat(postBalance.uiTokenAmount.uiAmountString || "0");
+        const change = postAmount - preAmount;
+
+        if (change < 0) {
+          // This is the sender (balance decreased)
+          senderAddress = preBalance.owner || undefined;
+          transferAmount = Math.abs(change);
+        } else if (change > 0) {
+          // This is the receiver (balance increased)
+          receiverAddress = postBalance.owner || undefined;
+        }
+      }
+    }
+
+    // Also check accounts that only appear in postTokenBalances (new token accounts)
+    for (let i = 0; i < postTokenBalances.length; i++) {
+      const postBalance = postTokenBalances[i];
+      const hasPreBalance = preTokenBalances.some(p => p.accountIndex === postBalance.accountIndex);
+      
+      if (!hasPreBalance && postBalance.mint === USDC_MINT) {
+        const postAmount = parseFloat(postBalance.uiTokenAmount.uiAmountString || "0");
+        if (postAmount > 0) {
+          receiverAddress = postBalance.owner || undefined;
+          if (!transferAmount) {
+            transferAmount = postAmount;
+          }
+        }
+      }
+    }
+
+    console.log("USDC Transaction verification:", {
+      sender: senderAddress,
+      receiver: receiverAddress,
+      expectedReceiver: expectedRecipient,
+      amount: transferAmount,
+      matchesExpected: receiverAddress === expectedRecipient
+    });
+
+    if (!transferAmount || !receiverAddress || !senderAddress) {
+      console.log("Missing transaction details");
+      return { confirmed: false };
+    }
+
+    return {
+      confirmed: true,
+      amount: transferAmount, // Already in USDC (not base units)
+      from: senderAddress,
+      to: receiverAddress,
+    };
+  } catch (error) {
+    console.error('Failed to verify USDC transaction:', error);
+    return { confirmed: false };
+  }
+}

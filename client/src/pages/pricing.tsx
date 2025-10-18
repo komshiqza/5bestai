@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SubscriptionSolanaPayment } from "@/components/payment/SubscriptionSolanaPayment";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+import type { SubscriptionTier } from "@shared/schema";
 import { 
   Crown, 
   Sparkles, 
@@ -67,24 +72,6 @@ const TIER_COLORS: Record<string, { gradient: string; badge: string; button: str
   },
 };
 
-// Tier type from backend
-type SubscriptionTier = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  priceUsd: number;
-  monthlyCredits: number;
-  canEdit: boolean;
-  canUpscale: boolean;
-  allowedModels: string[];
-  promptCommission: number;
-  imageCommission: number;
-  features: Record<string, any> | null;
-  isActive: boolean;
-  sortOrder: number;
-};
-
 type UserSubscription = {
   id: string;
   tierId: string;
@@ -98,7 +85,10 @@ type UserSubscription = {
 export default function PricingPage() {
   const { data: user } = useAuth();
   const [, setLocation] = useLocation();
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("crypto"); // Default to crypto
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const { toast } = useToast();
 
   // Fetch tiers
   const { data: tiers = [], isLoading } = useQuery<SubscriptionTier[]>({
@@ -122,9 +112,43 @@ export default function PricingPage() {
       return;
     }
 
-    // TODO: Navigate to subscription flow
-    // For now, just navigate to profile or payment page
-    setLocation("/profile");
+    // Free tier - no payment needed
+    if (tier.slug === "free" || tier.priceUsd === 0) {
+      setLocation("/subscription");
+      return;
+    }
+
+    // Paid tier - show payment modal
+    setSelectedTier(tier);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = (txHash: string) => {
+    console.log("✅ Subscription payment successful:", txHash);
+    
+    // Invalidate queries to refresh data
+    queryClient.invalidateQueries({ queryKey: ["/api/subscription"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+    
+    // Close modal
+    setShowPaymentModal(false);
+    setSelectedTier(null);
+    
+    // Show success message
+    toast({
+      title: "Subscription Activated!",
+      description: `Successfully subscribed to ${selectedTier?.name} tier. Credits have been added to your account.`,
+    });
+    
+    // Redirect to subscription management page
+    setTimeout(() => {
+      setLocation("/subscription");
+    }, 2000);
+  };
+
+  const handleCancelPayment = () => {
+    setShowPaymentModal(false);
+    setSelectedTier(null);
   };
 
   const isCurrentTier = (tier: SubscriptionTier) => {
@@ -547,6 +571,44 @@ export default function PricingPage() {
           </Card>
         </div>
       </div>
+
+      {/* Crypto Payment Modal */}
+      {selectedTier && showPaymentModal && user && (
+        <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Complete Subscription Payment</DialogTitle>
+              <DialogDescription>
+                Pay with {paymentMethod === "crypto" ? "USDC cryptocurrency" : "credit card"} to activate your {selectedTier.name} subscription.
+              </DialogDescription>
+            </DialogHeader>
+
+            {paymentMethod === "crypto" ? (
+              <SubscriptionSolanaPayment
+                tier={selectedTier}
+                currency="USDC"
+                recipient="" // Will be fetched from backend for security
+                userId={user.id}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handleCancelPayment}
+              />
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                <p className="mb-4">Stripe integration coming soon!</p>
+                <p className="text-sm">Please use crypto payment (USDC) for now.</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setPaymentMethod("crypto")}
+                  data-testid="button-switch-to-crypto"
+                >
+                  Switch to Crypto Payment
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
