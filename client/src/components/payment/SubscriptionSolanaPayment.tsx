@@ -475,7 +475,7 @@ export function SubscriptionSolanaPayment({
     }, 3000); // Poll every 3 seconds
 
     pollingIntervalRef.current = interval;
-  }, [reference, tier, currency, recipient, onSuccess, toast]);
+  }, [reference, tier, currency, onSuccess, toast]);
 
   // Cleanup polling on unmount
   useEffect(() => {
