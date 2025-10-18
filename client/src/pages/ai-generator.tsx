@@ -13,9 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2 } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, Zap } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
+import { ProEditModal } from "@/components/pro-edit/ProEditModal";
 import type { AiGeneration } from "@shared/schema";
 
 interface ModelConfig {
@@ -284,6 +285,11 @@ export default function AiGeneratorPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxGenerationId, setLightboxGenerationId] = useState<string | null>(null);
+  
+  // Pro Edit modal state
+  const [proEditModalOpen, setProEditModalOpen] = useState(false);
+  const [proEditImageUrl, setProEditImageUrl] = useState<string>("");
+  const [proEditGenerationId, setProEditGenerationId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -1192,6 +1198,23 @@ export default function AiGeneratorPage() {
                             </GlassButton>
                           )}
                           
+                          {/* Pro Edit */}
+                          <GlassButton
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProEditImageUrl(gen.editedImageUrl || gen.imageUrl);
+                              setProEditGenerationId(gen.id);
+                              setProEditModalOpen(true);
+                            }}
+                            title="Pro Edit"
+                            data-testid={`button-pro-edit-${gen.id}`}
+                          >
+                            <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
+                          </GlassButton>
+                          
                           {/* Upload to Contest */}
                           <GlassButton
                             variant="ghost"
@@ -1303,6 +1326,13 @@ export default function AiGeneratorPage() {
         deletingPending={deleteMutation.isPending}
         userCredits={userCredits}
         upscalePrice={pricing?.["upscale"] || 0}
+      />
+
+      {/* Pro Edit Modal */}
+      <ProEditModal
+        open={proEditModalOpen}
+        onOpenChange={setProEditModalOpen}
+        imageUrl={proEditImageUrl}
       />
     </div>
   );
