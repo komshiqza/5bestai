@@ -31,6 +31,12 @@ import {
   type UserSubscriptionWithTier,
   type SubscriptionTransaction,
   type InsertSubscriptionTransaction,
+  type Image,
+  type InsertImage,
+  type ImageVersion,
+  type InsertImageVersion,
+  type EditJob,
+  type InsertEditJob,
   type SubmissionWithUser,
   type ContestWithStats,
   type UserWithStats,
@@ -48,7 +54,10 @@ import {
   pricingSettings,
   subscriptionTiers,
   userSubscriptions,
-  subscriptionTransactions
+  subscriptionTransactions,
+  images,
+  imageVersions,
+  editJobs
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -170,6 +179,24 @@ export interface IStorage {
   getUserTierCommissions(userId: string): Promise<{ promptCommission: number; imageCommission: number }>;
   grantMonthlyCredits(userId: string): Promise<void>;
   refreshSubscriptionIfNeeded(userId: string): Promise<boolean>;
+  
+  // Pro Edit: Images
+  createImage(image: InsertImage): Promise<Image>;
+  getImage(id: string): Promise<Image | undefined>;
+  getImagesByUserId(userId: string): Promise<Image[]>;
+  updateImage(id: string, updates: Partial<Image>): Promise<Image | undefined>;
+  
+  // Pro Edit: Image Versions
+  createImageVersion(version: InsertImageVersion): Promise<ImageVersion>;
+  getImageVersion(id: string): Promise<ImageVersion | undefined>;
+  getImageVersionsByImageId(imageId: string): Promise<ImageVersion[]>;
+  
+  // Pro Edit: Edit Jobs
+  createEditJob(job: InsertEditJob): Promise<EditJob>;
+  getEditJob(id: string): Promise<EditJob | undefined>;
+  getEditJobsByUserId(userId: string): Promise<EditJob[]>;
+  getEditJobsByImageId(imageId: string): Promise<EditJob[]>;
+  updateEditJob(id: string, updates: Partial<EditJob>): Promise<EditJob | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -1945,7 +1972,7 @@ export class DbStorage implements IStorage {
       await db.update(userSubscriptions)
         .set({
           status: "canceled",
-          canceledAt: now,
+          cancelledAt: now,
           updatedAt: now
         })
         .where(eq(userSubscriptions.id, subscription.id));
@@ -1993,11 +2020,10 @@ export class DbStorage implements IStorage {
       userId,
       subscriptionId: subscription.id,
       tierId: subscription.tierId,
-      amount: 0, // Auto-refresh doesn't charge
+      amountCents: 0, // Auto-refresh doesn't charge
       currency: "USD",
       paymentMethod: "auto-renewal",
-      status: "completed",
-      transactionType: "auto-renewal",
+      paymentStatus: "completed",
       metadata: {
         creditsGranted: monthlyCredits,
         periodStart: newPeriodStart.toISOString(),
@@ -2009,6 +2035,83 @@ export class DbStorage implements IStorage {
     console.log(`[Subscription] Auto-refreshed credits for user ${userId}: ${monthlyCredits} credits, advanced ${monthsToAdd - 1} months, new period: ${newPeriodStart.toISOString()} - ${newPeriodEnd.toISOString()}`);
 
     return true; // Refresh performed
+  }
+
+  // Pro Edit: Images
+  async createImage(image: InsertImage): Promise<Image> {
+    const [created] = await db.insert(images).values(image).returning();
+    return created;
+  }
+
+  async getImage(id: string): Promise<Image | undefined> {
+    const [image] = await db.select().from(images).where(eq(images.id, id));
+    return image;
+  }
+
+  async getImagesByUserId(userId: string): Promise<Image[]> {
+    return await db.select()
+      .from(images)
+      .where(eq(images.userId, userId))
+      .orderBy(desc(images.createdAt));
+  }
+
+  async updateImage(id: string, updates: Partial<Image>): Promise<Image | undefined> {
+    const [updated] = await db.update(images)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(images.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Pro Edit: Image Versions
+  async createImageVersion(version: InsertImageVersion): Promise<ImageVersion> {
+    const [created] = await db.insert(imageVersions).values(version).returning();
+    return created;
+  }
+
+  async getImageVersion(id: string): Promise<ImageVersion | undefined> {
+    const [version] = await db.select().from(imageVersions).where(eq(imageVersions.id, id));
+    return version;
+  }
+
+  async getImageVersionsByImageId(imageId: string): Promise<ImageVersion[]> {
+    return await db.select()
+      .from(imageVersions)
+      .where(eq(imageVersions.imageId, imageId))
+      .orderBy(desc(imageVersions.createdAt));
+  }
+
+  // Pro Edit: Edit Jobs
+  async createEditJob(job: InsertEditJob): Promise<EditJob> {
+    const [created] = await db.insert(editJobs).values(job).returning();
+    return created;
+  }
+
+  async getEditJob(id: string): Promise<EditJob | undefined> {
+    const [job] = await db.select().from(editJobs).where(eq(editJobs.id, id));
+    return job;
+  }
+
+  async getEditJobsByUserId(userId: string): Promise<EditJob[]> {
+    return await db.select()
+      .from(editJobs)
+      .where(eq(editJobs.userId, userId))
+      .orderBy(desc(editJobs.createdAt));
+  }
+
+  async getEditJobsByImageId(imageId: string): Promise<EditJob[]> {
+    return await db.select()
+      .from(editJobs)
+      .where(eq(editJobs.imageId, imageId))
+      .orderBy(desc(editJobs.createdAt));
+  }
+
+  async updateEditJob(id: string, updates: Partial<EditJob>): Promise<EditJob | undefined> {
+    const [updated] = await db.update(editJobs)
+      .set(updates)
+      .where(eq(editJobs.id, id))
+      .returning();
+    return updated;
   }
 }
 

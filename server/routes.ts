@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import * as ed25519 from "@noble/ed25519";
 import { storage } from "./storage";
 import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
@@ -15,6 +16,7 @@ import { verifyTransaction, solanaConnection, solanaConnectionProcessed } from "
 import { findReference } from "@solana/pay";
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
+import * as replicate from "./replicate";
 import { 
   loginSchema, 
   registerSchema, 
@@ -34,6 +36,7 @@ import {
   bulkRejectCashoutSchema,
   insertSiteSettingsSchema,
   subscriptionTiers,
+  editJobs,
   type SubscriptionTier,
   type UserSubscriptionWithTier,
   type UserSubscription,
@@ -3795,6 +3798,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         error: error instanceof Error ? error.message : "Failed to update subscription tier" 
       });
+    }
+  });
+
+  // =============================================================================
+  // PRO EDIT - AI-powered image enhancement
+  // =============================================================================
+
+  // POST /api/edits - Create new edit job
+  app.post("/api/edits", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { imageUrl, preset, submissionId } = req.body;
+
+      console.log(`[ProEdit] Creating edit job for user ${userId}, preset: ${preset}`);
+
+      // Validate preset
+      if (!replicate.isValidPreset(preset)) {
+        return res.status(400).json({ error: "Invalid preset" });
+      }
+
+      const presetInfo = replicate.getPresetInfo(preset);
+
+      // Check user has enough credits
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.imageCredits < presetInfo.credits) {
+        return res.status(402).json({ 
+          error: "Insufficient credits",
+          required: presetInfo.credits,
+          available: user.imageCredits
+        });
+      }
+
+      // Deduct credits
+      await storage.updateUser(userId, {
+        imageCredits: user.imageCredits - presetInfo.credits
+      });
+
+      // Create image record (or get existing)
+      const image = await storage.createImage({
+        userId,
+        submissionId: submissionId || null,
+        originalUrl: imageUrl,
+        currentVersionId: null
+      });
+
+      // Create original version record
+      const originalVersion = await storage.createImageVersion({
+        imageId: image.id,
+        url: imageUrl,
+        source: 'upload',
+        preset: null,
+        params: {}
+      });
+
+      // Update image with current version
+      await storage.updateImage(image.id, {
+        currentVersionId: originalVersion.id
+      });
+
+      // Create Replicate prediction
+      const webhookUrl = `${req.protocol}://${req.get('host')}/api/replicate-webhook`;
+      const prediction = await replicate.createPrediction(
+        preset,
+        imageUrl,
+        {},
+        webhookUrl
+      );
+
+      // Create edit job
+      const job = await storage.createEditJob({
+        userId,
+        imageId: image.id,
+        inputVersionId: originalVersion.id,
+        preset,
+        params: {},
+        status: 'running',
+        replicatePredictionId: prediction.id,
+        outputVersionId: null,
+        costCredits: presetInfo.credits
+      });
+
+      console.log(`[ProEdit] Job ${job.id} created, prediction: ${prediction.id}`);
+
+      res.json({
+        jobId: job.id,
+        imageId: image.id,
+        predictionId: prediction.id,
+        status: 'running',
+        creditsDeducted: presetInfo.credits,
+        remainingCredits: user.imageCredits - presetInfo.credits
+      });
+    } catch (error) {
+      console.error("[ProEdit] Error creating edit job:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to create edit job" 
+      });
+    }
+  });
+
+  // GET /api/edit-jobs/:id - Get job status
+  app.get("/api/edit-jobs/:id", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const jobId = req.params.id;
+
+      const job = await storage.getEditJob(jobId);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      // Verify ownership
+      if (job.userId !== userId && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // If job is still running, check Replicate status
+      if (job.status === 'running' && job.replicatePredictionId) {
+        const prediction = await replicate.getPrediction(job.replicatePredictionId);
+        
+        if (prediction.status === 'succeeded') {
+          // Get output URL (it's an array for some models)
+          const outputUrl = Array.isArray(prediction.output) 
+            ? prediction.output[0] 
+            : prediction.output;
+
+          // Create output version
+          const outputVersion = await storage.createImageVersion({
+            imageId: job.imageId,
+            url: outputUrl,
+            source: 'edit',
+            preset: job.preset,
+            params: job.params || {}
+          });
+
+          // Update job
+          await storage.updateEditJob(jobId, {
+            status: 'succeeded',
+            outputVersionId: outputVersion.id,
+            finishedAt: new Date()
+          });
+
+          // Update image current version
+          await storage.updateImage(job.imageId, {
+            currentVersionId: outputVersion.id
+          });
+
+          job.status = 'succeeded';
+          job.outputVersionId = outputVersion.id;
+          job.finishedAt = new Date();
+        } else if (prediction.status === 'failed') {
+          const errorMessage = (prediction.error as string) || 'Processing failed';
+          await storage.updateEditJob(jobId, {
+            status: 'failed',
+            error: errorMessage,
+            finishedAt: new Date()
+          });
+
+          job.status = 'failed';
+          job.error = errorMessage;
+          job.finishedAt = new Date();
+        }
+      }
+
+      // Fetch output version if available
+      let outputVersion = null;
+      if (job.outputVersionId) {
+        outputVersion = await storage.getImageVersion(job.outputVersionId);
+      }
+
+      res.json({
+        ...job,
+        outputUrl: outputVersion?.url || null
+      });
+    } catch (error) {
+      console.error("[ProEdit] Error fetching job status:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to fetch job status" 
+      });
+    }
+  });
+
+  // POST /api/replicate-webhook - Webhook from Replicate
+  app.post("/api/replicate-webhook", async (req, res) => {
+    try {
+      const prediction = req.body;
+      console.log(`[ProEdit] Webhook received for prediction: ${prediction.id}, status: ${prediction.status}`);
+
+      // Find job by prediction ID
+      const jobs = await db.select()
+        .from(editJobs)
+        .where(eq(editJobs.replicatePredictionId, prediction.id))
+        .limit(1);
+
+      const job = jobs[0];
+      
+      if (!job) {
+        console.log(`[ProEdit] No job found for prediction: ${prediction.id}`);
+        return res.json({ received: true });
+      }
+
+      if (prediction.status === 'succeeded') {
+        // Get output URL
+        const outputUrl = Array.isArray(prediction.output) 
+          ? prediction.output[0] 
+          : prediction.output;
+
+        // Create output version
+        const outputVersion = await storage.createImageVersion({
+          imageId: job.imageId,
+          url: outputUrl,
+          source: 'edit',
+          preset: job.preset,
+          params: job.params || {}
+        });
+
+        // Update job
+        await storage.updateEditJob(job.id, {
+          status: 'succeeded',
+          outputVersionId: outputVersion.id,
+          finishedAt: new Date()
+        });
+
+        // Update image current version
+        await storage.updateImage(job.imageId, {
+          currentVersionId: outputVersion.id
+        });
+
+        console.log(`[ProEdit] Job ${job.id} completed successfully`);
+      } else if (prediction.status === 'failed') {
+        const errorMessage = (prediction.error as string) || 'Processing failed';
+        await storage.updateEditJob(job.id, {
+          status: 'failed',
+          error: errorMessage,
+          finishedAt: new Date()
+        });
+
+        console.log(`[ProEdit] Job ${job.id} failed:`, errorMessage);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("[ProEdit] Webhook error:", error);
+      res.status(500).json({ error: "Webhook processing failed" });
     }
   });
 

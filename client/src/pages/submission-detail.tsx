@@ -1,10 +1,11 @@
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Heart, ArrowLeft, Share2, Trophy, User } from "lucide-react";
+import { Heart, ArrowLeft, Share2, Trophy, User, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useEffect } from "react";
+import { useState } from "react";
+import { ProEditModal } from "@/components/pro-edit/ProEditModal";
 
 export default function SubmissionDetailPage() {
   const [match, params] = useRoute("/submission/:id");
@@ -12,6 +13,7 @@ export default function SubmissionDetailPage() {
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [proEditModalOpen, setProEditModalOpen] = useState(false);
 
   // Fetch submission
   const { data: submission, isLoading } = useQuery({
@@ -231,6 +233,18 @@ export default function SubmissionDetailPage() {
                 <Share2 className="h-5 w-5" />
                 <span>Share</span>
               </button>
+
+              {/* Pro Edit Button - Only for image submissions owned by user */}
+              {user && submission.user?.id === user.id && submission.type === "image" && (
+                <button
+                  onClick={() => setProEditModalOpen(true)}
+                  className="w-full py-4 px-6 rounded-lg font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
+                  data-testid="button-pro-edit"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  <span>Pro Edit</span>
+                </button>
+              )}
             </div>
 
             {/* Tags */}
@@ -253,6 +267,16 @@ export default function SubmissionDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Pro Edit Modal */}
+      {submission && (
+        <ProEditModal
+          open={proEditModalOpen}
+          onOpenChange={setProEditModalOpen}
+          imageUrl={submission.mediaUrl}
+          submissionId={submission.id}
+        />
+      )}
     </div>
   );
 }

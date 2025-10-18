@@ -565,6 +565,73 @@ export const subscriptionTransactions = pgTable("subscription_transactions", {
   txHashIdx: index("subscription_transactions_tx_hash_idx").on(table.txHash)
 }));
 
+// Pro Edit: Images table (master image records)
+export const images = pgTable("images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  submissionId: varchar("submission_id").references(() => submissions.id, { onDelete: "set null" }), // Link to submission if created from one
+  originalUrl: text("original_url").notNull(), // URL of the original uploaded image
+  currentVersionId: varchar("current_version_id"), // Points to the active version
+  title: varchar("title", { length: 255 }),
+  width: integer("width"),
+  height: integer("height"),
+  format: varchar("format", { length: 20 }), // png, jpg, webp
+  metadata: jsonb("metadata"), // EXIF, camera data, etc.
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+}, (table) => ({
+  userIdx: index("images_user_idx").on(table.userId),
+  submissionIdx: index("images_submission_idx").on(table.submissionId)
+}));
+
+// Pro Edit: Image Versions table (non-destructive editing history)
+export const imageVersions = pgTable("image_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  imageId: varchar("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  url: text("url").notNull(), // Cloudinary or storage URL
+  width: integer("width"),
+  height: integer("height"),
+  format: varchar("format", { length: 20 }), // png, jpg, webp
+  source: varchar("source", { length: 50 }).notNull(), // 'upload', 'generate', 'edit'
+  preset: varchar("preset", { length: 50 }), // 'clean', 'upscale4x', 'portrait_pro', etc.
+  params: jsonb("params"), // Parameters used for this version
+  metadata: jsonb("metadata"), // Additional version data
+  createdAt: timestamp("created_at").notNull().defaultNow()
+}, (table) => ({
+  imageIdx: index("image_versions_image_idx").on(table.imageId),
+  createdAtIdx: index("image_versions_created_at_idx").on(table.createdAt)
+}));
+
+// Pro Edit: Edit Jobs table (processing queue)
+export const editJobs = pgTable("edit_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  imageId: varchar("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  inputVersionId: varchar("input_version_id").notNull().references(() => imageVersions.id, { onDelete: "set null" }),
+  
+  preset: varchar("preset", { length: 50 }).notNull(), // 'clean', 'upscale4x', 'portrait_pro', etc.
+  params: jsonb("params").notNull(), // Preset parameters
+  
+  status: varchar("status", { length: 50 }).notNull().default("queued"), // queued, running, succeeded, failed
+  
+  // Replicate integration
+  replicatePredictionId: text("replicate_prediction_id"),
+  
+  outputVersionId: varchar("output_version_id").references(() => imageVersions.id, { onDelete: "set null" }),
+  
+  costCredits: integer("cost_credits").notNull().default(0), // Credits deducted for this job
+  
+  error: text("error"), // Error message if failed
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  finishedAt: timestamp("finished_at")
+}, (table) => ({
+  userIdx: index("edit_jobs_user_idx").on(table.userId),
+  imageIdx: index("edit_jobs_image_idx").on(table.imageId),
+  statusIdx: index("edit_jobs_status_idx").on(table.status),
+  createdAtIdx: index("edit_jobs_created_at_idx").on(table.createdAt)
+}));
+
 // Insert schemas
 export const insertSubscriptionTierSchema = createInsertSchema(subscriptionTiers).omit({
   id: true,
@@ -583,6 +650,23 @@ export const insertSubscriptionTransactionSchema = createInsertSchema(subscripti
   createdAt: true
 });
 
+export const insertImageSchema = createInsertSchema(images).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertImageVersionSchema = createInsertSchema(imageVersions).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertEditJobSchema = createInsertSchema(editJobs).omit({
+  id: true,
+  createdAt: true,
+  finishedAt: true
+});
+
 // Export types
 export type InsertSubscriptionTier = z.infer<typeof insertSubscriptionTierSchema>;
 export type SubscriptionTier = typeof subscriptionTiers.$inferSelect;
@@ -590,6 +674,13 @@ export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema
 export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export type InsertSubscriptionTransaction = z.infer<typeof insertSubscriptionTransactionSchema>;
 export type SubscriptionTransaction = typeof subscriptionTransactions.$inferSelect;
+
+export type InsertImage = z.infer<typeof insertImageSchema>;
+export type Image = typeof images.$inferSelect;
+export type InsertImageVersion = z.infer<typeof insertImageVersionSchema>;
+export type ImageVersion = typeof imageVersions.$inferSelect;
+export type InsertEditJob = z.infer<typeof insertEditJobSchema>;
+export type EditJob = typeof editJobs.$inferSelect;
 
 // Extended types with relations
 export type UserSubscriptionWithTier = UserSubscription & {
