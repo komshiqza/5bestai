@@ -167,13 +167,26 @@ export function SubscriptionSolanaPayment({
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Mobile: use protocol URL
+    // Mobile: use deep link to wallet
     if (isMobile) {
-      window.location.href = paymentUrl;
+      // Use Phantom universal link for better mobile UX
+      const phantomDeepLink = `https://phantom.app/ul/v1/browse/${encodeURIComponent(paymentUrl)}?ref=${encodeURIComponent(window.location.origin)}`;
+      
+      window.location.href = phantomDeepLink;
+      
       toast({
-        title: "Opening Mobile Wallet",
-        description: "Redirecting to your wallet app...",
+        title: "Opening Phantom Wallet",
+        description: "Redirecting to your mobile wallet...",
       });
+      
+      // Fallback to direct Solana Pay URL after 2 seconds if Phantom not installed
+      setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          // User still on page, try direct protocol
+          window.location.href = paymentUrl;
+        }
+      }, 2000);
+      
       return;
     }
 
@@ -205,9 +218,16 @@ export function SubscriptionSolanaPayment({
         const recipientAddress = url.pathname;
         const amount = parseFloat(url.searchParams.get('amount') || '0');
         const referenceParam = url.searchParams.get('reference');
+        const splToken = url.searchParams.get('spl-token'); // USDC mint address
         
-        // Import Solana web3.js
-        const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
+        // Import Solana web3.js and SPL token
+        const { Connection, PublicKey, Transaction } = await import('@solana/web3.js');
+        const { 
+          getAssociatedTokenAddress, 
+          createTransferInstruction,
+          createAssociatedTokenAccountInstruction,
+          getAccount
+        } = await import('@solana/spl-token');
         
         const rpcUrl = import.meta.env.VITE_HELIUS_RPC_URL || 'https://api.mainnet-beta.solana.com';
         const connection = new Connection(rpcUrl, 'confirmed');
@@ -215,26 +235,99 @@ export function SubscriptionSolanaPayment({
         // Create transaction
         const transaction = new Transaction();
         
-        const transferInstruction = SystemProgram.transfer({
-          fromPubkey: walletResponse.publicKey,
-          toPubkey: new PublicKey(recipientAddress),
-          lamports: Math.round(amount * LAMPORTS_PER_SOL),
-        });
-        
-        // Add reference as account key (Solana Pay spec)
-        if (referenceParam) {
-          transferInstruction.keys.push({
-            pubkey: new PublicKey(referenceParam),
-            isSigner: false,
-            isWritable: false,
+        if (splToken) {
+          // USDC SPL Token transfer
+          const usdcMint = new PublicKey(splToken);
+          const sender = walletResponse.publicKey;
+          const recipient = new PublicKey(recipientAddress);
+          
+          // Get associated token accounts
+          const senderTokenAccount = await getAssociatedTokenAddress(usdcMint, sender);
+          const recipientTokenAccount = await getAssociatedTokenAddress(usdcMint, recipient);
+          
+          // Check if accounts exist, create if needed
+          try {
+            await getAccount(connection, senderTokenAccount);
+          } catch (error) {
+            // Sender token account doesn't exist - this shouldn't happen for USDC holders
+            // but we can create it if needed
+            console.log("Creating sender token account...");
+            transaction.add(
+              createAssociatedTokenAccountInstruction(
+                sender,
+                senderTokenAccount,
+                sender,
+                usdcMint
+              )
+            );
+          }
+          
+          try {
+            await getAccount(connection, recipientTokenAccount);
+          } catch (error) {
+            // Recipient (platform) token account doesn't exist, create it
+            console.log("Creating recipient token account...");
+            transaction.add(
+              createAssociatedTokenAccountInstruction(
+                sender, // payer
+                recipientTokenAccount,
+                recipient, // owner
+                usdcMint
+              )
+            );
+          }
+          
+          // USDC has 6 decimals
+          const usdcDecimals = 6;
+          const transferAmount = Math.round(amount * Math.pow(10, usdcDecimals));
+          
+          // Create USDC transfer instruction
+          const transferInstruction = createTransferInstruction(
+            senderTokenAccount,
+            recipientTokenAccount,
+            sender,
+            transferAmount
+          );
+          
+          // Add reference as account key (Solana Pay spec)
+          if (referenceParam) {
+            transferInstruction.keys.push({
+              pubkey: new PublicKey(referenceParam),
+              isSigner: false,
+              isWritable: false,
+            });
+          }
+          
+          transaction.add(transferInstruction);
+        } else {
+          // Fallback to SOL transfer (not expected for subscriptions)
+          const { SystemProgram, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
+          const transferInstruction = SystemProgram.transfer({
+            fromPubkey: walletResponse.publicKey,
+            toPubkey: new PublicKey(recipientAddress),
+            lamports: Math.round(amount * LAMPORTS_PER_SOL),
           });
+          
+          if (referenceParam) {
+            transferInstruction.keys.push({
+              pubkey: new PublicKey(referenceParam),
+              isSigner: false,
+              isWritable: false,
+            });
+          }
+          
+          transaction.add(transferInstruction);
         }
-        
-        transaction.add(transferInstruction);
         
         const { blockhash } = await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = walletResponse.publicKey;
+
+        console.log("Transaction details:", {
+          instructions: transaction.instructions.length,
+          feePayer: transaction.feePayer?.toBase58(),
+          recentBlockhash: transaction.recentBlockhash
+        });
 
         toast({
           title: "Sending Transaction",
@@ -265,6 +358,7 @@ export function SubscriptionSolanaPayment({
       
     } catch (error: any) {
       console.error("Wallet integration error:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
       
       if (error.code === 4001) {
         toast({
@@ -272,10 +366,16 @@ export function SubscriptionSolanaPayment({
           description: "You cancelled the transaction.",
           variant: "destructive",
         });
+      } else if (error.code === -32603) {
+        toast({
+          title: "Transaction Failed",
+          description: "RPC error. Make sure Phantom is on Solana Mainnet and you have USDC + SOL for fees.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Wallet Integration Error",
-          description: "Please use the QR code or copy link method as a backup.",
+          description: `${error.message || "Please use the QR code or copy link method as a backup."}`,
           variant: "destructive",
         });
       }
