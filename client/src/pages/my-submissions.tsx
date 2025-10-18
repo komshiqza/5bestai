@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Image, Share2, Expand, Trash2, Play, X, User, Calendar, Zap } from "lucide-react";
+import { Image, Share2, Expand, Trash2, Play, X, User, Calendar, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { SubmissionWithUser } from "@shared/schema";
@@ -277,7 +277,7 @@ export default function MySubmissions() {
                         <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
                       </GlassButton>
                       
-                      {/* Pro Edit - only for image submissions */}
+                      {/* Edit (Pro Edit) - only for image submissions */}
                       {submission.type === "image" && (
                         <GlassButton 
                           variant="ghost"
@@ -289,10 +289,10 @@ export default function MySubmissions() {
                             setProEditSubmissionId(submission.id);
                             setProEditModalOpen(true);
                           }}
-                          title="Pro Edit"
-                          data-testid={`button-pro-edit-${submission.id}`}
+                          title="Edit"
+                          data-testid={`button-edit-${submission.id}`}
                         >
-                          <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
+                          <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
                         </GlassButton>
                       )}
                     </div>
