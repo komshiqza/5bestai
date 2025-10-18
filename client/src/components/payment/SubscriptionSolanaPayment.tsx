@@ -178,6 +178,9 @@ export function SubscriptionSolanaPayment({
         }
       }, 2000);
       
+      // Start polling for mobile flow (user will complete payment in wallet app)
+      startPolling();
+      
       return;
     }
 
@@ -189,6 +192,10 @@ export function SubscriptionSolanaPayment({
         description: "Opening Solana Pay link in your browser...",
       });
       window.open(paymentUrl, '_blank');
+      
+      // Start polling for fallback flow (user will complete payment in new tab)
+      startPolling();
+      
       return;
     }
 
@@ -365,18 +372,24 @@ export function SubscriptionSolanaPayment({
           description: "Processing your subscription...",
         });
         
+        // Start polling AFTER transaction is successfully sent
+        startPolling();
+        
         onSuccess(signedTransaction.signature);
         
         return;
       }
       
-      // Fallback: Copy link
+      // Fallback: Copy link (for non-Phantom wallets or errors)
       await navigator.clipboard.writeText(paymentUrl);
       toast({
         title: "Payment Link Copied",
         description: "Open your wallet extension and paste this link in the browser tab.",
         duration: 8000,
       });
+      
+      // Start polling for fallback flow
+      startPolling();
       
     } catch (error: any) {
       console.error("Wallet integration error:", error);
@@ -591,7 +604,6 @@ export function SubscriptionSolanaPayment({
           <Button
             className="flex-1"
             onClick={() => {
-              startPolling(); // Start polling when user initiates payment
               openInWallet();
             }}
             data-testid="button-pay-with-wallet"
