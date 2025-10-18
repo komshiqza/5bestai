@@ -402,7 +402,11 @@ export function SubscriptionSolanaPayment({
 
   // Poll backend for payment verification
   const startPolling = useCallback(() => {
-    if (pollingIntervalRef.current) return;
+    // Stop any existing polling
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
 
     let pollCount = 0;
     const maxPolls = 100; // 5 minutes (enough time for user to complete wallet transaction)
@@ -456,16 +460,14 @@ export function SubscriptionSolanaPayment({
     pollingIntervalRef.current = interval;
   }, [reference, tier, currency, recipient, onSuccess, toast]);
 
-  // Start automatic polling when component mounts
+  // Cleanup polling on unmount
   useEffect(() => {
-    startPolling();
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Manual verification
@@ -584,11 +586,13 @@ export function SubscriptionSolanaPayment({
         <div className="flex gap-2">
           <Button
             className="flex-1"
-            onClick={openInWallet}
-            disabled={!walletDetected}
+            onClick={() => {
+              startPolling(); // Start polling when user initiates payment
+              openInWallet();
+            }}
             data-testid="button-pay-with-wallet"
           >
-            Pay with Wallet
+            {walletDetected ? "Pay with Phantom" : "Open in Browser"}
           </Button>
           <Button
             variant="outline"
