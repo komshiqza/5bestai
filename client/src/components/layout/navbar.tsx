@@ -40,6 +40,12 @@ export function Navbar() {
 
           {/* Center Navigation - Desktop */}
           <div className="hidden md:flex items-center space-x-3 absolute left-1/2 transform -translate-x-1/2">
+            <Link href="/pricing" data-testid="link-pricing">
+              <Button variant="ghost" className="px-4 py-2">
+                <CreditCard className="w-4 h-4 mr-2" />
+                Pricing
+              </Button>
+            </Link>
             <Link href="/contests" data-testid="link-contests">
               <Button variant="ghost" className="px-4 py-2">Contests</Button>
             </Link>
@@ -147,6 +153,12 @@ export function Navbar() {
                     <DropdownMenuItem>
                       <User className="w-4 h-4 mr-2" />
                       Profile
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/subscription" data-testid="link-subscription">
+                    <DropdownMenuItem>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Subscription
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/my-submissions" data-testid="link-my-submissions">

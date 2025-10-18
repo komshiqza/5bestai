@@ -89,6 +89,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending" // Requires admin approval
       });
 
+      // Auto-assign Free tier subscription to new users
+      try {
+        const freeTier = await storage.getSubscriptionTierBySlug("free");
+        if (freeTier) {
+          // Free tier: set period end far in the future (100 years)
+          const farFuture = new Date();
+          farFuture.setFullYear(farFuture.getFullYear() + 100);
+          
+          await storage.createUserSubscription({
+            userId: user.id,
+            tierId: freeTier.id,
+            status: "active",
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: farFuture,
+            cancelAtPeriodEnd: false
+          });
+          console.log(`Assigned Free tier to new user: ${user.id}`);
+        } else {
+          console.warn("Free tier not found, user created without subscription");
+        }
+      } catch (error) {
+        console.error("Failed to assign Free tier to new user:", error);
+        // Continue anyway - user creation succeeded
+      }
+
       res.status(201).json({ 
         message: "User created successfully. Please wait for admin approval.",
         user: { id: user.id, username: user.username, email: user.email, status: user.status }

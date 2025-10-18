@@ -28,6 +28,8 @@ import AdminSubscriptionTiers from "@/pages/admin/subscription-tiers";
 import RoadmapPage from "@/pages/roadmap";
 import AiGeneratorPage from "@/pages/ai-generator";
 import ImageEditor from "@/pages/image-editor";
+import PricingPage from "@/pages/pricing";
+import SubscriptionPage from "@/pages/subscription";
 import NotFound from "@/pages/not-found";
 
 function ScrollToTop() {
@@ -60,6 +62,8 @@ function Router() {
               <Switch>
                 <Route path="/" component={Home} />
                 <Route path="/roadmap" component={RoadmapPage} />
+                <Route path="/pricing" component={PricingPage} />
+                <Route path="/subscription" component={SubscriptionPage} />
                 <Route path="/ai-generator" component={AiGeneratorPage} />
                 <Route path="/image-editor/:id" component={ImageEditor} />
                 <Route path="/contests" component={Contests} />

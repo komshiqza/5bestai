@@ -10,6 +10,7 @@ export interface User {
   gloryBalance: number;
   solBalance: number;
   usdcBalance: number;
+  imageCredits: number;
   avatarUrl?: string | null;
   withdrawalAddress?: string | null;
   createdAt: string;
