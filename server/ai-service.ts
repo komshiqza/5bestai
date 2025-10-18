@@ -608,11 +608,18 @@ export async function upscaleImage(
     } else if (output && typeof output === "object") {
       // Try to extract URL from FileOutput or other object types
       const outputObj = output as any;
+      console.log("Processing object output. Has .url?", !!outputObj.url, "Type of .url:", typeof outputObj.url);
+      console.log("Has .output?", !!outputObj.output, "Type of .output:", typeof outputObj.output);
+      
       if (outputObj.url && typeof outputObj.url === "function") {
+        console.log("Calling .url() method...");
         upscaledUrl = await outputObj.url();
+        console.log("Result from .url():", upscaledUrl, "Type:", typeof upscaledUrl);
       } else if (outputObj.url && typeof outputObj.url === "string") {
+        console.log("Using .url string property");
         upscaledUrl = outputObj.url;
       } else if (outputObj.output) {
+        console.log("Using .output property");
         upscaledUrl = outputObj.output;
       } else {
         throw new Error(`Unsupported Real-ESRGAN output format: ${typeof output}`);
