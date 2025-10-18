@@ -515,29 +515,58 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
       fetch_format: "auto",
     };
 
-    // For upscaled images, use upload_large to handle large files (>10MB)
+    // For upscaled images, use upload_stream with proper stream handling
     let result: any;
-    if (isUpscaled) {
-      uploadOptions.chunk_size = 6000000; // 6MB chunks for reliable upload
-      uploadOptions.transformation = [
-        { quality: 80, fetch_format: "jpg" } // Light compression to balance quality and size
-      ];
-      console.log("Using upload_large (chunk upload) for upscaled image");
-      result = await cloudinary.uploader.upload_large(tempFilePath, uploadOptions);
-    } else {
-      result = await cloudinary.uploader.upload(tempFilePath, uploadOptions);
+    try {
+      if (isUpscaled) {
+        uploadOptions.chunk_size = 6000000; // 6MB chunks for reliable upload
+        uploadOptions.transformation = [
+          { quality: 80, fetch_format: "jpg" } // Light compression to balance quality and size
+        ];
+        console.log("Using upload_stream (chunk upload) for upscaled image");
+        
+        // Create read stream and upload using stream API for proper synchronization
+        result = await new Promise((resolve, reject) => {
+          const readStream = fs.createReadStream(tempFilePath);
+          const uploadStream = cloudinary.uploader.upload_stream(
+            uploadOptions,
+            (error: any, result: any) => {
+              if (error) {
+                reject(error);
+              } else {
+                // Wait for read stream to fully close before resolving
+                readStream.on('close', () => {
+                  console.log("Upload stream complete and read stream closed");
+                  resolve(result);
+                });
+                // If stream already closed, resolve immediately
+                if (readStream.closed) {
+                  console.log("Upload complete, stream already closed");
+                  resolve(result);
+                }
+              }
+            }
+          );
+
+          readStream.on('error', reject);
+          uploadStream.on('error', reject);
+          readStream.pipe(uploadStream);
+        });
+      } else {
+        result = await cloudinary.uploader.upload(tempFilePath, uploadOptions);
+      }
+
+      return {
+        url: result.secure_url,
+        publicId: result.public_id,
+      };
+    } finally {
+      // Always clean up temp file, whether upload succeeded or failed
+      if (fs.existsSync(tempFilePath)) {
+        await unlinkAsync(tempFilePath);
+      }
     }
-
-    await unlinkAsync(tempFilePath);
-
-    return {
-      url: result.secure_url,
-      publicId: result.public_id,
-    };
   } catch (error) {
-    if (fs.existsSync(tempFilePath)) {
-      await unlinkAsync(tempFilePath);
-    }
     throw error;
   }
 }
