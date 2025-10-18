@@ -618,20 +618,18 @@ export default function AiGeneratorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background font-['Space_Grotesk',sans-serif]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl gradient-glory flex items-center justify-center">
-              <Sparkles className="text-white" size={24} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">AI Studio</h1>
-              <p className="text-muted-foreground">Create stunning images with AI</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">AI Image Generation</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Unleash your creativity with AI. Describe your vision and let our generators bring it to life.
+            </p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
-            <Sparkles className="text-primary" size={18} />
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg glassmorphism">
+            <span className="material-symbols-outlined text-primary">auto_awesome</span>
             <div>
               <p className="text-xs text-muted-foreground">Credits</p>
               <p className="text-2xl font-bold text-primary" data-testid="text-credits-balance">{userCredits}</p>
@@ -639,70 +637,85 @@ export default function AiGeneratorPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Generator Panel */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card data-testid="card-generator">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wand2 className="h-5 w-5" />
-                  Generate Image
-                </CardTitle>
-                <CardDescription>Describe what you want to create</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Sidebar - Generator Controls */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 space-y-8">
+              <div className="glassmorphism rounded-xl p-6 space-y-6">
+                {/* Prompt */}
                 <div>
-                  <Label htmlFor="prompt">Prompt</Label>
+                  <Label htmlFor="prompt" className="mb-2 block text-sm font-medium">
+                    Prompt
+                  </Label>
                   <Textarea
                     id="prompt"
-                    placeholder="A majestic dragon flying over a cyberpunk city at sunset..."
+                    placeholder="e.g., a futuristic cityscape at sunset, neon lights, glassmorphism"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    rows={3}
+                    rows={4}
+                    className="w-full resize-none rounded-lg border-0 bg-black/20 dark:bg-white/5 p-3 text-sm placeholder:text-muted-foreground/50 ring-1 ring-inset ring-transparent transition-all focus:bg-black/30 dark:focus:bg-white/10 focus:ring-primary"
                     data-testid="input-prompt"
                   />
                 </div>
 
+                {/* Negative Prompt */}
                 {currentModelConfig?.supportsNegativePrompt && (
                   <div>
-                    <Label htmlFor="negative-prompt">Negative Prompt (Optional)</Label>
+                    <Label htmlFor="negative-prompt" className="mb-2 block text-sm font-medium">
+                      Negative Prompt (Optional)
+                    </Label>
                     <Textarea
                       id="negative-prompt"
-                      placeholder="blurry, low quality, distorted, bad anatomy, watermark, text..."
+                      placeholder="blurry, low quality, distorted..."
                       value={negativePrompt}
                       onChange={(e) => setNegativePrompt(e.target.value)}
                       rows={2}
+                      className="w-full resize-none rounded-lg border-0 bg-black/20 dark:bg-white/5 p-3 text-sm placeholder:text-muted-foreground/50 ring-1 ring-inset ring-transparent transition-all focus:bg-black/30 dark:focus:bg-white/10 focus:ring-primary"
                       data-testid="input-negative-prompt"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Describe what you DON'T want to see in the image
-                    </p>
                   </div>
                 )}
 
+                {/* AI Model Selector */}
                 <div>
-                  <Label>AI Model</Label>
+                  <h3 className="mb-2 text-sm font-medium">AI Generator</h3>
                   {loadingModels ? (
                     <div className="h-10 rounded-md border border-input bg-muted/50 animate-pulse" />
                   ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {modelConfigs?.slice(0, 3).map((model) => {
+                        const pricingKey = modelToPricingKey[model.id] || model.id;
+                        const credits = pricing?.[pricingKey] || 0;
+                        const isSelected = selectedModel === model.id;
+                        return (
+                          <button
+                            key={model.id}
+                            onClick={() => setSelectedModel(model.id)}
+                            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border p-3 text-center text-xs font-medium transition-all ${
+                              isSelected
+                                ? 'border-primary bg-primary/20 text-primary'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                            data-testid={`select-model-${model.id}`}
+                          >
+                            {model.name.split(' ')[0]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {!loadingModels && modelConfigs && modelConfigs.length > 3 && (
                     <Select value={selectedModel} onValueChange={setSelectedModel}>
-                      <SelectTrigger data-testid="select-model">
+                      <SelectTrigger className="mt-2" data-testid="select-model">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {modelConfigs?.map((model) => {
+                        {modelConfigs.map((model) => {
                           const pricingKey = modelToPricingKey[model.id] || model.id;
                           const credits = pricing?.[pricingKey] || 0;
                           return (
                             <SelectItem key={model.id} value={model.id}>
-                              {/* Mobile: Model - Price */}
-                              <span className="text-sm md:hidden">
-                                {model.name} - {credits} {credits === 1 ? 'credit' : 'credits'}
-                              </span>
-                              {/* Desktop: Model - Description - Price */}
-                              <span className="text-sm hidden md:inline">
-                                {model.name} - {model.description} - {credits} {credits === 1 ? 'credit' : 'credits'} per image
-                              </span>
+                              {model.name} - {credits} {credits === 1 ? 'credit' : 'credits'}
                             </SelectItem>
                           );
                         })}
@@ -711,593 +724,477 @@ export default function AiGeneratorPage() {
                   )}
                 </div>
 
+                {/* Parameters */}
                 {currentModelConfig && (
-                  <details className="group" open>
-                    <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium">
-                      <Settings className="h-4 w-4" />
-                      Model Settings
-                    </summary>
-                    <div className="mt-4 space-y-4 pl-6 border-l-2 border-border">
-                      {/* Aspect Ratio */}
-                      {currentModelConfig.supportsAspectRatio && (
-                        <div>
-                          <Label>Aspect Ratio</Label>
-                          <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                            <SelectTrigger data-testid="select-aspect-ratio">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {aspectRatiosForCurrentModel.map((ratio) => (
-                                <SelectItem key={ratio.value} value={ratio.value}>
-                                  {ratio.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Resolution (Ideogram) */}
-                      {currentModelConfig.supportsResolution && (
-                        <div>
-                          <Label>Resolution</Label>
-                          <Select value={resolution} onValueChange={setResolution}>
-                            <SelectTrigger data-testid="select-resolution">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ideogramResolutions.map((res) => (
-                                <SelectItem key={res.value} value={res.value}>
-                                  {res.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Overrides aspect ratio when set
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Style Type (Ideogram) */}
-                      {currentModelConfig.supportsStyleType && (
-                        <div>
-                          <Label>Style Type</Label>
-                          <Select value={styleType} onValueChange={setStyleType}>
-                            <SelectTrigger data-testid="select-style-type">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ideogramStyleTypes.map((style) => (
-                                <SelectItem key={style.value} value={style.value}>
-                                  {style.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Style Preset (Ideogram) */}
-                      {currentModelConfig.supportsStylePreset && (
-                        <div>
-                          <Label>Style Preset</Label>
-                          <Select value={stylePreset} onValueChange={setStylePreset}>
-                            <SelectTrigger data-testid="select-style-preset">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ideogramStylePresets.map((preset) => (
-                                <SelectItem key={preset.value} value={preset.value}>
-                                  {preset.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Magic Prompt (Ideogram) */}
-                      {currentModelConfig.supportsMagicPrompt && (
-                        <div>
-                          <Label>Magic Prompt</Label>
-                          <Select value={magicPromptOption} onValueChange={setMagicPromptOption}>
-                            <SelectTrigger data-testid="select-magic-prompt">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {magicPromptOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Automatically enhances your prompt
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Leonardo Style */}
-                      {currentModelConfig.supportsLeonardoStyle && (
-                        <div>
-                          <Label>Leonardo Style</Label>
-                          <Select value={leonardoStyle} onValueChange={setLeonardoStyle}>
-                            <SelectTrigger data-testid="select-leonardo-style">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {leonardoStyles.map((style) => (
-                                <SelectItem key={style.value} value={style.value}>
-                                  {style.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Contrast (Leonardo) */}
-                      {currentModelConfig.supportsContrast && (
-                        <div>
-                          <Label>Contrast</Label>
-                          <Select value={contrast} onValueChange={setContrast}>
-                            <SelectTrigger data-testid="select-contrast">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {contrastLevels.map((level) => (
-                                <SelectItem key={level.value} value={level.value}>
-                                  {level.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Generation Mode (Leonardo) */}
-                      {currentModelConfig.supportsGenerationMode && (
-                        <div>
-                          <Label>Generation Mode</Label>
-                          <Select value={generationMode} onValueChange={setGenerationMode}>
-                            <SelectTrigger data-testid="select-generation-mode">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {generationModes.map((mode) => (
-                                <SelectItem key={mode.value} value={mode.value}>
-                                  {mode.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Output Format */}
-                      {currentModelConfig.supportsOutputFormat && (
-                        <div>
-                          <Label>Output Format</Label>
-                          <Select value={outputFormat} onValueChange={setOutputFormat}>
-                            <SelectTrigger data-testid="select-output-format">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="webp">WebP (Recommended)</SelectItem>
-                              <SelectItem value="png">PNG (High Quality)</SelectItem>
-                              <SelectItem value="jpg">JPG (Compatible)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Output Quality */}
-                      {currentModelConfig.supportsOutputQuality && (
-                        <div>
-                          <Label>Output Quality: {outputQuality}%</Label>
-                          <Slider
-                            value={[outputQuality]}
-                            onValueChange={([v]) => setOutputQuality(v)}
-                            min={50}
-                            max={100}
-                            step={5}
-                            data-testid="slider-quality"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">Higher quality = larger file size</p>
-                        </div>
-                      )}
-
-                      {/* Safety Tolerance (Flux 1.1) */}
-                      {currentModelConfig.supportsSafetyTolerance && (
-                        <div>
-                          <Label>Safety Tolerance: {safetyTolerance}</Label>
-                          <Slider
-                            value={[safetyTolerance]}
-                            onValueChange={([v]) => setSafetyTolerance(v)}
-                            min={1}
-                            max={6}
-                            step={1}
-                            data-testid="slider-safety-tolerance"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            1 = most strict, 6 = most permissive
-                          </p>
-                        </div>
-                      )}
-
-                      {/* CFG (Stable Diffusion) */}
-                      {currentModelConfig.supportsCfg && (
-                        <div>
-                          <Label>CFG Scale: {cfg}</Label>
-                          <Slider
-                            value={[cfg]}
-                            onValueChange={([v]) => setCfg(v)}
-                            min={1}
-                            max={10}
-                            step={0.5}
-                            data-testid="slider-cfg"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            How closely to follow the prompt
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Prompt Strength (Stable Diffusion) */}
-                      {currentModelConfig.supportsPromptStrength && (
-                        <div>
-                          <Label>Prompt Strength: {promptStrength.toFixed(2)}</Label>
-                          <Slider
-                            value={[promptStrength * 100]}
-                            onValueChange={([v]) => setPromptStrength(v / 100)}
-                            min={0}
-                            max={100}
-                            step={5}
-                            data-testid="slider-prompt-strength"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Used for image-to-image generation
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Number of Images (All Models) */}
-                      <div>
-                        <Label>Number of Images: {numImages}</Label>
-                        <Slider
-                            value={[numImages]}
-                            onValueChange={([v]) => setNumImages(v)}
-                            min={1}
-                            max={8}
-                            step={1}
-                            data-testid="slider-num-images"
-                          />
-                        </div>
-
-                      {/* Prompt Upsampling (Flux 1.1) */}
-                      {currentModelConfig.supportsPromptUpsampling && (
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="prompt-upsampling"
-                            checked={promptUpsampling}
-                            onCheckedChange={(checked) => setPromptUpsampling(checked as boolean)}
-                            data-testid="checkbox-prompt-upsampling"
-                          />
-                          <Label htmlFor="prompt-upsampling" className="cursor-pointer">
-                            Prompt Upsampling (Auto-enhance prompt)
-                          </Label>
-                        </div>
-                      )}
-
-                      {/* Prompt Enhance (Leonardo) */}
-                      {currentModelConfig.supportsPromptEnhance && (
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="prompt-enhance"
-                            checked={promptEnhance}
-                            onCheckedChange={(checked) => setPromptEnhance(checked as boolean)}
-                            data-testid="checkbox-prompt-enhance"
-                          />
-                          <Label htmlFor="prompt-enhance" className="cursor-pointer">
-                            Prompt Enhance
-                          </Label>
-                        </div>
-                      )}
-
-                      {/* Seed Control */}
-                      {currentModelConfig.supportsSeed && (
-                        <div>
-                          <Label htmlFor="seed">Seed (0 = random)</Label>
-                          <Input
-                            id="seed"
-                            type="number"
-                            min={0}
-                            max={2147483647}
-                            value={seed}
-                            onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
-                            data-testid="input-seed"
-                          />
-                        </div>
-                      )}
-
-                      {/* Image Input Upload */}
-                      {currentModelConfig.supportsImageInput && (
-                        <div>
-                          <Label htmlFor="image-input">{getImageInputLabel()}</Label>
-                          {!imageInput ? (
-                            <div className="mt-2">
-                              <Input
-                                id="image-input"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) setImageInput(file);
-                                }}
-                                data-testid="input-image-upload"
-                              />
-                            </div>
-                          ) : (
-                            <div className="mt-2 flex items-center gap-2 p-2 border rounded-md">
-                              <span className="flex-1 text-sm truncate">{imageInput.name}</span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setImageInput(null)}
-                                data-testid="button-remove-image"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Style Reference Images Upload */}
-                      {currentModelConfig.supportsStyleReferenceImages && (
-                        <div>
-                          <Label htmlFor="style-references">Style Reference Images</Label>
-                          <div className="mt-2">
-                            <Input
-                              id="style-references"
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                setStyleReferenceImages([...styleReferenceImages, ...files]);
-                                e.target.value = '';
-                              }}
-                              data-testid="input-style-references"
-                            />
-                          </div>
-                          {styleReferenceImages.length > 0 && (
-                            <div className="mt-2 space-y-2">
-                              {styleReferenceImages.map((file, index) => (
-                                <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
-                                  <span className="flex-1 text-sm truncate">{file.name}</span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setStyleReferenceImages(styleReferenceImages.filter((_, i) => i !== index));
-                                    }}
-                                    data-testid={`button-remove-style-ref-${index}`}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                  <div className="space-y-4">
+                    <h3 className="mb-2 text-sm font-medium">Parameters</h3>
+                    
+                    {/* Number of Images - always show */}
+                    <div>
+                      <Label className="mb-1 block text-xs text-muted-foreground">
+                        Num Images ({numImages})
+                      </Label>
+                      <Slider
+                        value={[numImages]}
+                        onValueChange={(value) => setNumImages(value[0])}
+                        min={1}
+                        max={4}
+                        step={1}
+                        className="mt-2"
+                      />
                     </div>
-                  </details>
+
+                    {/* Aspect Ratio */}
+                    {currentModelConfig.supportsAspectRatio && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Aspect Ratio</Label>
+                        <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-aspect-ratio">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {aspectRatiosForCurrentModel.map((ratio) => (
+                              <SelectItem key={ratio.value} value={ratio.value}>
+                                {ratio.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Resolution (Ideogram) */}
+                    {currentModelConfig.supportsResolution && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Resolution</Label>
+                        <Select value={resolution} onValueChange={setResolution}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-resolution">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ideogramResolutions.map((res) => (
+                              <SelectItem key={res.value} value={res.value}>
+                                {res.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Style Type (Ideogram) */}
+                    {currentModelConfig.supportsStyleType && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Style Type</Label>
+                        <Select value={styleType} onValueChange={setStyleType}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-style-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ideogramStyleTypes.map((style) => (
+                              <SelectItem key={style.value} value={style.value}>
+                                {style.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Style Preset (Ideogram) */}
+                    {currentModelConfig.supportsStylePreset && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Style Preset</Label>
+                        <Select value={stylePreset} onValueChange={setStylePreset}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-style-preset">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ideogramStylePresets.map((preset) => (
+                              <SelectItem key={preset.value} value={preset.value}>
+                                {preset.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Magic Prompt (Ideogram) */}
+                    {currentModelConfig.supportsMagicPrompt && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Magic Prompt</Label>
+                        <Select value={magicPromptOption} onValueChange={setMagicPromptOption}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-magic-prompt">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {magicPromptOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Automatically enhances your prompt
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Leonardo Style */}
+                    {currentModelConfig.supportsLeonardoStyle && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Leonardo Style</Label>
+                        <Select value={leonardoStyle} onValueChange={setLeonardoStyle}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-leonardo-style">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {leonardoStyles.map((style) => (
+                              <SelectItem key={style.value} value={style.value}>
+                                {style.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Contrast (Leonardo) */}
+                    {currentModelConfig.supportsContrast && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Contrast</Label>
+                        <Select value={contrast} onValueChange={setContrast}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-contrast">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {contrastLevels.map((level) => (
+                              <SelectItem key={level.value} value={level.value}>
+                                {level.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Generation Mode (Leonardo) */}
+                    {currentModelConfig.supportsGenerationMode && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">Generation Mode</Label>
+                        <Select value={generationMode} onValueChange={setGenerationMode}>
+                          <SelectTrigger className="h-9 text-xs" data-testid="select-generation-mode">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {generationModes.map((mode) => (
+                              <SelectItem key={mode.value} value={mode.value}>
+                                {mode.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Prompt Enhance (Leonardo) */}
+                    {currentModelConfig.supportsPromptEnhance && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="prompt-enhance"
+                          checked={promptEnhance}
+                          onCheckedChange={(checked) => setPromptEnhance(checked as boolean)}
+                          data-testid="checkbox-prompt-enhance"
+                        />
+                        <Label htmlFor="prompt-enhance" className="text-xs cursor-pointer">
+                          Prompt Enhancement
+                        </Label>
+                      </div>
+                    )}
+
+                    {/* Prompt Upsampling (Flux) */}
+                    {currentModelConfig.supportsPromptUpsampling && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="prompt-upsampling"
+                          checked={promptUpsampling}
+                          onCheckedChange={(checked) => setPromptUpsampling(checked as boolean)}
+                          data-testid="checkbox-prompt-upsampling"
+                        />
+                        <Label htmlFor="prompt-upsampling" className="text-xs cursor-pointer">
+                          Prompt Upsampling
+                        </Label>
+                      </div>
+                    )}
+
+                    {/* Safety Tolerance (Flux) */}
+                    {currentModelConfig.supportsSafetyTolerance && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">
+                          Safety Tolerance ({safetyTolerance})
+                        </Label>
+                        <Slider
+                          value={[safetyTolerance]}
+                          onValueChange={(value) => setSafetyTolerance(value[0])}
+                          min={0}
+                          max={6}
+                          step={1}
+                        />
+                      </div>
+                    )}
+
+                    {/* CFG Scale (SD) */}
+                    {currentModelConfig.supportsCfg && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">
+                          CFG Scale ({cfg})
+                        </Label>
+                        <Slider
+                          value={[cfg]}
+                          onValueChange={(value) => setCfg(value[0])}
+                          min={0}
+                          max={10}
+                          step={0.1}
+                        />
+                      </div>
+                    )}
+
+                    {/* Prompt Strength (SD) */}
+                    {currentModelConfig.supportsPromptStrength && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">
+                          Prompt Strength ({promptStrength.toFixed(2)})
+                        </Label>
+                        <Slider
+                          value={[promptStrength]}
+                          onValueChange={(value) => setPromptStrength(value[0])}
+                          min={0}
+                          max={1}
+                          step={0.05}
+                        />
+                      </div>
+                    )}
+
+                    {/* Seed */}
+                    {currentModelConfig.supportsSeed && (
+                      <div>
+                        <Label htmlFor="seed" className="mb-1 block text-xs text-muted-foreground">
+                          Seed (0 for random)
+                        </Label>
+                        <Input
+                          id="seed"
+                          type="number"
+                          value={seed}
+                          onChange={(e) => setSeed(Number(e.target.value))}
+                          className="h-9"
+                          data-testid="input-seed"
+                        />
+                      </div>
+                    )}
+
+                    {/* Image Input */}
+                    {currentModelConfig.supportsImageInput && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">
+                          {getImageInputLabel()}
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setImageInput(e.target.files?.[0] || null)}
+                          className="h-9 text-xs"
+                          data-testid="input-image-input"
+                        />
+                        {imageInput && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">{imageInput.name}</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setImageInput(null)}
+                              className="h-5 px-1"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Style Reference Images */}
+                    {currentModelConfig.supportsStyleReferenceImages && (
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">
+                          Style Reference Images
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => setStyleReferenceImages(Array.from(e.target.files || []))}
+                          className="h-9 text-xs"
+                          data-testid="input-style-reference"
+                        />
+                        {styleReferenceImages.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {styleReferenceImages.map((file, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{file.name}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setStyleReferenceImages(prev => prev.filter((_, i) => i !== index));
+                                  }}
+                                  className="h-5 px-1"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
 
-                <div className="space-y-2">
-                  {totalCost > 0 && (
-                    <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 text-sm">
-                      <span className="text-muted-foreground">Cost:</span>
-                      <span className="font-semibold" data-testid="text-model-cost">
-                        {totalCost} credits
-                        {numImages > 1 && (
-                          <span className="text-muted-foreground font-normal ml-1">
-                            ({numImages} images)
-                          </span>
-                        )}
-                      </span>
-                    </div>
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerate}
+                  disabled={generateMutation.isPending || !hasEnoughCredits}
+                  className="glow flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-bold text-white transition-all hover:brightness-110"
+                  data-testid="button-generate"
+                >
+                  {generateMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : !hasEnoughCredits ? (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      Insufficient Credits
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">auto_awesome</span>
+                      Generate Image ({totalCost} {totalCost === 1 ? 'credit' : 'credits'})
+                    </>
                   )}
-                  <Button
-                    onClick={handleGenerate}
-                    disabled={generateMutation.isPending || !hasEnoughCredits}
-                    className="w-full gradient-glory"
-                    size="lg"
-                    data-testid="button-generate"
-                  >
-                    {generateMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Generating...
-                      </>
-                    ) : !hasEnoughCredits ? (
-                      <>
-                        <Sparkles className="mr-2 h-5 w-5" />
-                        Insufficient Credits
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-5 w-5" />
-                        Generate Image
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Current Result */}
-            {currentImage && currentGenerationId && (
-              <Card data-testid="card-current-result">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <ImageIcon className="h-5 w-5" />
-                      Generated Image
-                    </span>
-                    <div className="flex gap-2">
-                      {(() => {
-                        const currentGen = generations?.find(g => g.id === currentGenerationId);
-                        const upscaleCost = pricing?.["upscale"] || 0;
-                        const canUpscale = currentGen && !currentGen.isUpscaled && userCredits >= upscaleCost;
-                        
-                        return (
-                          <>
-                            {currentGen && !currentGen.isUpscaled && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => upscaleMutation.mutate({ generationId: currentGenerationId })}
-                                disabled={upscalingId === currentGenerationId || !canUpscale}
-                                data-testid="button-upscale-current"
-                              >
-                                {upscalingId === currentGenerationId ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Upscaling...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Sparkles className="h-4 w-4 mr-2" />
-                                    Upscale (4x)
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownload(currentImage)}
-                              data-testid="button-download-current"
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </Button>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <img
-                    src={currentImage}
-                    alt="Generated"
-                    className="w-full rounded-lg shadow-lg"
-                    data-testid="img-current"
-                  />
-                </CardContent>
-              </Card>
-            )}
+                </Button>
+              </div>
+            </div>
           </div>
 
-          {/* History Panel */}
-          <div className="lg:col-span-1">
-            <Card data-testid="card-history">
-              <CardHeader>
-                <CardTitle>Your Creations</CardTitle>
-                <CardDescription>Recent AI generations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingHistory ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          {/* Right Panel - Generated Images Grid */}
+          <div className="lg:col-span-2">
+            <div className="space-y-8">
+              {/* Progress Indicator */}
+              {generateMutation.isPending && (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-bold">Generated Images</h3>
+                  <div className="flex items-center gap-3 rounded-lg bg-primary/10 p-4">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-primary/20">
+                      <div className="h-full w-1/2 animate-pulse rounded-full bg-primary"></div>
+                    </div>
+                    <div className="text-sm font-medium text-primary">Generating... 50%</div>
                   </div>
-                ) : !generations || generations.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No generations yet. Create your first image!
+                  <p className="text-center text-sm text-muted-foreground">
+                    This may take a few moments. Please be patient.
                   </p>
-                ) : (
-                  <div className="space-y-4">
-                    {generations.map((gen) => (
-                      <div
-                        key={gen.id}
-                        className="relative group rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
-                        data-testid={`generation-${gen.id}`}
-                      >
-                        <img
-                          src={gen.editedImageUrl || gen.imageUrl}
-                          alt={gen.prompt}
-                          className="w-full aspect-square object-cover cursor-pointer"
-                          onClick={() => {
-                            setCurrentImage(gen.editedImageUrl || gen.imageUrl);
-                            setCurrentGenerationId(gen.id);
-                          }}
-                          data-testid={`img-generation-${gen.id}`}
-                        />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
+                </div>
+              )}
+
+              {/* Images Grid */}
+              {loadingHistory ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+                </div>
+              ) : !generations || generations.length === 0 ? (
+                <div className="text-center py-12">
+                  <ImageIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No generations yet. Create your first image!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                  {generations.map((gen) => (
+                    <div
+                      key={gen.id}
+                      className="group relative aspect-square overflow-hidden rounded-xl"
+                      data-testid={`generation-${gen.id}`}
+                    >
+                      <img
+                        alt={gen.prompt}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        src={gen.editedImageUrl || gen.imageUrl}
+                        data-testid={`img-generation-${gen.id}`}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                      <div className="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+                        <div className="flex gap-1">
+                          {/* Download */}
+                          <button
                             onClick={() => handleDownload(gen.editedImageUrl || gen.imageUrl)}
+                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                            title="Download"
                             data-testid={`button-download-${gen.id}`}
                           >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
+                            <span className="material-symbols-outlined text-base">download</span>
+                          </button>
+                          {/* Edit */}
+                          <button
                             onClick={() => setLocation(`/image-editor/${gen.id}`)}
+                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                            title="Edit"
                             data-testid={`button-edit-${gen.id}`}
                           >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                            <span className="material-symbols-outlined text-base">edit</span>
+                          </button>
+                          {/* Upscale */}
                           {!gen.isUpscaled && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
+                            <button
                               onClick={() => upscaleMutation.mutate({ generationId: gen.id })}
                               disabled={upscalingId === gen.id || userCredits < (pricing?.["upscale"] || 0)}
+                              className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30 disabled:opacity-50"
+                              title="Upscale 4x"
                               data-testid={`button-upscale-${gen.id}`}
                             >
                               {upscalingId === gen.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Sparkles className="h-4 w-4" />
+                                <span className="material-symbols-outlined text-base">auto_awesome</span>
                               )}
-                            </Button>
+                            </button>
                           )}
-                          <Button
-                            size="sm"
-                            variant="default"
+                          {/* Upload to Contest */}
+                          <button
                             onClick={() => handleOpenSubmitWizard(gen)}
+                            className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                            title="Upload to Contest"
                             data-testid={`button-submit-${gen.id}`}
                           >
-                            <Upload className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteMutation.mutate(gen.id)}
-                            disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-${gen.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <span className="material-symbols-outlined text-base">upload</span>
+                          </button>
                         </div>
-                        <div className="p-2 bg-card">
-                          <p className="text-xs text-muted-foreground line-clamp-2">{gen.prompt}</p>
-                        </div>
+                        {/* Delete */}
+                        <button
+                          onClick={() => deleteMutation.mutate(gen.id)}
+                          disabled={deleteMutation.isPending}
+                          className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                          title="Delete"
+                          data-testid={`button-delete-${gen.id}`}
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
