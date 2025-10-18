@@ -566,7 +566,20 @@ export default function AiGeneratorPage() {
 
   const handleDownload = async (url: string, filename: string) => {
     try {
-      const response = await fetch(url);
+      // Use proxy endpoint for external URLs (Replicate) to bypass CORS
+      const isExternalUrl = !url.includes('cloudinary.com');
+      const downloadUrl = isExternalUrl 
+        ? `/api/proxy-download?url=${encodeURIComponent(url)}`
+        : url;
+      
+      const response = await fetch(downloadUrl, {
+        credentials: 'include', // Include auth cookies for proxy endpoint
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
@@ -577,12 +590,12 @@ export default function AiGeneratorPage() {
       link.click();
       document.body.removeChild(link);
       
-      URL.revokeObjectURL(blobUrl);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (error) {
       console.error("Download failed:", error);
       toast({
         title: "Download Failed",
-        description: "Failed to download image. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to download image",
         variant: "destructive",
       });
     }

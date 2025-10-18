@@ -3195,6 +3195,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Proxy download endpoint to bypass CORS issues with external URLs (Replicate, etc.)
+  app.get("/api/proxy-download", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "URL parameter is required" });
+      }
+
+      // Fetch the image from external URL
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ 
+          error: `Failed to fetch image: ${response.statusText}` 
+        });
+      }
+
+      // Get content type and set appropriate headers
+      const contentType = response.headers.get('content-type') || 'application/octet-stream';
+      const contentLength = response.headers.get('content-length');
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', 'attachment');
+      if (contentLength) {
+        res.setHeader('Content-Length', contentLength);
+      }
+
+      // Stream the image data to the response
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Proxy download error:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to download image" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
