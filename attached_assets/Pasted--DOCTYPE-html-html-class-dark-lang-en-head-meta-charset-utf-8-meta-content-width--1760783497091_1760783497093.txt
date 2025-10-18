@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Image Generation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#7c3cec",
+              "background-light": "#f7f6f8",
+              "background-dark": "#171121",
+            },
+            fontFamily: {
+              display: ["Space Grotesk"],
+            },
+            borderRadius: { DEFAULT: "0.5rem", lg: "1rem", xl: "1.5rem", full: "9999px" },
+          },
+        },
+      };
+    </script>
+<style>
+      .glassmorphism {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .dark .glassmorphism {
+        background: rgba(23, 17, 33, 0.5);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .glow {
+        box-shadow: 0 0 5px theme("colors.primary"), 0 0 10px theme("colors.primary"), 0 0 15px theme("colors.primary");
+      }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white">
+<div class="flex min-h-screen flex-col">
+<header class="sticky top-0 z-50 w-full glassmorphism">
+<div class="container mx-auto flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+<div class="flex items-center gap-4">
+<svg class="h-8 w-8 text-primary" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+<h1 class="text-xl font-bold text-black dark:text-white">Artify</h1>
+</div>
+<nav class="hidden items-center gap-6 md:flex">
+<a class="text-sm font-medium text-black/60 transition-colors hover:text-black dark:text-white/60 dark:hover:text-white" href="#">Home</a>
+<a class="text-sm font-medium text-black/60 transition-colors hover:text-black dark:text-white/60 dark:hover:text-white" href="#">Explore</a>
+<a class="text-sm font-medium text-black transition-colors hover:text-black/80 dark:text-white dark:hover:text-white/80" href="#">Create</a>
+<a class="text-sm font-medium text-black/60 transition-colors hover:text-black dark:text-white/60 dark:hover:text-white" href="#">Community</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="hidden rounded-full bg-primary/20 px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/30 dark:bg-primary/20 dark:hover:bg-primary/30 sm:block">
+              Connect Wallet
+            </button>
+<div class="h-10 w-10 rounded-full bg-cover bg-center" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDoyoyc-y-Hc2keC4HYadTzt1XHSQhPNxwFTEhK639F_9QSXSlJOsVlMCLp3VeZebiaqo6nguNW2IM2Pgy4T3dI7njPLEkvAUjAiHZaqtvd6m43ebWpC9VqqEEHlut9jOzKH9FymMsKTF5dz_t4_Y5NW4V1dMA6Tqf-15CUi1eP6Rd9S7hLheJnDDAaVIu5o93AeWMM357DzsiPHJKFEsSDGXdf62M3as8NDRuOql80qTsQRklFgjld75iE8JXT5EeVeOHPQZjTdpU");'></div>
+</div>
+</div>
+</header>
+<main class="container mx-auto flex-1 p-4 sm:p-6 lg:p-8">
+<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+<div class="lg:col-span-1">
+<div class="sticky top-24 space-y-8">
+<div class="glassmorphism rounded-xl p-6">
+<div class="space-y-2">
+<h2 class="text-2xl font-bold text-black dark:text-white">AI Image Generation</h2>
+<p class="text-sm text-black/70 dark:text-white/70">Unleash your creativity with AI. Describe your vision and let our generators bring it to life.</p>
+</div>
+<div class="mt-6 space-y-6">
+<div>
+<label class="mb-2 block text-sm font-medium text-black dark:text-white" for="prompt">Prompt</label>
+<textarea class="form-textarea w-full resize-none rounded-lg border-0 bg-black/20 p-3 text-sm text-black placeholder-black/50 ring-1 ring-inset ring-transparent transition-all focus:bg-black/30 focus:ring-primary dark:bg-white/5 dark:text-white dark:placeholder-white/50 dark:focus:bg-white/10" id="prompt" placeholder="e.g., a futuristic cityscape at sunset, neon lights, glassmorphism" rows="4"></textarea>
+</div>
+<div>
+<h3 class="mb-2 text-sm font-medium text-black dark:text-white">AI Generator</h3>
+<div class="grid grid-cols-3 gap-2">
+<label class="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-black/20 p-3 text-center text-xs font-medium text-black transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/20 has-[:checked]:text-primary dark:border-white/20 dark:text-white dark:has-[:checked]:bg-primary/20">
+                        Midjourney
+                        <input checked="" class="sr-only" name="generator" type="radio" value="midjourney"/>
+</label>
+<label class="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-black/20 p-3 text-center text-xs font-medium text-black transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/20 has-[:checked]:text-primary dark:border-white/20 dark:text-white dark:has-[:checked]:bg-primary/20">
+                        DALL·E 2
+                        <input class="sr-only" name="generator" type="radio" value="dalle"/>
+</label>
+<label class="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-black/20 p-3 text-center text-xs font-medium text-black transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/20 has-[:checked]:text-primary dark:border-white/20 dark:text-white dark:has-[:checked]:bg-primary/20">
+                        Stable Diffusion
+                        <input class="sr-only" name="generator" type="radio" value="stable-diffusion"/>
+</label>
+</div>
+</div>
+<div class="space-y-4">
+<h3 class="mb-2 text-sm font-medium text-black dark:text-white">Parameters</h3>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="mb-1 block text-xs text-black/70 dark:text-white/70" for="style">Style</label>
+<select class="form-select w-full rounded-lg border-0 bg-black/20 text-sm text-black ring-1 ring-inset ring-transparent transition-all focus:bg-black/30 focus:ring-primary dark:bg-white/5 dark:text-white dark:focus:bg-white/10" id="style">
+<option>Cinematic</option>
+<option>Photorealistic</option>
+<option>Anime</option>
+<option>Abstract</option>
+</select>
+</div>
+<div>
+<label class="mb-1 block text-xs text-black/70 dark:text-white/70" for="ratio">Aspect Ratio</label>
+<select class="form-select w-full rounded-lg border-0 bg-black/20 text-sm text-black ring-1 ring-inset ring-transparent transition-all focus:bg-black/30 focus:ring-primary dark:bg-white/5 dark:text-white dark:focus:bg-white/10" id="ratio">
+<option>1:1 (Square)</option>
+<option>16:9 (Widescreen)</option>
+<option>9:16 (Portrait)</option>
+</select>
+</div>
+</div>
+</div>
+<button class="glow flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-bold text-white transition-all hover:brightness-110">
+<span class="material-symbols-outlined">auto_awesome</span>
+                    Generate Image
+                  </button>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-2">
+<div class="space-y-8">
+<div class="space-y-4">
+<h3 class="text-xl font-bold text-black dark:text-white">Generated Images</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-3 rounded-lg bg-primary/10 p-4 dark:bg-primary/10">
+<div class="h-2 flex-1 overflow-hidden rounded-full bg-primary/20 dark:bg-primary/20">
+<div class="h-full w-1/2 animate-pulse rounded-full bg-primary"></div>
+</div>
+<div class="text-sm font-medium text-primary">Generating... 50%</div>
+</div>
+<p class="text-center text-sm text-black/60 dark:text-white/60">This may take a few moments. Please be patient.</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3">
+<div class="group relative aspect-square overflow-hidden rounded-xl">
+<img alt="Generated AI art" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNUbZBR0isryHUnPQylWiemzBwbUgl2y_C2eXuhKw5EHT0NTKNsElMB3590xKi7QxUbE-55DLUSWS2wTEqeLOB1IodbYzfgLUSeLYs7gz8PAdSvfyd9t26jfe88c8Nyy4CGzXw9X01sW9_BVTlBMe6R5Tv5rgRPf_m37MUEkz9BXTS1kTH2OaUtDQ1Tk2muQ4-OyXB9Er88q4yKBfXbYTUDGjRbQIxksPocHX7DCzvLwDulEDqXPoKEpiZ-uuQvCrXQ_mGauK7xVw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+<div class="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+<div class="flex gap-1">
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">download</span>
+</button>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+</div>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">favorite</span>
+</button>
+</div>
+</div>
+<div class="group relative aspect-square overflow-hidden rounded-xl">
+<img alt="Generated AI art" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyXAaEWvfqUWDqMm0uLs8mGDnqzV1iIBwyJpK6fcHToelShrzK2nAdfln6nIOl-_K25phYmrSLZp3hEC3ttEZE5xoFzaK-RDxpl4VC6ZiWlEPcIKqVJs6OGKGAiMFLBqy7AGyfp3l69wPQcizaOtne8xSruRqZ05F0Tn85XnwAg0hgeTauNpTJK6SiopN5cK7cAFDZsonGSW_sLi2bRS0EsRlLLuZZ4kqbY5hT6ftOcesyLaDobfyKxS2wzQR1KyKvKP-F3-mj35M"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+<div class="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+<div class="flex gap-1">
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">download</span>
+</button>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+</div>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">favorite</span>
+</button>
+</div>
+</div>
+<div class="group relative aspect-square overflow-hidden rounded-xl">
+<img alt="Generated AI art" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoai6GxQ1L1IYXFhiXm3XR_Pd_5uFf0w49IDhF8rp5rG6HdnBUjmV64SXH9y0r6zjxMNMtiNBjppLv2pClgnhbNlXjMqPi9aAKnG3gPT3cOZNgzUrtmMFtRVfLtWp1bKIRyAlcw3I6-4eqbZ0EtaNYpVs1kILXLHrdoucRRMAWblaZ_8vBE8rwqIJKpOQynf8RwjKQ-ljWLoG08CAJXgUmJS5j9V22VHXjdlVkqEdFFYwr5PCyO27473TrXFX60Ua5N185cbqTYlc"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+<div class="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+<div class="flex gap-1">
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">download</span>
+</button>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+</div>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">favorite</span>
+</button>
+</div>
+</div>
+<div class="group relative aspect-square overflow-hidden rounded-xl">
+<img alt="Generated AI art" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGZQQpZvaFTPSV6Eh5qFwjju6C8ngFo8ESDwJVml-Jve0mlk5pn7kbroEdgRVcMcx1Hu5ww8KP-WZXS00MRFw3rP8BXBvWWOaz4K9bnSykyPTgJ6SbSiH1wV10DDmAqz-Tzu8La3ltmVJ0XnHkJcceCxTAUz50dy6iRgLFrsqG1mQX6K0Ob8YqpmplIgglXg0m4RlT7a-ji3ULE5aky3Chf5NTCjoIJkDAu5jccFGPbTwWqn37-vkjUSqOp7xgUPd3Sg_5-zgQNng"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+<div class="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+<div class="flex gap-1">
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">download</span>
+</button>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+</div>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">favorite</span>
+</button>
+</div>
+</div>
+<div class="group relative aspect-square overflow-hidden rounded-xl">
+<img alt="Generated AI art" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0m67G3QbTbvM7Oef5MHKCPQ6dKVBIEcgQdukWk3CAEJVTPaIEItJ5niv75cSMsE0A94PNrUWeJ3wkruv-VLB3Z9to5839kUtTxcS5ttvCADlVaJbLWkKMU-5zAs7Ckweoyh9Dzyno6acT9nFoKAudiZXT2uJ5L_Sq62gXzJbWmxNNS24NTKOrrQKWy3VJg3bOEcI0eufpkJ7eCfCINMexhJUzLOY8A5fmgPHwCVuG8AHkD5tGmKPrgXOWJZb4jWtsmOZnqrPDvaU"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+<div class="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+<div class="flex gap-1">
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">download</span>
+</button>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+</div>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">favorite</span>
+</button>
+</div>
+</div>
+<div class="group relative aspect-square overflow-hidden rounded-xl">
+<img alt="Generated AI art" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBP-T4H0haAsxWJjmc-J__czgCiUuVO-SerBzQhGvUFk7bp8c6IdDIOR_TKG2le_1Zf5nIdubZHnYxEz9LuZRBY9yON6JUoOduYCb50PmggLRilOg7oXjN717BhxUAKch4NUNkKmvMH79u3HFxJGwy9Cn1DAHNI-mvjXD2isW9NGE6RNDFqjzKT4rYr6jznB_C4yqD_wfk39hk06dCQZGy0pVUIEKq5f0LYKVXl_uiNvtUWwRiEaYb0tQSGoS7yZu3JWASeyauo_s4"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+<div class="absolute bottom-0 left-0 right-0 flex translate-y-full items-center justify-between p-3 transition-transform duration-300 group-hover:translate-y-0">
+<div class="flex gap-1">
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">download</span>
+</button>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">share</span>
+</button>
+</div>
+<button class="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30">
+<span class="material-symbols-outlined text-base">favorite</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>
