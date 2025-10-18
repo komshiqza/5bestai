@@ -369,13 +369,12 @@ export function SubscriptionSolanaPayment({
         
         toast({
           title: "Payment Sent!",
-          description: "Processing your subscription...",
+          description: "Verifying your subscription payment...",
         });
         
         // Start polling AFTER transaction is successfully sent
+        // NOTE: onSuccess will be called by startPolling() when backend confirms
         startPolling();
-        
-        onSuccess(signedTransaction.signature);
         
         return;
       }
