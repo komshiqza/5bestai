@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { GlassButton } from "@/components/ui/glass-button";
+import { GlassButton as FancyGlassButton } from "@/components/GlassButton";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -1059,7 +1060,7 @@ export default function AiGeneratorPage() {
                 )}
 
                 {/* Generate Button */}
-                <GlassButton
+                <FancyGlassButton
                   onClick={handleGenerate}
                   disabled={generateMutation.isPending || !hasEnoughCredits}
                   className="w-full"
@@ -1081,7 +1082,7 @@ export default function AiGeneratorPage() {
                       Generate Image ({totalCost} {totalCost === 1 ? 'credit' : 'credits'})
                     </>
                   )}
-                </GlassButton>
+                </FancyGlassButton>
               </div>
             </div>
           </div>
