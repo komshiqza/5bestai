@@ -515,14 +515,18 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
       fetch_format: "auto",
     };
 
-    // For upscaled images, add transformation to reduce file size
+    // For upscaled images, use upload_large to handle large files (>10MB)
+    let result: any;
     if (isUpscaled) {
+      uploadOptions.chunk_size = 6000000; // 6MB chunks for reliable upload
       uploadOptions.transformation = [
-        { quality: 85, fetch_format: "jpg" }
+        { quality: 80, fetch_format: "jpg" } // Light compression to balance quality and size
       ];
+      console.log("Using upload_large (chunk upload) for upscaled image");
+      result = await cloudinary.uploader.upload_large(tempFilePath, uploadOptions);
+    } else {
+      result = await cloudinary.uploader.upload(tempFilePath, uploadOptions);
     }
-
-    const result = await cloudinary.uploader.upload(tempFilePath, uploadOptions);
 
     await unlinkAsync(tempFilePath);
 
