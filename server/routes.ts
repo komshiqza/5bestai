@@ -3149,6 +3149,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Save edited AI generation image
+  app.post("/api/ai/save-edited", upload.single("image"), authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { generationId } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+
+      if (!generationId) {
+        return res.status(400).json({ error: "Generation ID is required" });
+      }
+
+      // Get AI generation
+      const generation = await storage.getAiGeneration(generationId);
+      if (!generation) {
+        return res.status(404).json({ error: "AI generation not found" });
+      }
+
+      if (generation.userId !== userId) {
+        return res.status(403).json({ error: "Not authorized to edit this generation" });
+      }
+
+      // Upload edited image to Cloudinary
+      const uploadResult = await uploadFile(req.file);
+
+      // Update generation record
+      await storage.updateAiGeneration(generationId, {
+        editedImageUrl: uploadResult.url,
+        isEdited: true
+      });
+
+      res.json({
+        message: "Edited image saved successfully",
+        url: uploadResult.url,
+        cloudinaryPublicId: uploadResult.cloudinaryPublicId
+      });
+    } catch (error) {
+      console.error("Error saving edited image:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to save edited image" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

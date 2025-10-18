@@ -159,30 +159,21 @@ export default function ImageEditor() {
       const res = await fetch(dataURL);
       const blob = await res.blob();
 
-      // Upload to Cloudinary
+      // Upload via backend API
       const formData = new FormData();
-      formData.append("file", blob, "edited-image.png");
-      formData.append("upload_preset", "ml_default");
+      formData.append("image", blob, "edited-image.png");
+      formData.append("generationId", id!);
 
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "YOUR_CLOUD_NAME"}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload edited image");
-      }
-
-      const uploadData = await uploadResponse.json();
-
-      // Update generation record
-      await apiRequest("PATCH", `/api/ai/generations/${id}`, {
-        editedImageUrl: uploadData.secure_url,
-        isEdited: true,
+      const response = await fetch("/api/ai/save-edited", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save edited image");
+      }
 
       toast({
         title: "Saved!",
@@ -190,6 +181,7 @@ export default function ImageEditor() {
       });
 
       queryClient.invalidateQueries({ queryKey: [`/api/ai/generations/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
       setLocation("/ai-studio");
     } catch (error) {
       console.error("Save error:", error);
