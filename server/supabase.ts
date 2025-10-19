@@ -8,9 +8,24 @@ if (!process.env.SUPABASE_ANON_KEY) {
   throw new Error("SUPABASE_ANON_KEY is not set");
 }
 
+if (!process.env.SUPABASE_SERVICE_KEY) {
+  throw new Error("SUPABASE_SERVICE_KEY is not set");
+}
+
 export const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
+);
+
+export const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 );
 
 const BUCKET_NAME = 'pro-edit-images';
@@ -39,7 +54,7 @@ export async function uploadImageToSupabase(
     
     console.log(`[Supabase] Uploading to bucket: ${BUCKET_NAME}, path: ${filePath}`);
     
-    const { data, error } = await supabase.storage
+    const { data, error } = await supabaseAdmin.storage
       .from(BUCKET_NAME)
       .upload(filePath, buffer, {
         contentType,
@@ -54,7 +69,7 @@ export async function uploadImageToSupabase(
     
     console.log(`[Supabase] Upload successful:`, data);
     
-    const { data: publicUrlData } = supabase.storage
+    const { data: publicUrlData } = supabaseAdmin.storage
       .from(BUCKET_NAME)
       .getPublicUrl(filePath);
     
