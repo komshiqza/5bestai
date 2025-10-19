@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Sparkles, ImageUp, User2 } from "lucide-react";
+import { Loader2, Sparkles, ImageUp, User2, Download, RotateCcw } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface ProEditModalProps {
   open: boolean;
@@ -52,16 +54,33 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string>(imageUrl); // For chain editing
+  const [originalUrl, setOriginalUrl] = useState<string>(imageUrl);
+  const [sourceMode, setSourceMode] = useState<'current' | 'original'>('current'); // Toggle between current/original
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      setCurrentImageUrl(imageUrl);
+      setOriginalUrl(imageUrl);
+      setSourceMode('current');
+      setJobId(null);
+      setProcessing(false);
+    }
+  }, [open, imageUrl]);
 
   // Create edit job mutation
   const createEditMutation = useMutation({
     mutationFn: async (preset: string) => {
+      // Use source mode to determine which URL to send
+      const sourceUrl = sourceMode === 'original' ? originalUrl : currentImageUrl;
+      
       const response = await fetch("/api/edits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          imageUrl,
+          imageUrl: sourceUrl,
           preset,
           submissionId,
           generationId
@@ -108,31 +127,73 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
   });
 
   // Handle job completion
-  if (jobStatus?.status === 'succeeded' && processing) {
-    setProcessing(false);
-    toast({
-      title: "Success!",
-      description: "Your image has been enhanced"
-    });
-    queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-    // Close modal after short delay
-    setTimeout(() => {
-      onOpenChange(false);
+  useEffect(() => {
+    if (jobStatus?.status === 'succeeded' && processing) {
+      setProcessing(false);
+      
+      // Update current image URL with the output
+      if (jobStatus.outputUrl) {
+        setCurrentImageUrl(jobStatus.outputUrl);
+        setSourceMode('current'); // Default to using current result
+      }
+      
+      // CRITICAL: Always update original URL from backend response
+      // This ensures "Use Original" toggle works correctly for chain/parallel editing
+      if (jobStatus.originalUrl) {
+        setOriginalUrl(jobStatus.originalUrl);
+      }
+      
+      toast({
+        title: "Success!",
+        description: "Your image has been enhanced. You can continue editing or download."
+      });
+      
+      // Invalidate galleries to show updated images
+      queryClient.invalidateQueries({ queryKey: ['/api/me'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/generations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/submissions'] });
+      
+      setJobId(null); // Clear job ID to stop polling
+    } else if (jobStatus?.status === 'failed' && processing) {
+      setProcessing(false);
+      toast({
+        title: "Processing failed",
+        description: jobStatus.error || "An error occurred",
+        variant: "destructive"
+      });
       setJobId(null);
-      setSelectedPreset(null);
-    }, 1500);
-  } else if (jobStatus?.status === 'failed' && processing) {
-    setProcessing(false);
-    toast({
-      title: "Processing failed",
-      description: jobStatus.error || "An error occurred",
-      variant: "destructive"
-    });
-  }
+    }
+  }, [jobStatus, processing]);
 
   const handlePresetSelect = (presetKey: string) => {
     if (processing) return;
     createEditMutation.mutate(presetKey);
+  };
+
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(currentImageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `enhanced-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Downloaded",
+        description: "Image saved to your device"
+      });
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Could not download the image",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleClose = () => {
@@ -158,7 +219,52 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {processing ? (
+          {/* Image Preview Section */}
+          {currentImageUrl && currentImageUrl !== imageUrl && !processing && (
+            <div className="space-y-3">
+              <div className="rounded-lg overflow-hidden border-2 border-purple-200 dark:border-purple-800">
+                <img 
+                  src={currentImageUrl} 
+                  alt="Enhanced result" 
+                  className="w-full h-auto"
+                  data-testid="img-preview"
+                />
+              </div>
+              
+              {/* Source Toggle */}
+              <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                  Process from:
+                </Label>
+                <RadioGroup 
+                  value={sourceMode} 
+                  onValueChange={(value: 'current' | 'original') => setSourceMode(value)}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="current" id="source-current" data-testid="radio-source-current" />
+                    <Label htmlFor="source-current" className="cursor-pointer text-gray-700 dark:text-gray-300">
+                      📸 Use Current Result
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="original" id="source-original" data-testid="radio-source-original" />
+                    <Label htmlFor="source-original" className="cursor-pointer text-gray-700 dark:text-gray-300">
+                      🎨 Use Original
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  {sourceMode === 'current' 
+                    ? "Next preset will enhance the current result (chain editing)" 
+                    : "Next preset will process the original image (parallel editing)"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Processing Indicator */}
+          {processing && (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <Loader2 className="w-16 h-16 animate-spin text-purple-600" />
               <div className="text-center space-y-2">
@@ -175,15 +281,25 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
                 )}
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* Preset Selection - Always Visible */}
+          <div>
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
+              {currentImageUrl !== imageUrl ? "Apply another enhancement:" : "Choose enhancement:"}
+            </Label>
             <div className="grid gap-3">
               {PRESETS.map((preset) => {
                 const Icon = preset.icon;
                 return (
                   <Card
                     key={preset.key}
-                    className="p-4 cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 hover:border-purple-400 dark:hover:border-purple-600 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
-                    onClick={() => handlePresetSelect(preset.key)}
+                    className={`p-4 transition-all border-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm ${
+                      processing 
+                        ? "opacity-50 cursor-not-allowed" 
+                        : "cursor-pointer hover:shadow-lg hover:scale-[1.02] hover:border-purple-400 dark:hover:border-purple-600"
+                    }`}
+                    onClick={() => !processing && handlePresetSelect(preset.key)}
                     data-testid={`card-preset-${preset.key}`}
                   >
                     <div className="flex items-start gap-4">
@@ -208,19 +324,32 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
                 );
               })}
             </div>
-          )}
+          </div>
 
-          {!processing && (
-            <div className="flex justify-end pt-4">
-              <Button
-                variant="outline"
-                onClick={handleClose}
-                data-testid="button-cancel"
-              >
-                Cancel
-              </Button>
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center pt-4 gap-3">
+            <div className="flex gap-2">
+              {currentImageUrl !== imageUrl && (
+                <Button
+                  onClick={handleDownload}
+                  disabled={processing}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  data-testid="button-download"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </Button>
+              )}
             </div>
-          )}
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={processing}
+              data-testid="button-close"
+            >
+              Close
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -3977,9 +3977,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         outputVersion = await storage.getImageVersion(job.outputVersionId);
       }
 
+      // Fetch image to get original URL
+      const image = await storage.getImage(job.imageId);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
       res.json({
         ...job,
-        outputUrl: outputVersion?.url || null
+        outputUrl: outputVersion?.url || null,
+        originalUrl: image.originalUrl
       });
     } catch (error) {
       console.error("[ProEdit] Error fetching job status:", error);
