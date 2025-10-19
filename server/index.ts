@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { ContestScheduler } from "./contest-scheduler";
 import { seedSubscriptionTiers } from "./seed-tiers";
+import { ensureBucketExists } from "./supabase";
 
 const app = express();
 
@@ -56,6 +57,9 @@ app.use((req, res, next) => {
   
   // Seed default subscription tiers on startup
   await seedSubscriptionTiers();
+  
+  // Ensure Supabase storage bucket exists for Pro Edit images
+  await ensureBucketExists();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

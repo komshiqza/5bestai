@@ -17,6 +17,7 @@ import { findReference } from "@solana/pay";
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
 import * as replicate from "./replicate";
+import { uploadImageToSupabase } from "./supabase";
 import { 
   loginSchema, 
   registerSchema, 
@@ -4005,15 +4006,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (prediction.status === 'succeeded') {
-        // Get output URL
-        const outputUrl = Array.isArray(prediction.output) 
+        // Get output URL from Replicate
+        const replicateOutputUrl = Array.isArray(prediction.output) 
           ? prediction.output[0] 
           : prediction.output;
 
-        // Create output version
+        console.log(`[ProEdit] Replicate output URL: ${replicateOutputUrl}`);
+
+        // Get image details
+        const image = await storage.getImage(job.imageId);
+        if (!image) {
+          throw new Error(`Image not found: ${job.imageId}`);
+        }
+
+        // Generate version ID
+        const versionId = `v${Date.now()}`;
+
+        // Upload to Supabase Storage
+        const { url: supabaseUrl } = await uploadImageToSupabase(
+          replicateOutputUrl,
+          image.userId,
+          job.imageId,
+          versionId
+        );
+
+        console.log(`[ProEdit] Uploaded to Supabase: ${supabaseUrl}`);
+
+        // Create output version with Supabase URL
         const outputVersion = await storage.createImageVersion({
           imageId: job.imageId,
-          url: outputUrl,
+          url: supabaseUrl,
           source: 'edit',
           preset: job.preset,
           params: job.params || {}
