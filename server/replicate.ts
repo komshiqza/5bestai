@@ -47,6 +47,44 @@ export const PRESET_CONFIG = {
       upscale: params.upscale || 2,
     })
   },
+  
+  bg_remove: {
+    name: 'Remove Background',
+    model: 'cjwbw/rembg',
+    version: 'fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003',
+    credits: 2,
+    description: 'Remove image background with AI',
+    getInput: (imageUrl: string, params: any = {}) => ({
+      image: imageUrl,
+    })
+  },
+  
+  relight: {
+    name: 'Relight Scene',
+    model: 'gbieler/change-background-and-relight',
+    version: '8904b5e61fdca36af494913e9a4ecf9762e3abf356da5b1aca277f29425ae054',
+    credits: 4,
+    description: 'Change lighting and background',
+    getInput: (imageUrl: string, params: any = {}) => ({
+      image: imageUrl,
+      prompt: params.prompt || 'well lit studio lighting',
+    })
+  },
+  
+  enhance: {
+    name: 'Smart Enhance',
+    model: 'sczhou/codeformer',
+    version: '7de2ea26c616d5bf2245ad0d5e24f0ff9a6204578a5c876db53142edd9d2cd56',
+    credits: 3,
+    description: 'General AI enhancement for any image',
+    getInput: (imageUrl: string, params: any = {}) => ({
+      image: imageUrl,
+      codeformer_fidelity: params.fidelity || 0.5,
+      background_enhance: true,
+      face_upsample: true,
+      upscale: params.upscale || 2,
+    })
+  },
 } as const;
 
 export type PresetKey = keyof typeof PRESET_CONFIG;

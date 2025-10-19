@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Sparkles, ImageUp, User2, Download, RotateCcw } from "lucide-react";
+import { Loader2, Sparkles, ImageUp, User2, Download, RotateCcw, Scissors, Sun, Wand2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
@@ -46,6 +46,27 @@ const PRESETS: Preset[] = [
     description: 'Professional portrait enhancement',
     credits: 4,
     icon: User2
+  },
+  {
+    key: 'enhance',
+    name: 'Smart Enhance',
+    description: 'General AI enhancement for any image',
+    credits: 3,
+    icon: Wand2
+  },
+  {
+    key: 'bg_remove',
+    name: 'Remove Background',
+    description: 'Remove image background with AI',
+    credits: 2,
+    icon: Scissors
+  },
+  {
+    key: 'relight',
+    name: 'Relight Scene',
+    description: 'Change lighting and background',
+    credits: 4,
+    icon: Sun
   }
 ];
 
