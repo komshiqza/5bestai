@@ -88,3 +88,48 @@ Preferred communication style: Simple, everyday language.
 - **Solana Web3.js**: Solana blockchain interaction.
 - **@solana/pay**: Solana Pay protocol for USDC payments.
 - **SPL Token**: USDC token standard.
+
+### AI & Image Processing
+- **Replicate API**: AI model integration for image enhancement.
+- **Supabase Storage**: Unlimited storage for Pro Edit enhanced images.
+
+## Recent Updates (October 2025)
+
+### Pro Edit System Enhancements
+
+**Expanded AI Presets (6 Total):**
+1. Clean & Denoise (2 credits) - Real-ESRGAN noise reduction
+2. Upscale 4× (4 credits) - Real-ESRGAN 4× upscaling
+3. Portrait Pro (4 credits) - CodeFormer face restoration with fidelity 0.7
+4. Smart Enhance (3 credits) - CodeFormer upscale + enhancement
+5. Remove Background (2 credits) - Rembg background removal
+6. Relight Scene (4 credits) - AI-powered scene relighting
+
+**Before/After Image Comparison:**
+- Interactive slider with draggable divider
+- Visual comparison between original and enhanced versions
+- Smooth mouse/touch interactions
+- Labels showing "Original" vs "Enhanced"
+
+**Version History Panel:**
+- Horizontal scrollable thumbnail gallery
+- Shows all enhancement versions for an image
+- Click to switch between versions in comparison slider
+- Auto-loads when opening modal for previously edited images
+- Real-time updates as new versions are created
+
+**Reliability & Error Handling:**
+- Auto-retry logic: up to 2 retries on Replicate prediction failures
+- Timeout guard: automatically fails jobs stuck for >10 minutes
+- Per-attempt timestamp tracking prevents premature timeout cancellation
+- Clear error messages for users
+- Comprehensive logging for debugging
+
+**Technical Implementation:**
+- `retryCount` field tracks retry attempts
+- `lastAttemptAt` timestamp for timeout management
+- New API endpoints:
+  - `GET /api/pro-edit/image-id` - Fetch imageId for submissions/generations
+  - `GET /api/images/:imageId/versions` - Retrieve version history
+- Non-destructive editing with full history preservation
+- Credits deducted only once, even with retries
