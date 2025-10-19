@@ -623,6 +623,10 @@ export const editJobs = pgTable("edit_jobs", {
   
   costCredits: integer("cost_credits").notNull().default(0), // Credits deducted for this job
   
+  retryCount: integer("retry_count").notNull().default(0), // Number of retries attempted
+  
+  lastAttemptAt: timestamp("last_attempt_at").notNull().defaultNow(), // Timestamp of last prediction attempt
+  
   error: text("error"), // Error message if failed
   
   createdAt: timestamp("created_at").notNull().defaultNow(),

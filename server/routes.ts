@@ -4071,6 +4071,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Timeout guard - check for stalled jobs periodically
+  const TIMEOUT_MINUTES = 10;
+  const checkStalledJobs = async () => {
+    try {
+      const timeoutThreshold = new Date(Date.now() - TIMEOUT_MINUTES * 60 * 1000);
+      
+      // Find jobs that are running but last attempt was too long ago
+      const stalledJobs = await db.select()
+        .from(editJobs)
+        .where(eq(editJobs.status, 'running'));
+      
+      for (const job of stalledJobs) {
+        // Check lastAttemptAt instead of createdAt to allow retries
+        if (new Date(job.lastAttemptAt) < timeoutThreshold) {
+          console.log(`[ProEdit] Timeout guard: Job ${job.id} exceeded ${TIMEOUT_MINUTES} minute limit since last attempt`);
+          
+          await storage.updateEditJob(job.id, {
+            status: 'failed',
+            error: `Timeout: Job exceeded ${TIMEOUT_MINUTES} minute processing limit`,
+            finishedAt: new Date()
+          });
+        }
+      }
+    } catch (error) {
+      console.error("[ProEdit] Error checking stalled jobs:", error);
+    }
+  };
+
+  // Run timeout guard every 2 minutes
+  setInterval(checkStalledJobs, 2 * 60 * 1000);
+  // Run once on startup
+  checkStalledJobs();
+
   // POST /api/replicate-webhook - Webhook from Replicate
   app.post("/api/replicate-webhook", async (req, res) => {
     try {
@@ -4141,13 +4174,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[ProEdit] Job ${job.id} completed successfully`);
       } else if (prediction.status === 'failed') {
         const errorMessage = (prediction.error as string) || 'Processing failed';
-        await storage.updateEditJob(job.id, {
-          status: 'failed',
-          error: errorMessage,
-          finishedAt: new Date()
-        });
+        const MAX_RETRIES = 2;
+        
+        // Check if we should retry
+        if (job.retryCount < MAX_RETRIES) {
+          console.log(`[ProEdit] Job ${job.id} failed (retry ${job.retryCount + 1}/${MAX_RETRIES}):`, errorMessage);
+          
+          // Get input version to retry with original image
+          const inputVersion = await storage.getImageVersion(job.inputVersionId);
+          if (!inputVersion) {
+            throw new Error(`Input version not found: ${job.inputVersionId}`);
+          }
+          
+          // Create new Replicate prediction for retry
+          const webhookUrl = `https://${req.get('host')}/api/replicate-webhook`;
+          const newPrediction = await replicate.createPrediction(
+            job.preset as any,
+            inputVersion.url,
+            job.params || {},
+            webhookUrl
+          );
+          
+          // Update job with new prediction ID, increment retry count, and refresh timestamp
+          await storage.updateEditJob(job.id, {
+            replicatePredictionId: newPrediction.id,
+            retryCount: job.retryCount + 1,
+            lastAttemptAt: new Date(), // Refresh timestamp to prevent timeout guard from canceling retry
+            error: `Previous attempt failed: ${errorMessage}. Retrying...`
+          });
+          
+          console.log(`[ProEdit] Job ${job.id} retrying with new prediction: ${newPrediction.id}`);
+        } else {
+          // Max retries reached, mark as permanently failed
+          await storage.updateEditJob(job.id, {
+            status: 'failed',
+            error: `Failed after ${MAX_RETRIES} retries: ${errorMessage}`,
+            finishedAt: new Date()
+          });
 
-        console.log(`[ProEdit] Job ${job.id} failed:`, errorMessage);
+          console.log(`[ProEdit] Job ${job.id} permanently failed after ${MAX_RETRIES} retries`);
+        }
       }
 
       res.json({ received: true });
