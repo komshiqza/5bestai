@@ -38,6 +38,7 @@ import {
   insertSiteSettingsSchema,
   subscriptionTiers,
   editJobs,
+  images,
   type SubscriptionTier,
   type UserSubscriptionWithTier,
   type UserSubscription,
@@ -3992,6 +3993,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("[ProEdit] Error fetching job status:", error);
       res.status(500).json({ 
         error: error instanceof Error ? error.message : "Failed to fetch job status" 
+      });
+    }
+  });
+
+  // GET /api/pro-edit/image-id - Get imageId for submission or generation
+  app.get("/api/pro-edit/image-id", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { submissionId, generationId } = req.query;
+
+      if (!submissionId && !generationId) {
+        return res.status(400).json({ error: "submissionId or generationId required" });
+      }
+
+      // Find image by submissionId or generationId
+      let image = null;
+      if (submissionId) {
+        const imgs = await db.select()
+          .from(images)
+          .where(eq(images.submissionId, submissionId as string))
+          .limit(1);
+        image = imgs[0];
+      } else if (generationId) {
+        const imgs = await db.select()
+          .from(images)
+          .where(eq(images.generationId, generationId as string))
+          .limit(1);
+        image = imgs[0];
+      }
+
+      // If no image found, return null (not an error - just means no edits yet)
+      if (!image) {
+        return res.json({ imageId: null });
+      }
+
+      // Verify ownership
+      if (image.userId !== userId && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json({ imageId: image.id });
+    } catch (error) {
+      console.error("[ProEdit] Error fetching imageId:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to fetch imageId" 
+      });
+    }
+  });
+
+  // GET /api/images/:imageId/versions - Get all versions for an image
+  app.get("/api/images/:imageId/versions", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const imageId = req.params.imageId;
+
+      // Get image to verify ownership
+      const image = await storage.getImage(imageId);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      // Verify ownership
+      if (image.userId !== userId && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get all versions for this image
+      const versions = await storage.getImageVersionsByImageId(imageId);
+
+      res.json({ versions });
+    } catch (error) {
+      console.error("[ProEdit] Error fetching image versions:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to fetch versions" 
       });
     }
   });

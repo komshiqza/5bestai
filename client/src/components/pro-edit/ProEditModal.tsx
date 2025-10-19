@@ -79,8 +79,9 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
   const [currentImageUrl, setCurrentImageUrl] = useState<string>(imageUrl); // For chain editing
   const [originalUrl, setOriginalUrl] = useState<string>(imageUrl);
   const [sourceMode, setSourceMode] = useState<'current' | 'original'>('current'); // Toggle between current/original
+  const [imageId, setImageId] = useState<string | null>(null); // Track imageId for version history
 
-  // Reset state when modal opens
+  // Reset state when modal opens/closes
   useEffect(() => {
     if (open) {
       setCurrentImageUrl(imageUrl);
@@ -88,6 +89,13 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
       setSourceMode('current');
       setJobId(null);
       setProcessing(false);
+      setImageId(null); // Reset imageId when modal opens with new image
+    } else {
+      // Clear state when modal closes to prevent cross-image leakage
+      setImageId(null);
+      setJobId(null);
+      setCurrentImageUrl(imageUrl);
+      setOriginalUrl(imageUrl);
     }
   }, [open, imageUrl]);
 
@@ -118,6 +126,7 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
     },
     onSuccess: (data: any) => {
       setJobId(data.jobId);
+      setImageId(data.imageId); // Track imageId for version history
       setProcessing(true);
       toast({
         title: "Processing started",
@@ -148,6 +157,33 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
     }
   });
 
+  // Fetch imageId for existing submissions/generations
+  const imageIdQueryKey = submissionId 
+    ? `/api/pro-edit/image-id?submissionId=${submissionId}`
+    : generationId 
+    ? `/api/pro-edit/image-id?generationId=${generationId}`
+    : null;
+
+  const { data: imageIdData } = useQuery<any>({
+    queryKey: [imageIdQueryKey],
+    enabled: open && !!imageIdQueryKey,
+    staleTime: 60000 // Cache for 1 minute
+  });
+
+  // Update imageId when fetched from backend
+  useEffect(() => {
+    if (imageIdData?.imageId && !imageId) {
+      setImageId(imageIdData.imageId);
+    }
+  }, [imageIdData, imageId]);
+
+  // Fetch version history
+  const { data: versionsData, refetch: refetchVersions } = useQuery<any>({
+    queryKey: [`/api/images/${imageId}/versions`],
+    enabled: !!imageId,
+    refetchInterval: processing ? 3000 : false // Refetch while processing to show new versions
+  });
+
   // Handle job completion
   useEffect(() => {
     if (jobStatus?.status === 'succeeded' && processing) {
@@ -174,6 +210,7 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
       queryClient.invalidateQueries({ queryKey: ['/api/me'] });
       queryClient.invalidateQueries({ queryKey: ['/api/ai/generations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/submissions'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/images/${imageId}/versions`] });
       
       setJobId(null); // Clear job ID to stop polling
     } else if (jobStatus?.status === 'failed' && processing) {
@@ -280,6 +317,51 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
                     : "Next preset will process the original image (parallel editing)"}
                 </p>
               </div>
+
+              {/* Version History */}
+              {versionsData?.versions && versionsData.versions.length > 1 && (
+                <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
+                    Version History ({versionsData.versions.length})
+                  </Label>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {versionsData.versions.map((version: any, index: number) => (
+                      <button
+                        key={version.id}
+                        onClick={() => {
+                          setCurrentImageUrl(version.url);
+                          toast({
+                            title: "Version loaded",
+                            description: version.preset 
+                              ? `Showing: ${version.preset} enhancement` 
+                              : "Showing: Original image"
+                          });
+                        }}
+                        className={`flex-shrink-0 group relative rounded-lg overflow-hidden border-2 transition-all ${
+                          currentImageUrl === version.url
+                            ? "border-purple-500 ring-2 ring-purple-300 dark:ring-purple-700"
+                            : "border-gray-300 dark:border-gray-600 hover:border-purple-400"
+                        }`}
+                        data-testid={`button-version-${index}`}
+                      >
+                        <img 
+                          src={version.url} 
+                          alt={version.preset || "Original"} 
+                          className="w-20 h-20 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="text-white text-xs font-medium px-2 py-1 bg-black/70 rounded">
+                            {version.preset || "Original"}
+                          </span>
+                        </div>
+                        {currentImageUrl === version.url && (
+                          <div className="absolute top-1 right-1 w-3 h-3 bg-purple-500 rounded-full border-2 border-white"></div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
