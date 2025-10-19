@@ -3864,7 +3864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Create Replicate prediction
-      const webhookUrl = `${req.protocol}://${req.get('host')}/api/replicate-webhook`;
+      // Force HTTPS for webhook URL (Replicate requires HTTPS)
+      const webhookUrl = `https://${req.get('host')}/api/replicate-webhook`;
       const prediction = await replicate.createPrediction(
         preset,
         imageUrl,
