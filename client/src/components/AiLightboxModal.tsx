@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { X, Download, Pencil, Upload, Trash2, Maximize2, Loader2, Sparkles } from "lucide-react";
+import { X, Download, Pencil, Upload, Trash2, Maximize2, Loader2 } from "lucide-react";
 import type { AiGeneration } from "@shared/schema";
 
 interface AiLightboxModalProps {
@@ -8,14 +8,11 @@ interface AiLightboxModalProps {
   onClose: () => void;
   onDownload: (url: string, generationId: string) => void;
   onEdit: (generationId: string) => void;
-  onUpscale: (generationId: string) => void;
   onUploadToContest: (generation: AiGeneration) => void;
   onDelete: (generationId: string) => void;
   downloadingId: string | null;
-  upscalingId: string | null;
   deletingPending: boolean;
   userCredits: number;
-  upscalePrice: number;
 }
 
 export function AiLightboxModal({ 
@@ -24,14 +21,11 @@ export function AiLightboxModal({
   onClose,
   onDownload,
   onEdit,
-  onUpscale,
   onUploadToContest,
   onDelete,
   downloadingId,
-  upscalingId,
   deletingPending,
   userCredits,
-  upscalePrice,
 }: AiLightboxModalProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -118,26 +112,6 @@ export function AiLightboxModal({
         >
           <Pencil className="h-5 w-5 sm:h-6 sm:w-6" />
         </button>
-
-        {/* Upscale */}
-        {!generation.isUpscaled && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUpscale(generation.id);
-            }}
-            disabled={upscalingId === generation.id || userCredits < upscalePrice}
-            className="p-2 sm:p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-primary/90 transition-all duration-300 border border-white/20 disabled:opacity-50"
-            title="Upscale 4x"
-            data-testid="button-lightbox-upscale"
-          >
-            {upscalingId === generation.id ? (
-              <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
-            ) : (
-              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
-            )}
-          </button>
-        )}
 
         {/* Upload to Contest */}
         <button

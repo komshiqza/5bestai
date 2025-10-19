@@ -281,7 +281,6 @@ export default function AiGeneratorPage() {
   // Submit to contest wizard modal state
   const [wizardModalOpen, setWizardModalOpen] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<AiGeneration | null>(null);
-  const [upscalingId, setUpscalingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxGenerationId, setLightboxGenerationId] = useState<string | null>(null);
@@ -405,42 +404,6 @@ export default function AiGeneratorPage() {
       toast({
         title: "Deleted",
         description: "Image removed from your history.",
-      });
-    },
-  });
-
-  const upscaleMutation = useMutation({
-    mutationFn: async (params: { generationId: string; scale?: number; faceEnhance?: boolean }) => {
-      setUpscalingId(params.generationId);
-      const res = await apiRequest("POST", "/api/ai/upscale", params);
-      return res.json();
-    },
-    onSuccess: (data, variables) => {
-      setCurrentImage(data.upscaledImageUrl);
-      setUpscalingId(null);
-      
-      queryClient.setQueryData(["/api/ai/generations"], (old: AiGeneration[] | undefined) => {
-        if (!old) return old;
-        return old.map(gen => 
-          gen.id === variables.generationId 
-            ? { ...gen, editedImageUrl: data.upscaledImageUrl, isUpscaled: true }
-            : gen
-        );
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-      toast({
-        title: "Upscaling Complete!",
-        description: `Your image has been upscaled to 4x resolution. ${data.creditsUsed} credits used.`,
-      });
-    },
-    onError: (error: Error) => {
-      setUpscalingId(null);
-      toast({
-        title: "Upscaling Failed",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -1178,28 +1141,6 @@ export default function AiGeneratorPage() {
                             <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
                           </GlassButton>
                           
-                          {/* Upscale */}
-                          {!gen.isUpscaled && (
-                            <GlassButton
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                upscaleMutation.mutate({ generationId: gen.id });
-                              }}
-                              disabled={upscalingId === gen.id || userCredits < (pricing?.["upscale"] || 0)}
-                              title="Upscale 4x"
-                              data-testid={`button-upscale-${gen.id}`}
-                            >
-                              {upscalingId === gen.id ? (
-                                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                              ) : (
-                                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-                              )}
-                            </GlassButton>
-                          )}
-                          
                           {/* Upload to Contest */}
                           <GlassButton
                             variant="ghost"
@@ -1297,7 +1238,6 @@ export default function AiGeneratorPage() {
         }}
         onDownload={handleDownload}
         onEdit={(generationId) => setLocation(`/image-editor/${generationId}`)}
-        onUpscale={(generationId) => upscaleMutation.mutate({ generationId })}
         onUploadToContest={(generation) => {
           setLightboxOpen(false);
           handleOpenSubmitWizard(generation);
@@ -1307,10 +1247,8 @@ export default function AiGeneratorPage() {
           setLightboxOpen(false);
         }}
         downloadingId={downloadingId}
-        upscalingId={upscalingId}
         deletingPending={deleteMutation.isPending}
         userCredits={userCredits}
-        upscalePrice={pricing?.["upscale"] || 0}
       />
 
       {/* Pro Edit Modal */}

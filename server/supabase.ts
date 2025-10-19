@@ -85,22 +85,12 @@ export async function ensureBucketExists(): Promise<void> {
     
     const bucketExists = buckets?.some(b => b.name === BUCKET_NAME);
     
-    if (!bucketExists) {
-      console.log(`[Supabase] Creating bucket: ${BUCKET_NAME}`);
-      
-      const { error: createError } = await supabase.storage.createBucket(BUCKET_NAME, {
-        public: true
-      });
-      
-      if (createError) {
-        console.error('[Supabase] Error creating bucket:', createError);
-      } else {
-        console.log(`[Supabase] Bucket created successfully: ${BUCKET_NAME}`);
-      }
+    if (bucketExists) {
+      console.log(`[Supabase] Bucket verified: ${BUCKET_NAME}`);
     } else {
-      console.log(`[Supabase] Bucket already exists: ${BUCKET_NAME}`);
+      console.warn(`[Supabase] Bucket not found: ${BUCKET_NAME}. Please create it manually in Supabase Dashboard.`);
     }
   } catch (error) {
-    console.error('[Supabase] Error ensuring bucket exists:', error);
+    console.error('[Supabase] Error checking bucket:', error);
   }
 }
