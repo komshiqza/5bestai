@@ -8,6 +8,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, Sparkles, ImageUp, User2, Download, RotateCcw, Scissors, Sun, Wand2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { ImageComparisonSlider } from "./ImageComparisonSlider";
 
 interface ProEditModalProps {
   open: boolean;
@@ -240,15 +241,13 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Image Preview Section */}
+          {/* Image Preview Section with Before/After Slider */}
           {currentImageUrl && currentImageUrl !== imageUrl && !processing && (
             <div className="space-y-3">
               <div className="rounded-lg overflow-hidden border-2 border-purple-200 dark:border-purple-800">
-                <img 
-                  src={currentImageUrl} 
-                  alt="Enhanced result" 
-                  className="w-full h-auto"
-                  data-testid="img-preview"
+                <ImageComparisonSlider
+                  beforeImage={originalUrl}
+                  afterImage={currentImageUrl}
                 />
               </div>
               
