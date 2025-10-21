@@ -740,91 +740,15 @@ export default function AiGeneratorPage() {
         </div>
       </div>
 
-      <div className="max-w-[1920px] mx-auto">
+      <div className="w-full">
         <div className="flex gap-0">
-          {/* Left Panel - History (340px fixed) */}
-          <div className="hidden lg:block w-[340px] border-r border-border/40 bg-muted/20">
-            <div className="h-[calc(100vh-5rem)] overflow-y-auto p-4">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold mb-1">History</h2>
-                <p className="text-xs text-muted-foreground">Your generated images</p>
+          {/* Left Panel - Generator Controls */}
+          <div className="hidden lg:block w-[360px] border-r border-border/40 bg-muted/20">
+            <div className="h-[calc(100vh-5rem)] overflow-y-auto">
+              <div className="sticky top-0 bg-muted/20 p-4 border-b border-border/40 z-10">
+                <h2 className="text-lg font-semibold">Generator</h2>
               </div>
-
-              {/* Images Grid */}
-              {loadingHistory ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-                </div>
-              ) : !generations || generations.length === 0 ? (
-                <div className="text-center py-12">
-                  <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">No generations yet</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {generations.map((gen) => (
-                    <div
-                      key={gen.id}
-                      className={`group cursor-pointer relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
-                        currentGenerationId === gen.id
-                          ? 'border-primary shadow-lg shadow-primary/20'
-                          : 'border-transparent hover:border-primary/50'
-                      }`}
-                      onClick={() => {
-                        setCurrentImage(gen.editedImageUrl || gen.imageUrl);
-                        setCurrentGenerationId(gen.id);
-                      }}
-                      data-testid={`generation-${gen.id}`}
-                    >
-                      <img
-                        alt={gen.prompt}
-                        className="h-full w-full object-cover"
-                        src={gen.editedImageUrl || gen.imageUrl}
-                        data-testid={`img-generation-${gen.id}`}
-                      />
-                      
-                      {/* Hover Actions */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                        <GlassButton
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id);
-                          }}
-                          disabled={downloadingId === gen.id}
-                        >
-                          {downloadingId === gen.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Download className="h-3 w-3" />
-                          )}
-                        </GlassButton>
-                        
-                        <GlassButton
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteMutation.mutate(gen.id);
-                          }}
-                          disabled={deleteMutation.isPending}
-                        >
-                          {deleteMutation.isPending ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                        </GlassButton>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+              <div className="p-4 space-y-6">
 
           {/* Center Panel - Canvas (flex-grow) */}
           <div className="flex-1 min-h-[calc(100vh-5rem)] flex flex-col">
