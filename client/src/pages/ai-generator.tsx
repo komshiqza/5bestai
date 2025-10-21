@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2 } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
 import { ProEditModal } from "@/components/pro-edit/ProEditModal";
@@ -289,6 +289,9 @@ export default function AiGeneratorPage() {
   const [proEditModalOpen, setProEditModalOpen] = useState(false);
   const [proEditImageUrl, setProEditImageUrl] = useState<string>("");
   const [proEditGenerationId, setProEditGenerationId] = useState<string | null>(null);
+  
+  // Canvas zoom state
+  const [zoomLevel, setZoomLevel] = useState<'fit' | '100' | '150' | '200'>('fit');
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -609,29 +612,325 @@ export default function AiGeneratorPage() {
 
   return (
     <div className="min-h-screen bg-background font-['Space_Grotesk',sans-serif]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">AI Image Generation</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Unleash your creativity with AI. Describe your vision and let our generators bring it to life.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg glassmorphism">
-            <span className="material-symbols-outlined text-primary">auto_awesome</span>
-            <div>
-              <p className="text-xs text-muted-foreground">Credits</p>
-              <p className="text-2xl font-bold text-primary" data-testid="text-credits-balance">{userCredits}</p>
+      {/* Header with Pro Edit Toolbar */}
+      <div className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold tracking-tight">AI Studio</h1>
+              
+              {/* Pro Edit Toolbar */}
+              {currentImage && (
+                <div className="hidden lg:flex items-center gap-2">
+                  <div className="h-6 w-px bg-border" />
+                  <span className="text-xs text-muted-foreground font-medium mr-1">Pro Edit:</span>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setProEditImageUrl(currentImage);
+                      setProEditGenerationId(currentGenerationId);
+                      setProEditModalOpen(true);
+                    }}
+                    className="gap-1.5"
+                    title="Clean & Denoise"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Clean
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setProEditImageUrl(currentImage);
+                      setProEditGenerationId(currentGenerationId);
+                      setProEditModalOpen(true);
+                    }}
+                    className="gap-1.5"
+                    title="Upscale 4×"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    Upscale
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setProEditImageUrl(currentImage);
+                      setProEditGenerationId(currentGenerationId);
+                      setProEditModalOpen(true);
+                    }}
+                    className="gap-1.5"
+                    title="Portrait Pro"
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    Portrait
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setProEditImageUrl(currentImage);
+                      setProEditGenerationId(currentGenerationId);
+                      setProEditModalOpen(true);
+                    }}
+                    className="gap-1.5"
+                    title="Smart Enhance"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    Enhance
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setProEditImageUrl(currentImage);
+                      setProEditGenerationId(currentGenerationId);
+                      setProEditModalOpen(true);
+                    }}
+                    className="gap-1.5"
+                    title="Remove Background"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove BG
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setProEditImageUrl(currentImage);
+                      setProEditGenerationId(currentGenerationId);
+                      setProEditModalOpen(true);
+                    }}
+                    className="gap-1.5"
+                    title="Relight Scene"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Relight
+                  </GlassButton>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Upload to Contest Button */}
+              {currentGenerationId && (
+                <GlassButton
+                  onClick={() => {
+                    const gen = generations?.find(g => g.id === currentGenerationId);
+                    if (gen) handleOpenSubmitWizard(gen);
+                  }}
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="hidden sm:inline">Upload to Contest</span>
+                </GlassButton>
+              )}
+              
+              {/* Credits Display */}
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg glassmorphism">
+                <span className="material-symbols-outlined text-primary text-xl">auto_awesome</span>
+                <div>
+                  <p className="text-xs text-muted-foreground">Credits</p>
+                  <p className="text-xl font-bold text-primary" data-testid="text-credits-balance">{userCredits}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Sidebar - Generator Controls */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-8">
-              <div className="glassmorphism rounded-xl p-6 space-y-6">
+      <div className="max-w-[1920px] mx-auto">
+        <div className="flex gap-0">
+          {/* Left Panel - History (340px fixed) */}
+          <div className="hidden lg:block w-[340px] border-r border-border/40 bg-muted/20">
+            <div className="h-[calc(100vh-5rem)] overflow-y-auto p-4">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold mb-1">History</h2>
+                <p className="text-xs text-muted-foreground">Your generated images</p>
+              </div>
+
+              {/* Images Grid */}
+              {loadingHistory ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+                </div>
+              ) : !generations || generations.length === 0 ? (
+                <div className="text-center py-12">
+                  <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground">No generations yet</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {generations.map((gen) => (
+                    <div
+                      key={gen.id}
+                      className={`group cursor-pointer relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+                        currentGenerationId === gen.id
+                          ? 'border-primary shadow-lg shadow-primary/20'
+                          : 'border-transparent hover:border-primary/50'
+                      }`}
+                      onClick={() => {
+                        setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+                        setCurrentGenerationId(gen.id);
+                      }}
+                      data-testid={`generation-${gen.id}`}
+                    >
+                      <img
+                        alt={gen.prompt}
+                        className="h-full w-full object-cover"
+                        src={gen.editedImageUrl || gen.imageUrl}
+                        data-testid={`img-generation-${gen.id}`}
+                      />
+                      
+                      {/* Hover Actions */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                        <GlassButton
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id);
+                          }}
+                          disabled={downloadingId === gen.id}
+                        >
+                          {downloadingId === gen.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Download className="h-3 w-3" />
+                          )}
+                        </GlassButton>
+                        
+                        <GlassButton
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteMutation.mutate(gen.id);
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          {deleteMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </GlassButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Center Panel - Canvas (flex-grow) */}
+          <div className="flex-1 min-h-[calc(100vh-5rem)] flex flex-col">
+            {generateMutation.isPending ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto" />
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Generating...</h3>
+                    <p className="text-sm text-muted-foreground">This may take a few moments</p>
+                  </div>
+                </div>
+              </div>
+            ) : currentImage ? (
+              <>
+                {/* Zoom Controls */}
+                <div className="flex items-center justify-between px-6 py-3 border-b border-border/40">
+                  <div className="text-sm text-muted-foreground">
+                    Preview
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <GlassButton
+                      variant={zoomLevel === 'fit' ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setZoomLevel('fit')}
+                      className="h-7 px-2 text-xs"
+                    >
+                      Fit
+                    </GlassButton>
+                    <GlassButton
+                      variant={zoomLevel === '100' ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setZoomLevel('100')}
+                      className="h-7 px-2 text-xs"
+                    >
+                      100%
+                    </GlassButton>
+                    <GlassButton
+                      variant={zoomLevel === '150' ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setZoomLevel('150')}
+                      className="h-7 px-2 text-xs"
+                    >
+                      150%
+                    </GlassButton>
+                    <GlassButton
+                      variant={zoomLevel === '200' ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setZoomLevel('200')}
+                      className="h-7 px-2 text-xs"
+                    >
+                      200%
+                    </GlassButton>
+                  </div>
+                </div>
+                
+                {/* Canvas */}
+                <div className="flex-1 flex items-center justify-center overflow-auto bg-muted/10">
+                  <div className={`p-8 ${zoomLevel === 'fit' ? 'max-w-4xl w-full' : 'w-auto'}`}>
+                    <div className={`relative rounded-2xl glassmorphism p-4 ${
+                      zoomLevel === 'fit' ? 'aspect-square' : ''
+                    }`}>
+                      <img
+                        src={currentImage}
+                        alt="Current selection"
+                        className="rounded-xl"
+                        style={{
+                          width: zoomLevel === 'fit' ? '100%' :
+                                 zoomLevel === '100' ? 'auto' :
+                                 zoomLevel === '150' ? 'auto' :
+                                 'auto',
+                          height: zoomLevel === 'fit' ? '100%' : 'auto',
+                          objectFit: zoomLevel === 'fit' ? 'contain' : 'none',
+                          transform: zoomLevel === 'fit' ? 'none' : 
+                                    zoomLevel === '100' ? 'scale(1)' :
+                                    zoomLevel === '150' ? 'scale(1.5)' :
+                                    'scale(2)',
+                          transformOrigin: 'center'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <div className="mx-auto h-32 w-32 rounded-full bg-muted/50 flex items-center justify-center">
+                    <ImageIcon className="h-16 w-16 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2">Your images will be displayed here</h3>
+                    <p className="text-sm text-muted-foreground">Enter a prompt on the right and click Generate</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel - Generator Controls (320px fixed) */}
+          <div className="hidden lg:block w-[360px] border-l border-border/40 bg-muted/20">
+            <div className="h-[calc(100vh-5rem)] overflow-y-auto">
+              <div className="sticky top-0 bg-muted/20 p-4 border-b border-border/40 z-10">
+                <h2 className="text-lg font-semibold">Generator</h2>
+              </div>
+              <div className="p-4 space-y-6">
                 {/* Prompt */}
                 <div>
                   <Label htmlFor="prompt" className="mb-2 block text-sm font-medium">
@@ -1053,161 +1352,6 @@ export default function AiGeneratorPage() {
                   )}
                 </FancyGlassButton>
               </div>
-            </div>
-          </div>
-
-          {/* Right Panel - Generated Images Grid */}
-          <div className="lg:col-span-2">
-            <div className="space-y-8">
-              {/* Progress Indicator */}
-              {generateMutation.isPending && (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-bold">Generated Images</h3>
-                  <div className="flex items-center gap-3 rounded-lg bg-primary/10 p-4">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-primary/20">
-                      <div className="h-full w-1/2 animate-pulse rounded-full bg-primary"></div>
-                    </div>
-                    <div className="text-sm font-medium text-primary">Generating... 50%</div>
-                  </div>
-                  <p className="text-center text-sm text-muted-foreground">
-                    This may take a few moments. Please be patient.
-                  </p>
-                </div>
-              )}
-
-              {/* Images Grid */}
-              {loadingHistory ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-                </div>
-              ) : !generations || generations.length === 0 ? (
-                <div className="text-center py-12">
-                  <ImageIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No generations yet. Create your first image!</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3">
-                  {generations.map((gen) => (
-                    <div
-                      key={gen.id}
-                      className="group"
-                      data-testid={`generation-${gen.id}`}
-                    >
-                      {/* Image Container */}
-                      <div className="relative aspect-square overflow-hidden rounded-xl">
-                        <img
-                          alt={gen.prompt}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          src={gen.editedImageUrl || gen.imageUrl}
-                          data-testid={`img-generation-${gen.id}`}
-                        />
-                        
-                        {/* Top Left - Action Buttons */}
-                        <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex flex-row gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          {/* Download */}
-                          <GlassButton
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id);
-                            }}
-                            disabled={downloadingId === gen.id}
-                            title="Download"
-                            data-testid={`button-download-${gen.id}`}
-                          >
-                            {downloadingId === gen.id ? (
-                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                            )}
-                          </GlassButton>
-                          
-                          {/* Edit (Pro Edit) */}
-                          <GlassButton
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProEditImageUrl(gen.editedImageUrl || gen.imageUrl);
-                              setProEditGenerationId(gen.id);
-                              setProEditModalOpen(true);
-                            }}
-                            title="Edit"
-                            data-testid={`button-edit-${gen.id}`}
-                          >
-                            <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
-                          </GlassButton>
-                          
-                          {/* Upload to Contest */}
-                          <GlassButton
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenSubmitWizard(gen);
-                            }}
-                            title="Upload to Contest"
-                            data-testid={`button-submit-${gen.id}`}
-                          >
-                            <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
-                          </GlassButton>
-                        </div>
-                        
-                        {/* Top Right - Expand Button */}
-                        <div className="absolute top-2 sm:top-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <GlassButton
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLightboxGenerationId(gen.id);
-                              setLightboxOpen(true);
-                            }}
-                            title="View Fullscreen"
-                            data-testid={`button-expand-${gen.id}`}
-                          >
-                            <Maximize2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                          </GlassButton>
-                        </div>
-                        
-                        {/* Bottom Right - Delete Button */}
-                        <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <GlassButton
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteMutation.mutate(gen.id);
-                            }}
-                            disabled={deleteMutation.isPending}
-                            title="Delete"
-                            data-testid={`button-delete-${gen.id}`}
-                          >
-                            {deleteMutation.isPending ? (
-                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                            )}
-                          </GlassButton>
-                        </div>
-                      </div>
-
-                      {/* Prompt Text */}
-                      <div className="mt-2 px-1">
-                        <p className="text-sm text-muted-foreground line-clamp-2" data-testid={`text-prompt-${gen.id}`}>
-                          {gen.prompt}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
