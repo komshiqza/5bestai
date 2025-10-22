@@ -190,6 +190,7 @@ export interface IStorage {
   createImageVersion(version: InsertImageVersion): Promise<ImageVersion>;
   getImageVersion(id: string): Promise<ImageVersion | undefined>;
   getImageVersionsByImageId(imageId: string): Promise<ImageVersion[]>;
+  getCurrentImageVersion(imageId: string): Promise<ImageVersion | undefined>;
   unsetCurrentVersions(imageId: string): Promise<void>; // Mark all versions as not current
   
   // Pro Edit: Edit Jobs
@@ -952,6 +953,10 @@ export class MemStorage implements IStorage {
   }
 
   async getImageVersionsByImageId(imageId: string): Promise<ImageVersion[]> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getCurrentImageVersion(imageId: string): Promise<ImageVersion | undefined> {
     throw new Error("MemStorage does not support Pro Edit - use DbStorage");
   }
 
@@ -2133,6 +2138,17 @@ export class DbStorage implements IStorage {
       .from(imageVersions)
       .where(eq(imageVersions.imageId, imageId))
       .orderBy(desc(imageVersions.createdAt));
+  }
+
+  async getCurrentImageVersion(imageId: string): Promise<ImageVersion | undefined> {
+    const [version] = await db.select()
+      .from(imageVersions)
+      .where(and(
+        eq(imageVersions.imageId, imageId),
+        eq(imageVersions.isCurrent, true)
+      ))
+      .limit(1);
+    return version;
   }
 
   async unsetCurrentVersions(imageId: string): Promise<void> {

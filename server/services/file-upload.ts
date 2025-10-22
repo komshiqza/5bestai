@@ -2,6 +2,7 @@ import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import sharp from "sharp";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -202,5 +203,64 @@ export async function deleteFile(
   } catch (error) {
     console.error(`File deletion failed: ${error}`);
     // Don't throw error - we still want to delete the database record even if file deletion fails
+  }
+}
+
+/**
+ * Generate thumbnail from image URL and upload to Cloudinary
+ * @param imageUrl - Source image URL (can be from Supabase or Cloudinary)
+ * @param thumbnailSize - Size of thumbnail (default: 200x200)
+ * @returns Cloudinary thumbnail URL
+ */
+export async function generateAndUploadThumbnail(
+  imageUrl: string,
+  thumbnailSize: number = 200
+): Promise<string> {
+  if (!isCloudinaryConfigured()) {
+    console.warn("Cloudinary not configured, skipping thumbnail generation");
+    return imageUrl; // Return original URL as fallback
+  }
+
+  try {
+    // Download image from URL
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    
+    // Resize to thumbnail using sharp
+    const thumbnailBuffer = await sharp(imageBuffer)
+      .resize(thumbnailSize, thumbnailSize, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .jpeg({ quality: 85 }) // Convert to JPEG for smaller size
+      .toBuffer();
+    
+    // Upload to Cloudinary
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: '5best-thumbnails',
+          resource_type: 'image',
+          quality: 'auto:good',
+          fetch_format: 'auto'
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      
+      uploadStream.end(thumbnailBuffer);
+    });
+    
+    console.log(`Thumbnail uploaded to Cloudinary: ${uploadResult.secure_url}`);
+    return uploadResult.secure_url;
+  } catch (error) {
+    console.error("Thumbnail generation failed:", error);
+    return imageUrl; // Return original URL as fallback
   }
 }

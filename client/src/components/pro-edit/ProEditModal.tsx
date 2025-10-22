@@ -345,7 +345,7 @@ export function ProEditModal({ open, onOpenChange, imageUrl, submissionId, gener
                         data-testid={`button-version-${index}`}
                       >
                         <img 
-                          src={version.url} 
+                          src={version.thumbnailUrl || version.url} 
                           alt={version.preset || "Original"} 
                           className="w-20 h-20 object-cover"
                         />

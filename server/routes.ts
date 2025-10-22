@@ -9,7 +9,7 @@ import { db } from "./db";
 import { eq, and, ne } from "drizzle-orm";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
-import { upload, uploadFile, deleteFile } from "./services/file-upload";
+import { upload, uploadFile, deleteFile, generateAndUploadThumbnail } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
 import { ContestScheduler } from "./contest-scheduler";
 import { verifyTransaction, solanaConnection, solanaConnectionProcessed } from "./solana";
@@ -4072,6 +4072,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/images/:imageId/current-url - Get current version URL for an image
+  app.get("/api/images/:imageId/current-url", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const imageId = req.params.imageId;
+
+      // Get image to verify ownership
+      const image = await storage.getImage(imageId);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      // Verify ownership
+      if (image.userId !== userId && req.user!.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get current version
+      const currentVersion = await storage.getCurrentImageVersion(imageId);
+
+      // Return current version URL if exists, otherwise original URL
+      const currentUrl = currentVersion?.url || image.originalUrl;
+
+      res.json({ url: currentUrl, isCurrent: !!currentVersion });
+    } catch (error) {
+      console.error("[ProEdit] Error fetching current URL:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to fetch current URL" 
+      });
+    }
+  });
+
   // Timeout guard - check for stalled jobs periodically
   const TIMEOUT_MINUTES = 10;
   const checkStalledJobs = async () => {
@@ -4151,12 +4183,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[ProEdit] Uploaded to Supabase: ${supabaseUrl}`);
 
+        // Generate and upload thumbnail to Cloudinary
+        console.log(`[ProEdit] Generating thumbnail for version...`);
+        const thumbnailUrl = await generateAndUploadThumbnail(supabaseUrl, 200);
+        console.log(`[ProEdit] Thumbnail URL: ${thumbnailUrl}`);
+
         // Create output version with Supabase URL and mark as current (atomic operation)
         const outputVersion = await db.transaction(async (tx) => {
           // First create the new version with isCurrent=true
           const [newVersion] = await tx.insert(imageVersions).values({
             imageId: job.imageId,
             url: supabaseUrl,
+            thumbnailUrl: thumbnailUrl,
             source: 'edit',
             preset: job.preset,
             params: job.params || {},

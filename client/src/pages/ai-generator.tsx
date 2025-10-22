@@ -1518,7 +1518,9 @@ export default function AiGeneratorPage() {
         aiSubmissionMode={
           selectedGeneration
             ? {
-                imageUrl: selectedGeneration.imageUrl,
+                imageUrl: (selectedGeneration.id === currentGenerationId && currentImage) 
+                  ? currentImage 
+                  : selectedGeneration.imageUrl,
                 cloudinaryPublicId: selectedGeneration.cloudinaryPublicId!,
                 prompt: selectedGeneration.prompt,
               }
