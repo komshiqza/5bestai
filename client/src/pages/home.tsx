@@ -234,7 +234,7 @@ export default function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight mb-4 md:mb-6 leading-tight gradient-text" data-testid="hero-title">
-              Compete, Create, <br/>
+              Create, Compete, <br/>
               Win GLORY
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mb-6 md:mb-8" data-testid="hero-description">

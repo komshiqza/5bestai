@@ -13,11 +13,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, RotateCcw } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
-import { ProEditModal } from "@/components/pro-edit/ProEditModal";
-import type { AiGeneration } from "@shared/schema";
+import { ImageComparisonSlider } from "@/components/pro-edit/ImageComparisonSlider";
+import type { AiGeneration, EditJob } from "@shared/schema";
+
+type EditJobStatus = EditJob & {
+  outputUrl: string | null;
+  originalUrl: string;
+};
 
 interface ModelConfig {
   id: string;
@@ -285,10 +290,12 @@ export default function AiGeneratorPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxGenerationId, setLightboxGenerationId] = useState<string | null>(null);
   
-  // Pro Edit modal state
-  const [proEditModalOpen, setProEditModalOpen] = useState(false);
-  const [proEditImageUrl, setProEditImageUrl] = useState<string>("");
-  const [proEditGenerationId, setProEditGenerationId] = useState<string | null>(null);
+  // Pro Edit canvas state
+  const [processingPreset, setProcessingPreset] = useState<string | null>(null);
+  const [editJobId, setEditJobId] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<string | null>(null);
+  const [imageVersions, setImageVersions] = useState<string[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
   
   // Canvas zoom state
   const [zoomLevel, setZoomLevel] = useState<'fit' | '100' | '150' | '200'>('fit');
@@ -411,6 +418,82 @@ export default function AiGeneratorPage() {
     },
   });
 
+  // Pro Edit mutations
+  const startEditMutation = useMutation({
+    mutationFn: async ({ preset, imageUrl }: { preset: string; imageUrl: string }) => {
+      const response = await fetch("/api/edits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          imageUrl,
+          preset,
+          generationId: currentGenerationId
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to start processing");
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setEditJobId(data.jobId);
+      setImageId(data.imageId);
+      toast({
+        title: "Processing started",
+        description: `Your image is being enhanced. Credits used: ${data.creditsDeducted}`
+      });
+    },
+    onError: (error: Error) => {
+      setProcessingPreset(null);
+      toast({
+        title: "Edit Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Polling query for job status
+  const { data: jobStatus } = useQuery<EditJobStatus>({
+    queryKey: ["/api/edit-jobs", editJobId],
+    enabled: !!editJobId && processingPreset !== null,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // Stop polling if job is done
+      if (data?.status === 'succeeded' || data?.status === 'failed') {
+        return false;
+      }
+      return 2000; // Poll every 2 seconds
+    }
+  });
+
+  // Handle Pro Edit job completion
+  useEffect(() => {
+    if (jobStatus?.status === 'succeeded' && jobStatus.outputUrl) {
+      const outputUrl = jobStatus.outputUrl;
+      setCurrentImage(outputUrl);
+      setImageVersions(prev => [...prev, outputUrl]);
+      setProcessingPreset(null);
+      setEditJobId(null);
+      toast({ 
+        title: "Edit Complete!",
+        description: "Your image has been processed successfully."
+      });
+    } else if (jobStatus?.status === 'failed') {
+      setProcessingPreset(null);
+      setEditJobId(null);
+      toast({ 
+        title: "Edit Failed", 
+        description: jobStatus.error || "Processing failed. Please try again.",
+        variant: "destructive" 
+      });
+    }
+  }, [jobStatus, toast]);
+
   const handleOpenSubmitWizard = (generation: AiGeneration) => {
     if (!generation.cloudinaryPublicId) {
       toast({
@@ -429,6 +512,15 @@ export default function AiGeneratorPage() {
     setWizardModalOpen(false);
     setSelectedGeneration(null);
     queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+  };
+
+  const handleSelectGeneration = (gen: AiGeneration) => {
+    setCurrentImage(gen.imageUrl);
+    setCurrentGenerationId(gen.id);
+    setProcessingPreset(null);
+    setEditJobId(null);
+    setImageVersions([gen.imageUrl]); // Start fresh version history
+    setShowComparison(false);
   };
 
   const handleGenerate = async () => {
@@ -628,84 +720,108 @@ export default function AiGeneratorPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setProEditImageUrl(currentImage);
-                      setProEditGenerationId(currentGenerationId);
-                      setProEditModalOpen(true);
+                      setProcessingPreset('clean');
+                      startEditMutation.mutate({ preset: 'clean', imageUrl: currentImage! });
                     }}
+                    disabled={processingPreset !== null || !currentImage}
                     className="gap-1.5"
                     title="Clean & Denoise"
                   >
-                    <Sparkles className="h-3.5 w-3.5" />
+                    {processingPreset === 'clean' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
                     Clean
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setProEditImageUrl(currentImage);
-                      setProEditGenerationId(currentGenerationId);
-                      setProEditModalOpen(true);
+                      setProcessingPreset('upscale4x');
+                      startEditMutation.mutate({ preset: 'upscale4x', imageUrl: currentImage! });
                     }}
+                    disabled={processingPreset !== null || !currentImage}
                     className="gap-1.5"
                     title="Upscale 4×"
                   >
-                    <Maximize2 className="h-3.5 w-3.5" />
+                    {processingPreset === 'upscale4x' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    )}
                     Upscale
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setProEditImageUrl(currentImage);
-                      setProEditGenerationId(currentGenerationId);
-                      setProEditModalOpen(true);
+                      setProcessingPreset('portrait_pro');
+                      startEditMutation.mutate({ preset: 'portrait_pro', imageUrl: currentImage! });
                     }}
+                    disabled={processingPreset !== null || !currentImage}
                     className="gap-1.5"
                     title="Portrait Pro"
                   >
-                    <User className="h-3.5 w-3.5" />
+                    {processingPreset === 'portrait_pro' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <User className="h-3.5 w-3.5" />
+                    )}
                     Portrait
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setProEditImageUrl(currentImage);
-                      setProEditGenerationId(currentGenerationId);
-                      setProEditModalOpen(true);
+                      setProcessingPreset('enhance');
+                      startEditMutation.mutate({ preset: 'enhance', imageUrl: currentImage! });
                     }}
+                    disabled={processingPreset !== null || !currentImage}
                     className="gap-1.5"
                     title="Smart Enhance"
                   >
-                    <Wand2 className="h-3.5 w-3.5" />
+                    {processingPreset === 'enhance' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-3.5 w-3.5" />
+                    )}
                     Enhance
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setProEditImageUrl(currentImage);
-                      setProEditGenerationId(currentGenerationId);
-                      setProEditModalOpen(true);
+                      setProcessingPreset('bg_remove');
+                      startEditMutation.mutate({ preset: 'bg_remove', imageUrl: currentImage! });
                     }}
+                    disabled={processingPreset !== null || !currentImage}
                     className="gap-1.5"
                     title="Remove Background"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    {processingPreset === 'bg_remove' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
                     Remove BG
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setProEditImageUrl(currentImage);
-                      setProEditGenerationId(currentGenerationId);
-                      setProEditModalOpen(true);
+                      setProcessingPreset('relight');
+                      startEditMutation.mutate({ preset: 'relight', imageUrl: currentImage! });
                     }}
+                    disabled={processingPreset !== null || !currentImage}
                     className="gap-1.5"
                     title="Relight Scene"
                   >
-                    <Sparkles className="h-3.5 w-3.5" />
+                    {processingPreset === 'relight' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
                     Relight
                   </GlassButton>
                 </div>
@@ -762,6 +878,17 @@ export default function AiGeneratorPage() {
                     Preview
                   </div>
                   <div className="flex items-center gap-2">
+                    {imageVersions.length > 1 && (
+                      <GlassButton
+                        variant={showComparison ? 'primary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setShowComparison(!showComparison)}
+                        className="h-7 px-2 text-xs gap-1"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Compare
+                      </GlassButton>
+                    )}
                     <GlassButton
                       variant={zoomLevel === 'fit' ? 'primary' : 'ghost'}
                       size="sm"
@@ -803,24 +930,50 @@ export default function AiGeneratorPage() {
                     <div className={`relative rounded-2xl glassmorphism p-4 ${
                       zoomLevel === 'fit' ? 'aspect-square' : ''
                     }`}>
-                      <img
-                        src={currentImage}
-                        alt="Current selection"
-                        className="rounded-xl"
-                        style={{
-                          width: zoomLevel === 'fit' ? '100%' :
-                                 zoomLevel === '100' ? 'auto' :
-                                 zoomLevel === '150' ? 'auto' :
-                                 'auto',
-                          height: zoomLevel === 'fit' ? '100%' : 'auto',
-                          objectFit: zoomLevel === 'fit' ? 'contain' : 'none',
-                          transform: zoomLevel === 'fit' ? 'none' : 
-                                    zoomLevel === '100' ? 'scale(1)' :
-                                    zoomLevel === '150' ? 'scale(1.5)' :
-                                    'scale(2)',
-                          transformOrigin: 'center'
-                        }}
-                      />
+                      {showComparison && imageVersions.length > 1 ? (
+                        <ImageComparisonSlider
+                          beforeImage={imageVersions[imageVersions.length - 2]}
+                          afterImage={currentImage}
+                        />
+                      ) : (
+                        <img
+                          src={currentImage}
+                          alt="Current selection"
+                          className="rounded-xl"
+                          style={{
+                            width: zoomLevel === 'fit' ? '100%' :
+                                   zoomLevel === '100' ? 'auto' :
+                                   zoomLevel === '150' ? 'auto' :
+                                   'auto',
+                            height: zoomLevel === 'fit' ? '100%' : 'auto',
+                            objectFit: zoomLevel === 'fit' ? 'contain' : 'none',
+                            transform: zoomLevel === 'fit' ? 'none' : 
+                                      zoomLevel === '100' ? 'scale(1)' :
+                                      zoomLevel === '150' ? 'scale(1.5)' :
+                                      'scale(2)',
+                            transformOrigin: 'center'
+                          }}
+                        />
+                      )}
+                      
+                      {processingPreset && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                          <div className="text-center space-y-3">
+                            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                            <div>
+                              <h4 className="text-lg font-semibold">Processing...</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Applying {processingPreset === 'clean' ? 'Clean & Denoise' : 
+                                          processingPreset === 'upscale4x' ? 'Upscale 4×' :
+                                          processingPreset === 'portrait_pro' ? 'Portrait Pro' :
+                                          processingPreset === 'enhance' ? 'Smart Enhance' :
+                                          processingPreset === 'bg_remove' ? 'Remove Background' :
+                                          'Relight Scene'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1299,10 +1452,7 @@ export default function AiGeneratorPage() {
                           ? 'border-primary shadow-lg shadow-primary/20'
                           : 'border-transparent hover:border-primary/50'
                       }`}
-                      onClick={() => {
-                        setCurrentImage(gen.editedImageUrl || gen.imageUrl);
-                        setCurrentGenerationId(gen.id);
-                      }}
+                      onClick={() => handleSelectGeneration(gen)}
                       data-testid={`generation-${gen.id}`}
                     >
                       <img
@@ -1395,13 +1545,6 @@ export default function AiGeneratorPage() {
         userCredits={userCredits}
       />
 
-      {/* Pro Edit Modal */}
-      <ProEditModal
-        open={proEditModalOpen}
-        onOpenChange={setProEditModalOpen}
-        imageUrl={proEditImageUrl}
-        generationId={proEditGenerationId || undefined}
-      />
     </div>
   );
 }
