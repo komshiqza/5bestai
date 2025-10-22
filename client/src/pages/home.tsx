@@ -266,7 +266,7 @@ export default function Home() {
 
       {/* Latest Submissions */}
       <section className="py-8 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 md:mb-8 gap-4">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1 md:mb-2" data-testid="submissions-section-title">

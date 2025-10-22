@@ -48,7 +48,7 @@ export function SubmissionCard({
 
   // Pinterest-style height variations based on submission ID
   const getCardHeight = () => {
-    const variations = ['h-60', 'h-72', 'h-80', 'h-64', 'h-96', 'h-56'];
+    const variations = ['h-72', 'h-80', 'h-96', '[height:28rem]', '[height:32rem]', '[height:36rem]'];
     const index = parseInt(submission.id.slice(-1), 16) % variations.length;
     return variations[index];
   };
