@@ -13,6 +13,7 @@ interface AiLightboxModalProps {
   downloadingId: string | null;
   deletingPending: boolean;
   userCredits: number;
+  currentEditedUrl?: string | null; // URL from Pro Edit if currently being edited
 }
 
 export function AiLightboxModal({ 
@@ -26,6 +27,7 @@ export function AiLightboxModal({
   downloadingId,
   deletingPending,
   userCredits,
+  currentEditedUrl,
 }: AiLightboxModalProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -61,7 +63,8 @@ export function AiLightboxModal({
 
   if (!isOpen || !generation) return null;
 
-  const imageUrl = generation.editedImageUrl || generation.imageUrl;
+  // Use currentEditedUrl from Pro Edit if available, otherwise fall back to stored URLs
+  const imageUrl = currentEditedUrl || generation.editedImageUrl || generation.imageUrl;
 
   return (
     <div 

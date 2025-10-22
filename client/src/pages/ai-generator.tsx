@@ -1470,7 +1470,11 @@ export default function AiGeneratorPage() {
                           className="h-7 w-7 rounded-full"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDownload(gen.editedImageUrl || gen.imageUrl, gen.id);
+                            // Use currentImage if this generation is selected and has been edited
+                            const downloadUrl = currentGenerationId === gen.id && currentImage 
+                              ? currentImage 
+                              : gen.editedImageUrl || gen.imageUrl;
+                            handleDownload(downloadUrl, gen.id);
                           }}
                           disabled={downloadingId === gen.id}
                         >
@@ -1543,6 +1547,7 @@ export default function AiGeneratorPage() {
         downloadingId={downloadingId}
         deletingPending={deleteMutation.isPending}
         userCredits={userCredits}
+        currentEditedUrl={lightboxGenerationId === currentGenerationId ? currentImage : null}
       />
 
     </div>

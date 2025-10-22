@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import * as ed25519 from "@noble/ed25519";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile } from "./services/file-upload";
@@ -39,6 +39,7 @@ import {
   subscriptionTiers,
   editJobs,
   images,
+  imageVersions,
   type SubscriptionTier,
   type UserSubscriptionWithTier,
   type UserSubscription,
@@ -4150,13 +4151,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[ProEdit] Uploaded to Supabase: ${supabaseUrl}`);
 
-        // Create output version with Supabase URL
-        const outputVersion = await storage.createImageVersion({
-          imageId: job.imageId,
-          url: supabaseUrl,
-          source: 'edit',
-          preset: job.preset,
-          params: job.params || {}
+        // Create output version with Supabase URL and mark as current (atomic operation)
+        const outputVersion = await db.transaction(async (tx) => {
+          // First create the new version with isCurrent=true
+          const [newVersion] = await tx.insert(imageVersions).values({
+            imageId: job.imageId,
+            url: supabaseUrl,
+            source: 'edit',
+            preset: job.preset,
+            params: job.params || {},
+            isCurrent: true
+          }).returning();
+
+          // Then unset all other versions for this image
+          await tx.update(imageVersions)
+            .set({ isCurrent: false })
+            .where(and(
+              eq(imageVersions.imageId, job.imageId),
+              ne(imageVersions.id, newVersion.id)
+            ));
+
+          return newVersion;
         });
 
         // Update job

@@ -590,7 +590,9 @@ export const images = pgTable("images", {
 export const imageVersions = pgTable("image_versions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   imageId: varchar("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
-  url: text("url").notNull(), // Cloudinary or storage URL
+  url: text("url").notNull(), // Full-size URL (Cloudinary or Supabase)
+  thumbnailUrl: text("thumbnail_url"), // Thumbnail URL for gallery display (optimized)
+  previewUrl: text("preview_url"), // Medium-size URL for previews
   width: integer("width"),
   height: integer("height"),
   format: varchar("format", { length: 20 }), // png, jpg, webp
@@ -598,10 +600,12 @@ export const imageVersions = pgTable("image_versions", {
   preset: varchar("preset", { length: 50 }), // 'clean', 'upscale4x', 'portrait_pro', etc.
   params: jsonb("params"), // Parameters used for this version
   metadata: jsonb("metadata"), // Additional version data
+  isCurrent: boolean("is_current").default(false).notNull(), // Mark as the active version
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   imageIdx: index("image_versions_image_idx").on(table.imageId),
-  createdAtIdx: index("image_versions_created_at_idx").on(table.createdAt)
+  createdAtIdx: index("image_versions_created_at_idx").on(table.createdAt),
+  isCurrentIdx: index("image_versions_is_current_idx").on(table.imageId, table.isCurrent)
 }));
 
 // Pro Edit: Edit Jobs table (processing queue)

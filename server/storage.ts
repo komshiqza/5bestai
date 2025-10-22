@@ -190,6 +190,7 @@ export interface IStorage {
   createImageVersion(version: InsertImageVersion): Promise<ImageVersion>;
   getImageVersion(id: string): Promise<ImageVersion | undefined>;
   getImageVersionsByImageId(imageId: string): Promise<ImageVersion[]>;
+  unsetCurrentVersions(imageId: string): Promise<void>; // Mark all versions as not current
   
   // Pro Edit: Edit Jobs
   createEditJob(job: InsertEditJob): Promise<EditJob>;
@@ -923,6 +924,59 @@ export class MemStorage implements IStorage {
 
   async refreshSubscriptionIfNeeded(userId: string): Promise<boolean> {
     throw new Error("MemStorage subscription methods not implemented");
+  }
+
+  // Pro Edit methods (stub implementations - use DbStorage for Pro Edit)
+  async createImage(image: InsertImage): Promise<Image> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getImage(id: string): Promise<Image | undefined> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getImagesByUserId(userId: string): Promise<Image[]> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async updateImage(id: string, updates: Partial<Image>): Promise<Image | undefined> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async createImageVersion(version: InsertImageVersion): Promise<ImageVersion> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getImageVersion(id: string): Promise<ImageVersion | undefined> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getImageVersionsByImageId(imageId: string): Promise<ImageVersion[]> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async unsetCurrentVersions(imageId: string): Promise<void> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async createEditJob(job: InsertEditJob): Promise<EditJob> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getEditJob(id: string): Promise<EditJob | undefined> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getEditJobsByUserId(userId: string): Promise<EditJob[]> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async getEditJobsByImageId(imageId: string): Promise<EditJob[]> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async updateEditJob(id: string, updates: Partial<EditJob>): Promise<EditJob | undefined> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
   }
 }
 
@@ -2079,6 +2133,12 @@ export class DbStorage implements IStorage {
       .from(imageVersions)
       .where(eq(imageVersions.imageId, imageId))
       .orderBy(desc(imageVersions.createdAt));
+  }
+
+  async unsetCurrentVersions(imageId: string): Promise<void> {
+    await db.update(imageVersions)
+      .set({ isCurrent: false })
+      .where(eq(imageVersions.imageId, imageId));
   }
 
   // Pro Edit: Edit Jobs
