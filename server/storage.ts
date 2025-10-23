@@ -100,6 +100,7 @@ export interface IStorage {
   getVoteCountByUser(userId: string, since: Date): Promise<number>;
   getVoteCountForSubmissionInPeriod(userId: string, submissionId: string, since: Date): Promise<number>;
   getUserTotalVotesInContest(userId: string, contestId: string): Promise<number>;
+  getUserTotalVotesInContestInPeriod(userId: string, contestId: string, since: Date): Promise<number>;
   
   // Glory Ledger (now handles all currencies)
   createGloryTransaction(transaction: InsertGloryLedger): Promise<GloryLedger>;
@@ -616,6 +617,17 @@ export class MemStorage implements IStorage {
     
     return Array.from(this.votes.values()).filter(
       vote => vote.userId === userId && submissionIds.includes(vote.submissionId)
+    ).length;
+  }
+
+  async getUserTotalVotesInContestInPeriod(userId: string, contestId: string, since: Date): Promise<number> {
+    const contestSubmissions = Array.from(this.submissions.values()).filter(
+      submission => submission.contestId === contestId
+    );
+    const submissionIds = contestSubmissions.map(s => s.id);
+    
+    return Array.from(this.votes.values()).filter(
+      vote => vote.userId === userId && submissionIds.includes(vote.submissionId) && vote.createdAt >= since
     ).length;
   }
 
@@ -1412,6 +1424,19 @@ export class DbStorage implements IStorage {
       .where(and(
         eq(votes.userId, userId),
         eq(submissions.contestId, contestId)
+      ));
+    
+    return result[0]?.count || 0;
+  }
+
+  async getUserTotalVotesInContestInPeriod(userId: string, contestId: string, since: Date): Promise<number> {
+    const result = await db.select({ count: count() })
+      .from(votes)
+      .innerJoin(submissions, eq(votes.submissionId, submissions.id))
+      .where(and(
+        eq(votes.userId, userId),
+        eq(submissions.contestId, contestId),
+        gte(votes.createdAt, since)
       ));
     
     return result[0]?.count || 0;

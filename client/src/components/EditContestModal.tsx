@@ -48,7 +48,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     agreeToRules: true,
     votingMethods: ['public'],
     juryMembers: [] as string[],
-    votesPerUserPerPeriod: 1,
+    votesPerUserPerPeriod: 0,
     periodDurationHours: 24,
     totalVotesPerUser: 0,
     status: 'draft',
@@ -1065,11 +1065,14 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                       <input
                         type="number"
                         value={formData.votesPerUserPerPeriod}
-                        onChange={(e) => handleInputChange('votesPerUserPerPeriod', parseInt(e.target.value) || 1)}
-                        min="1"
+                        onChange={(e) => handleInputChange('votesPerUserPerPeriod', parseInt(e.target.value) || 0)}
+                        min="0"
                         className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                         data-testid="input-vote-limit-per-period"
                       />
+                      <p className="text-xs text-slate-500 mt-1">
+                        {formData.votesPerUserPerPeriod === 0 ? 'Unlimited votes (user can vote once per submission)' : `Max ${formData.votesPerUserPerPeriod} votes per period`}
+                      </p>
                     </div>
 
                     <div>

@@ -7,7 +7,7 @@ import * as ed25519 from "@noble/ed25519";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and, ne } from "drizzle-orm";
-import { authenticateToken, requireAdmin, requireApproved, generateToken, type AuthRequest } from "./middleware/auth";
+import { authenticateToken, requireAdmin, requireApproved, authenticateOptional, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile, generateAndUploadThumbnail } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
@@ -1727,10 +1727,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Voting routes
-  app.post("/api/votes", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+  app.post("/api/votes", authenticateOptional, async (req: AuthRequest, res) => {
     try {
       const { submissionId } = voteSubmissionSchema.parse(req.body);
-      const userId = req.user!.id;
+      
+      // Check if we need a user ID for voting
+      let userId: string;
+      if (req.user) {
+        userId = req.user.id;
+      } else {
+        // For anonymous voting, use IP address as identifier
+        const clientIP = req.ip || req.connection.remoteAddress || 'anonymous';
+        userId = `anonymous:${clientIP}`;
+      }
 
       // Check if submission exists
       const submission = await storage.getSubmission(submissionId);
@@ -1742,8 +1751,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Cannot vote on unapproved submission" });
       }
 
-      // Check if user is voting for their own submission
-      if (submission.userId === userId) {
+      // Check if user is voting for their own submission (only for authenticated users)
+      if (req.user && submission.userId === req.user.id) {
         return res.status(400).json({ error: "Cannot vote for your own submission" });
       }
 
@@ -1782,11 +1791,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Allow voting even after submission deadline if voting end is different
           }
 
+          // Check voting methods restrictions
+          if (config.votingMethods && config.votingMethods.length > 0) {
+            let canVote = false;
+            
+            // Check if public voting is allowed (anonymous users can vote)
+            if (config.votingMethods.includes('public') && !req.user) {
+              canVote = true;
+            } 
+            // Check if logged users voting is allowed
+            else if (config.votingMethods.includes('logged_users') && req.user) {
+              canVote = true;
+            } 
+            // Check if jury voting is allowed (requires authentication)
+            else if (config.votingMethods.includes('jury') && req.user && config.juryMembers && config.juryMembers.includes(req.user.id)) {
+              canVote = true;
+            }
+            
+            if (!canVote) {
+              if (!req.user) {
+                return res.status(401).json({ 
+                  error: "This contest requires authentication to vote" 
+                });
+              } else {
+                return res.status(403).json({ 
+                  error: "You are not authorized to vote in this contest" 
+                });
+              }
+            }
+          }
+
           // Check jury voting restrictions (only if jury is the ONLY voting method)
           if (config.votingMethods && config.votingMethods.length === 1 && config.votingMethods.includes('jury')) {
             // If ONLY jury voting is enabled, check if user is in jury list
             if (config.juryMembers && Array.isArray(config.juryMembers)) {
-              if (!config.juryMembers.includes(userId)) {
+              if (!req.user || !config.juryMembers.includes(req.user.id)) {
                 return res.status(403).json({ 
                   error: "Only jury members can vote in this contest" 
                 });
@@ -1796,15 +1835,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Check contest-specific voting frequency rules
-        if (config && config.votesPerUserPerPeriod && config.periodDurationHours) {
+        if (config && config.periodDurationHours) {
           const periodStart = new Date(now.getTime() - (config.periodDurationHours * 60 * 60 * 1000));
-          const votesInPeriod = await storage.getVoteCountForSubmissionInPeriod(userId, submissionId, periodStart);
           
-          if (votesInPeriod >= config.votesPerUserPerPeriod) {
+          // 1. Check if user already voted for THIS submission in period
+          const votesForThisSubmission = await storage.getVoteCountForSubmissionInPeriod(userId, submissionId, periodStart);
+          if (votesForThisSubmission >= 1) {
             return res.status(400).json({ 
-              error: `You can only vote ${config.votesPerUserPerPeriod} time(s) per submission every ${config.periodDurationHours} hours`,
+              error: `You have already voted for this submission in the last ${config.periodDurationHours} hours`,
               nextVoteAllowed: new Date(now.getTime() + (config.periodDurationHours * 60 * 60 * 1000))
             });
+          }
+          
+          // 2. Check if user reached vote limit for CONTEST in period (if limit > 0)
+          if (config.votesPerUserPerPeriod > 0) {
+            const totalVotesInPeriod = await storage.getUserTotalVotesInContestInPeriod(userId, submission.contestId!, periodStart);
+            
+            if (totalVotesInPeriod >= config.votesPerUserPerPeriod) {
+              return res.status(400).json({ 
+                error: `You can only vote ${config.votesPerUserPerPeriod} time(s) in this contest every ${config.periodDurationHours} hours`
+              });
+            }
           }
         }
 

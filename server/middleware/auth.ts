@@ -52,6 +52,26 @@ export function requireApproved(req: AuthRequest, res: Response, next: NextFunct
   next();
 }
 
+export function authenticateOptional(req: AuthRequest, res: Response, next: NextFunction) {
+  const token = req.cookies?.authToken;
+
+  if (!token) {
+    // No token provided, user is anonymous
+    req.user = undefined;
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    req.user = decoded;
+    next();
+  } catch (error) {
+    // Invalid token, treat as anonymous
+    req.user = undefined;
+    next();
+  }
+}
+
 export function generateToken(user: { id: string; email: string; role: string; status: string }) {
   return jwt.sign(user, JWT_SECRET, { expiresIn: "7d" });
 }
