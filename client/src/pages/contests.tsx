@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Trophy, Search, Filter, Calendar, Users } from "lucide-react";
 import { useState } from "react";
+import { formatPrizeAmount } from "@/lib/utils";
 
 export default function Contests() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -165,7 +166,7 @@ export default function Contests() {
           <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-prizes">
             <Trophy className="text-primary mx-auto mb-3" size={32} />
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {contests.reduce((total: number, contest: any) => total + (Number(contest.prizeGlory) || 0), 0).toLocaleString()}
+              {formatPrizeAmount(contests.reduce((total: number, contest: any) => total + (Number(contest.prizeGlory) || 0), 0))}
             </h3>
             <p className="text-gray-600 dark:text-gray-400">$GLORY in Prizes</p>
           </div>

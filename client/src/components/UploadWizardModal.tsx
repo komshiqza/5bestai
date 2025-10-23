@@ -20,6 +20,7 @@ const DEBUG_ENABLED = false;
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { SolanaPayment } from "@/components/payment/SolanaPayment";
+import { formatPrizeAmount } from "@/lib/utils";
 
 const CATEGORIES = [
   "Art",
@@ -1073,7 +1074,7 @@ function StepContest({
           <option value="my-gallery">Only in My Gallery</option>
           {contests.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.title} - {c.prizeGlory.toLocaleString()} GLORY
+              {c.title} - {formatPrizeAmount(c.prizeGlory)} GLORY
             </option>
           ))}
         </select>
@@ -1103,7 +1104,7 @@ function StepContest({
                       Pay from Balance
                     </div>
                     <div className="text-xs text-slate-600 dark:text-slate-400">
-                      Your {entryFeeCurrency} balance: {userBalance.toLocaleString()}
+                      Your {entryFeeCurrency} balance: {formatPrizeAmount(userBalance)}
                     </div>
                   </div>
                 </label>
@@ -1161,8 +1162,8 @@ function StepContest({
                 : 'text-blue-700 dark:text-blue-300'
             }`}>
               {hasInsufficientBalance
-                ? `You need ${entryFeeAmount.toLocaleString()} ${entryFeeCurrency} to enter this contest. Your balance: ${userBalance.toLocaleString()} ${entryFeeCurrency}`
-                : `${entryFeeAmount.toLocaleString()} ${entryFeeCurrency} will be deducted from your balance upon submission.`
+                ? `You need ${formatPrizeAmount(entryFeeAmount)} ${entryFeeCurrency} to enter this contest. Your balance: ${formatPrizeAmount(userBalance)} ${entryFeeCurrency}`
+                : `${formatPrizeAmount(entryFeeAmount)} ${entryFeeCurrency} will be deducted from your balance upon submission.`
               }
             </p>
           </div>

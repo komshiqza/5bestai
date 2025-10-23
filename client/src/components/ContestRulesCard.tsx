@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { X, Trophy, Calendar, Users, FileText, Award, CheckSquare, Image, Shield } from "lucide-react";
 import { GlassButton } from "./GlassButton";
+import { formatPrizeAmount } from "@/lib/utils";
 
 interface ContestRulesCardProps {
   isOpen: boolean;
@@ -96,7 +97,7 @@ export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardP
                 <span className="text-sm font-medium">Prize Pool</span>
               </div>
               <p className="text-2xl font-bold text-white" data-testid="text-prize-pool">
-                {contest.prizeGlory.toLocaleString()} GLORY
+                {formatPrizeAmount(contest.prizeGlory)} GLORY
               </p>
             </div>
 
@@ -132,7 +133,7 @@ export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardP
                 {contest.config.prizeDistribution.map((prize: any) => (
                   <div key={prize.place} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                     <span className="text-slate-300 font-medium">{prize.place === 1 ? '🥇' : prize.place === 2 ? '🥈' : prize.place === 3 ? '🥉' : `${prize.place}th`} Place</span>
-                    <span className="text-white font-bold">{prize.value.toLocaleString()} {contest.config.currency || 'GLORY'}</span>
+                    <span className="text-white font-bold">{formatPrizeAmount(prize.value)} {contest.config.currency || 'GLORY'}</span>
                   </div>
                 ))}
               </div>
@@ -204,7 +205,7 @@ export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardP
                 {contest.config.entryFee && contest.config.entryFeeAmount && (
                   <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                     <span>Entry Fee</span>
-                    <span className="text-white font-semibold">{contest.config.entryFeeAmount} {contest.config.currency || 'GLORY'}</span>
+                    <span className="text-white font-semibold">{formatPrizeAmount(contest.config.entryFeeAmount)} {contest.config.currency || 'GLORY'}</span>
                   </div>
                 )}
                 {!contest.config.entryFee && (

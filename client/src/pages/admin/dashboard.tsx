@@ -44,6 +44,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { formatPrizeAmount } from "@/lib/utils";
 
 // Settings form schema
 const settingsFormSchema = z.object({
@@ -1771,7 +1772,7 @@ export default function AdminDashboard() {
                                 <div>
                                   <span className="text-muted-foreground">Prize Pool:</span>
                                   <span className="font-semibold ml-2 text-primary" data-testid={`contest-prize-${contest.id}`}>
-                                    {contest.prizeGlory.toLocaleString()} GLORY
+                                    {formatPrizeAmount(contest.prizeGlory)} GLORY
                                   </span>
                                 </div>
                                 <div>
