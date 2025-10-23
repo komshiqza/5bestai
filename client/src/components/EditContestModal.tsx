@@ -811,9 +811,11 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                     </label>
                     <input
                       type="number"
+                      step="0.01"
+                      min="0"
                       value={formData.prizePool}
                       onChange={(e) => handleInputChange('prizePool', e.target.value)}
-                      placeholder="10000"
+                      placeholder="10000.50"
                       className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                       data-testid="input-prize-pool"
                     />

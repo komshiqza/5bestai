@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, unique, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, numeric, timestamp, boolean, jsonb, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -33,7 +33,7 @@ export const contests = pgTable("contests", {
   rules: text("rules").notNull(),
   coverImageUrl: text("cover_image_url"),
   status: varchar("status", { length: 50 }).notNull().default("draft"), // draft, active, ended, archived
-  prizeGlory: integer("prize_glory").notNull().default(0),
+  prizeGlory: numeric("prize_glory", { precision: 10, scale: 2 }).notNull().default("0"),
   startAt: timestamp("start_at").notNull(),
   endAt: timestamp("end_at").notNull(),
   config: jsonb("config"), // Stores all additional contest configuration (voting rules, prize distribution, etc.)
@@ -181,6 +181,11 @@ export const insertContestSchema = createInsertSchema(contests).omit({
   id: true,
   createdAt: true
 }).extend({
+  prizeGlory: z.union([z.string(), z.number()]).transform(val => {
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    if (isNaN(num) || num < 0) throw new Error('Prize pool must be a positive number');
+    return num.toFixed(2); // Return as string with 2 decimal places
+  }),
   startAt: z.union([z.date(), z.string()]).transform(val => 
     typeof val === 'string' ? new Date(val) : val
   ),
