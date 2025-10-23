@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { formatPrizeAmount } from "@/lib/utils";
 
 export default function ContestDetailPage() {
   const [match, params] = useRoute("/contest/:slug");
@@ -394,7 +395,7 @@ export default function ContestDetailPage() {
               {/* Prize Pool Section */}
               <div className="w-full max-w-lg rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-purple-600/10 p-3 sm:p-4 glow-border backdrop-blur-sm">
                 <h3 className="mb-4 text-center text-xl sm:text-2xl font-bold text-white text-glow">
-                  {contest.prizeGlory.toLocaleString()} {((contest as any).config?.currency) || 'GLORY'}
+                  {formatPrizeAmount(contest.prizeGlory)} {((contest as any).config?.currency) || 'GLORY'}
                 </h3>
                 
                 {/* Dynamic Prize Distribution */}
@@ -429,8 +430,8 @@ export default function ContestDetailPage() {
                             </div>
                             <p className="text-xs font-bold text-white mb-1">
                               {typeof prize.value === 'number' 
-                                ? prize.value.toLocaleString()
-                                : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
+                                ? formatPrizeAmount(prize.value)
+                                : formatPrizeAmount(Math.floor(contest.prizeGlory * (prize.percentage / 100)))
                               }
                             </p>
                             <p className="text-xs text-primary font-medium">{((contest as any).config?.currency) || 'GLORY'}</p>
@@ -465,7 +466,7 @@ export default function ContestDetailPage() {
                         <span className="text-xs font-bold text-black">1st</span>
                       </div>
                       <p className="text-xs sm:text-sm font-bold text-white mb-1">
-                        {Math.floor(contest.prizeGlory * 0.5).toLocaleString()}
+                        {formatPrizeAmount(Math.floor(contest.prizeGlory * 0.5))}
                       </p>
                       <p className="text-xs text-primary font-medium">{((contest as any).config?.currency) || 'GLORY'}</p>
                     </div>
@@ -476,7 +477,7 @@ export default function ContestDetailPage() {
                         <span className="text-xs font-bold text-black">2nd</span>
                       </div>
                       <p className="text-xs sm:text-sm font-bold text-white mb-1">
-                        {Math.floor(contest.prizeGlory * 0.3).toLocaleString()}
+                        {formatPrizeAmount(Math.floor(contest.prizeGlory * 0.3))}
                       </p>
                       <p className="text-xs text-primary font-medium">{((contest as any).config?.currency) || 'GLORY'}</p>
                     </div>
@@ -487,7 +488,7 @@ export default function ContestDetailPage() {
                         <span className="text-xs font-bold text-black">3rd</span>
                       </div>
                       <p className="text-xs sm:text-sm font-bold text-white mb-1">
-                        {Math.floor(contest.prizeGlory * 0.2).toLocaleString()}
+                        {formatPrizeAmount(Math.floor(contest.prizeGlory * 0.2))}
                       </p>
                       <p className="text-xs text-primary font-medium">{((contest as any).config?.currency) || 'GLORY'}</p>
                     </div>
@@ -497,7 +498,7 @@ export default function ContestDetailPage() {
                 {/* Prize Distribution Summary */}
                 <div className="mt-3 pt-3 border-t border-primary/20">
                   <p className="text-xs text-center text-gray-300">
-                    {contest.prizeDistribution ? contest.prizeDistribution.length : 3} Winners • Total Pool: {contest.prizeGlory.toLocaleString()} {((contest as any).config?.currency) || 'GLORY'}
+                    {contest.prizeDistribution ? contest.prizeDistribution.length : 3} Winners • Total Pool: {formatPrizeAmount(contest.prizeGlory)} {((contest as any).config?.currency) || 'GLORY'}
                   </p>
                 </div>
               </div>
@@ -924,8 +925,8 @@ export default function ContestDetailPage() {
                   <div className="text-right">
                     <p className="text-lg font-bold text-white">
                       {typeof prize.value === 'number' 
-                        ? prize.value.toLocaleString()
-                        : Math.floor(contest.prizeGlory * (prize.percentage / 100)).toLocaleString()
+                        ? formatPrizeAmount(prize.value)
+                        : formatPrizeAmount(Math.floor(contest.prizeGlory * (prize.percentage / 100)))
                       }
                     </p>
                     <p className="text-xs text-primary font-medium">{((contest as any).config?.currency) || 'GLORY'}</p>
@@ -937,7 +938,7 @@ export default function ContestDetailPage() {
 
           <div className="pt-3 border-t border-primary/20 text-center">
             <p className="text-sm text-gray-300">
-              Total Pool: <span className="font-bold text-white">{contest?.prizeGlory?.toLocaleString()}</span> {((contest as any).config?.currency) || 'GLORY'}
+              Total Pool: <span className="font-bold text-white">{formatPrizeAmount(contest?.prizeGlory)}</span> {((contest as any).config?.currency) || 'GLORY'}
             </p>
           </div>
         </DialogContent>

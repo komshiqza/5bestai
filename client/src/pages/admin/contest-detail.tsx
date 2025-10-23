@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, isAdmin } from "@/lib/auth";
 import { EditContestModal } from "@/components/EditContestModal";
+import { formatPrizeAmount } from "@/lib/utils";
 
 export default function AdminContestDetail() {
   const { id } = useParams();
@@ -277,7 +278,7 @@ export default function AdminContestDetail() {
                     <Trophy className="h-5 w-5" />
                     <div>
                       <p className="text-sm text-muted-foreground">Prize Pool</p>
-                      <p className="text-xl font-bold">{contest.prizeGlory.toLocaleString()}</p>
+                      <p className="text-xl font-bold">{formatPrizeAmount(contest.prizeGlory)}</p>
                     </div>
                   </div>
                 </CardContent>

@@ -3,6 +3,7 @@ import { GlassButton } from "@/components/ui/glass-button";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { formatPrizeAmount } from "@/lib/utils";
 
 interface Contest {
   id: string;
@@ -137,7 +138,7 @@ export function ContestCard({ contest }: ContestCardProps) {
             <div className="flex items-center gap-1 text-yellow-400">
               <Trophy size={14} />
               <span className="text-xs sm:text-sm font-bold text-white">
-                {contest.prizeGlory.toLocaleString()} {((contest as any).config?.currency) || 'GLORY'}
+                {formatPrizeAmount(contest.prizeGlory)} {((contest as any).config?.currency) || 'GLORY'}
               </span>
             </div>
           </div>
