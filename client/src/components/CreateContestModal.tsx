@@ -940,8 +940,9 @@ export function CreateContestModal({ isOpen, onClose, onSubmit }: CreateContestM
                         </span>
                         <input
                           type="number"
+                          step="0.01"
                           value={prize.value}
-                          onChange={(e) => updatePrizeValue(index, parseInt(e.target.value) || 0)}
+                          onChange={(e) => updatePrizeValue(index, parseFloat(e.target.value) || 0)}
                           className="flex-1 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-violet-500"
                           min="0"
                         />
