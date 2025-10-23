@@ -184,7 +184,7 @@ export const insertContestSchema = createInsertSchema(contests).omit({
   prizeGlory: z.union([z.string(), z.number()]).transform(val => {
     const num = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(num) || num < 0) throw new Error('Prize pool must be a positive number');
-    return num.toFixed(2); // Return as string with 2 decimal places
+    return String(num); // Return as string, preserving original precision
   }),
   startAt: z.union([z.date(), z.string()]).transform(val => 
     typeof val === 'string' ? new Date(val) : val
