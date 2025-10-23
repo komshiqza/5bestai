@@ -1026,7 +1026,7 @@ function StepContest({
 }) {
   const selectedContestData = contests.find((c) => c.id === selectedContest);
   const contestConfig = selectedContestData?.config || {};
-  const hasEntryFee = contestConfig.entryFee && contestConfig.entryFeeAmount;
+  const hasEntryFee = contestConfig.entryFee === true && contestConfig.entryFeeAmount > 0;
   const entryFeeCurrency = contestConfig.entryFeeCurrency || 'GLORY';
   const entryFeeAmount = contestConfig.entryFeeAmount || 0;
   
@@ -1074,11 +1074,45 @@ function StepContest({
           <option value="my-gallery">Only in My Gallery</option>
           {contests.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.title} - {formatPrizeAmount(c.prizeGlory)} GLORY
+              {c.title} - {formatPrizeAmount(c.prizeGlory)} {c.config?.currency || 'GLORY'}
             </option>
           ))}
         </select>
       </div>
+
+      {/* Entry Fee Information - Always show when contest has entry fee */}
+      {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && (
+        <div className={`flex items-start gap-3 rounded-xl border p-4 ${
+          hasInsufficientBalance
+            ? 'border-red-300/60 dark:border-red-700/60 bg-red-50/70 dark:bg-red-950/20'
+            : 'border-blue-300/60 dark:border-blue-700/60 bg-blue-50/70 dark:bg-blue-950/20'
+        }`}>
+          <Info className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+            hasInsufficientBalance
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-blue-600 dark:text-blue-400'
+          }`} />
+          <div className="flex-1">
+            <h4 className={`text-sm font-medium ${
+              hasInsufficientBalance
+                ? 'text-red-900 dark:text-red-100'
+                : 'text-blue-900 dark:text-blue-100'
+            }`}>
+              {hasInsufficientBalance ? 'Insufficient Balance' : 'Entry Fee Required'}
+            </h4>
+            <p className={`text-xs mt-1 ${
+              hasInsufficientBalance
+                ? 'text-red-700 dark:text-red-300'
+                : 'text-blue-700 dark:text-blue-300'
+            }`}>
+              This contest requires an entry fee of {formatPrizeAmount(entryFeeAmount)} {entryFeeCurrency}.
+              {hasInsufficientBalance && (
+                <> Your current {entryFeeCurrency} balance: {formatPrizeAmount(userBalance)}</>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Payment Method Selection */}
       {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && (
@@ -1135,39 +1169,6 @@ function StepContest({
             </div>
           </div>
         ) : null
-      )}
-
-      {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && paymentMethod === 'balance' && (
-        <div className={`flex items-start gap-3 rounded-xl border p-4 ${
-          hasInsufficientBalance
-            ? 'border-red-300/60 dark:border-red-700/60 bg-red-50/70 dark:bg-red-950/20'
-            : 'border-blue-300/60 dark:border-blue-700/60 bg-blue-50/70 dark:bg-blue-950/20'
-        }`}>
-          <Info className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-            hasInsufficientBalance
-              ? 'text-red-600 dark:text-red-400'
-              : 'text-blue-600 dark:text-blue-400'
-          }`} />
-          <div className="flex-1">
-            <h4 className={`text-sm font-medium ${
-              hasInsufficientBalance
-                ? 'text-red-900 dark:text-red-100'
-                : 'text-blue-900 dark:text-blue-100'
-            }`}>
-              {hasInsufficientBalance ? 'Insufficient Balance' : 'Entry Fee Required'}
-            </h4>
-            <p className={`text-xs mt-1 ${
-              hasInsufficientBalance
-                ? 'text-red-700 dark:text-red-300'
-                : 'text-blue-700 dark:text-blue-300'
-            }`}>
-              {hasInsufficientBalance
-                ? `You need ${formatPrizeAmount(entryFeeAmount)} ${entryFeeCurrency} to enter this contest. Your balance: ${formatPrizeAmount(userBalance)} ${entryFeeCurrency}`
-                : `${formatPrizeAmount(entryFeeAmount)} ${entryFeeCurrency} will be deducted from your balance upon submission.`
-              }
-            </p>
-          </div>
-        </div>
       )}
 
       <div className="space-y-4 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
