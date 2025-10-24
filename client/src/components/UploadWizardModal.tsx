@@ -219,16 +219,13 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
     return 'balance';
   }, [selectedContest, activeContests, user]);
 
-  // Auto-select payment method based on contest config and user balance
+  // Initialize payment method only once when contest is selected
   useEffect(() => {
-    const optimalMethod = getOptimalPaymentMethod();
-    if (optimalMethod !== paymentMethod) {
-      if (DEBUG_ENABLED) {
-        console.log('🔄 Auto-switching payment method to:', optimalMethod);
-      }
+    if (selectedContest && selectedContest !== "my-gallery") {
+      const optimalMethod = getOptimalPaymentMethod();
       setPaymentMethod(optimalMethod);
     }
-  }, [selectedContest, activeContests, user, getOptimalPaymentMethod, paymentMethod]);
+  }, [selectedContest]); // Only run when contest changes, not when user manually changes payment method
 
   // Sync AI submission mode when modal opens (only once per unique AI image)
   useEffect(() => {
@@ -1055,7 +1052,7 @@ function StepContest({
             Contest Submission
           </h3>
           <p className="text-xs text-violet-700 dark:text-violet-300 mt-0.5">
-            Submit your work to compete for GLORY rewards
+            Submit your work to compete for {selectedContestData?.config?.currency || 'GLORY'} rewards
           </p>
         </div>
       </div>
@@ -1102,7 +1099,7 @@ function StepContest({
               Payment Method *
             </label>
             <div className="space-y-2">
-              {contestConfig.entryFeePaymentMethods.includes('balance') && !hasInsufficientBalance && (
+              {contestConfig.entryFeePaymentMethods.includes('balance') && (
                 <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   <input
                     type="radio"
