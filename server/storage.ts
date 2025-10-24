@@ -200,6 +200,9 @@ export interface IStorage {
   getEditJobsByUserId(userId: string): Promise<EditJob[]>;
   getEditJobsByImageId(imageId: string): Promise<EditJob[]>;
   updateEditJob(id: string, updates: Partial<EditJob>): Promise<EditJob | undefined>;
+  
+  // Pro Edit: Credit Management
+  refundAiCredits(userId: string, amount: number, reason: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -999,6 +1002,10 @@ export class MemStorage implements IStorage {
   }
 
   async updateEditJob(id: string, updates: Partial<EditJob>): Promise<EditJob | undefined> {
+    throw new Error("MemStorage does not support Pro Edit - use DbStorage");
+  }
+
+  async refundAiCredits(userId: string, amount: number, reason: string): Promise<void> {
     throw new Error("MemStorage does not support Pro Edit - use DbStorage");
   }
 }
@@ -2239,6 +2246,27 @@ export class DbStorage implements IStorage {
       .where(eq(editJobs.id, id))
       .returning();
     return updated;
+  }
+
+  // Pro Edit: Credit Management
+  async refundAiCredits(userId: string, amount: number, reason: string): Promise<void> {
+    console.log(`[ProEdit] Refunding ${amount} AI credits to user ${userId}. Reason: ${reason}`);
+    
+    await db.update(users)
+      .set({
+        imageCredits: sql`${users.imageCredits} + ${amount}`,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+    
+    // Log the refund in audit log
+    await this.createAuditLog({
+      userId,
+      action: 'ai_credits_refund',
+      details: `Refunded ${amount} AI credits. Reason: ${reason}`,
+      ipAddress: 'system',
+      userAgent: 'system'
+    });
   }
 }
 
