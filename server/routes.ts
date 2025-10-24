@@ -53,29 +53,27 @@ export const contestScheduler = new ContestScheduler(storage);
 async function refundEntryFee(submissionId: string): Promise<boolean> {
   try {
     const submission = await storage.getSubmission(submissionId);
-    if (!submission || !submission.contestId) {
+    if (!submission) {
       return false;
     }
 
-    const contest = await storage.getContest(submission.contestId);
-    if (!contest || !contest.config) {
-      return false;
-    }
-
-    const config = contest.config as any;
-    const entryFeeAmount = config.entryFeeAmount;
-    const currency = config.currency || "GLORY";
+    // Read entry fee from submission (captured at creation time)
+    const entryFeeAmount = submission.entryFeeAmount;
+    const currency = submission.entryFeeCurrency || "GLORY";
 
     // Only refund if there's an entry fee
     if (!entryFeeAmount || Number(entryFeeAmount) <= 0) {
       return false;
     }
 
+    // Get contest name for ledger reason
+    const contestName = submission.contestName || (submission.contestId ? (await storage.getContest(submission.contestId))?.title : null) || "contest";
+
     // Create refund transaction
     await storage.createGloryTransaction({
       userId: submission.userId,
       delta: String(entryFeeAmount), // Positive delta to add back
-      reason: `Entry fee refund for rejected submission in contest: ${contest.title}`,
+      reason: `Entry fee refund for rejected submission in contest: ${contestName}`,
       currency
     });
 
@@ -1330,6 +1328,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Note: cloudinaryPublicId stays null to prevent deletion of shared asset
       }
 
+      // Capture entry fee at submission time to preserve original amount
+      const config = contest ? (contest.config as any) : null;
+      const entryFeeAmount = config?.entryFee && config?.entryFeeAmount ? String(config.entryFeeAmount) : null;
+      const entryFeeCurrency = config?.entryFeeCurrency || null;
+
       // Create submission
       const submission = await storage.createSubmission({
         userId: req.user!.id,
@@ -1342,7 +1345,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         thumbnailUrl: finalThumbnailUrl,
         cloudinaryPublicId,
         cloudinaryResourceType,
-        status: "pending" // Requires admin approval
+        status: "pending", // Requires admin approval
+        entryFeeAmount, // Store entry fee amount at submission time
+        entryFeeCurrency // Store entry fee currency at submission time
       });
 
       // Deduct entry fee AFTER submission is successfully created

@@ -60,6 +60,8 @@ export const submissions = pgTable("submissions", {
   status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, rejected
   votesCount: integer("votes_count").notNull().default(0),
   isEnhanced: boolean("is_enhanced").notNull().default(false), // True if edited or upscaled via built-in editor
+  entryFeeAmount: text("entry_fee_amount"), // Entry fee amount paid at submission time (stored as string for precision)
+  entryFeeCurrency: varchar("entry_fee_currency", { length: 20 }), // Currency of entry fee (GLORY, SOL, USDC)
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userContestIdx: index("submissions_user_contest_idx").on(table.userId, table.contestId),
