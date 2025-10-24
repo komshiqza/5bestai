@@ -2250,52 +2250,40 @@ export class DbStorage implements IStorage {
 
   // Pro Edit: Credit Management
   async refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean> {
-    // Use transaction for atomic check-and-refund
-    const refunded = await db.transaction(async (tx) => {
-      // Check if already refunded
-      const [job] = await tx.select()
-        .from(editJobs)
-        .where(eq(editJobs.id, jobId))
-        .limit(1);
-      
-      if (!job) {
-        console.log(`[ProEdit] Refund skipped: Job ${jobId} not found`);
-        return false;
-      }
-      
-      if (job.refundedAt) {
-        console.log(`[ProEdit] Refund skipped: Job ${jobId} already refunded at ${job.refundedAt}`);
-        return false;
-      }
-      
-      // Mark as refunded
-      await tx.update(editJobs)
-        .set({ refundedAt: new Date() })
-        .where(eq(editJobs.id, jobId));
-      
-      // Refund credits
-      await tx.update(users)
-        .set({
-          imageCredits: sql`${users.imageCredits} + ${amount}`,
-          updatedAt: new Date()
-        })
-        .where(eq(users.id, userId));
-      
-      console.log(`[ProEdit] Refunded ${amount} AI credits to user ${userId} for job ${jobId}. Reason: ${reason}`);
-      
-      return true;
-    });
+    // Use atomic UPDATE with WHERE condition instead of transaction (neon-http doesn't support transactions)
+    // This UPDATE will only succeed if refundedAt IS NULL, providing idempotency
+    const [updatedJob] = await db.update(editJobs)
+      .set({ refundedAt: new Date() })
+      .where(and(
+        eq(editJobs.id, jobId),
+        sql`${editJobs.refundedAt} IS NULL`
+      ))
+      .returning();
     
-    // Log the refund in audit log if it happened
-    if (refunded) {
-      await this.createAuditLog({
-        actorUserId: userId,
-        action: 'ai_credits_refund',
-        meta: { amount, reason, jobId }
-      });
+    // If no row was updated, job was already refunded or doesn't exist
+    if (!updatedJob) {
+      console.log(`[ProEdit] Refund skipped: Job ${jobId} not found or already refunded`);
+      return false;
     }
     
-    return refunded;
+    // Refund credits
+    await db.update(users)
+      .set({
+        imageCredits: sql`${users.imageCredits} + ${amount}`,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+    
+    console.log(`[ProEdit] Refunded ${amount} AI credits to user ${userId} for job ${jobId}. Reason: ${reason}`);
+    
+    // Log the refund in audit log
+    await this.createAuditLog({
+      actorUserId: userId,
+      action: 'ai_credits_refund',
+      meta: { amount, reason, jobId }
+    });
+    
+    return true;
   }
 }
 
