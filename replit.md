@@ -35,7 +35,8 @@ Preferred communication style: Simple, everyday language.
 
 ### Contest & Reward System
 - **Contest Lifecycle**: Draft, Active, Ended, Archived.
-- **Reward Distribution**: Top 5 submissions receive tiered GLORY (40%, 25%, 15%, 10%, 10%).
+- **Reward Distribution**: Top 5 submissions receive tiered rewards (40%, 25%, 15%, 10%, 10%) in contest's configured currency (GLORY, SOL, or USDC).
+- **Multi-Currency Support**: Prizes automatically distributed to correct user balance (gloryBalance, solBalance, usdcBalance) based on contest.config.currency.
 - **Voting Flexibility**: Configurable `votesPerUserPerPeriod`, `periodDurationHours`, and `totalVotesPerUser`.
 - **Contest Types**: Image/video specific with submission validation.
 - **Entry Fees**: Optional GLORY, Solana, or USDC entry fees, deducted atomically.
@@ -92,6 +93,22 @@ Preferred communication style: Simple, everyday language.
 ### AI & Image Processing
 - **Replicate API**: AI model integration for image enhancement.
 - **Supabase Storage**: Unlimited storage for Pro Edit enhanced images.
+
+## Recent Updates (October 2025)
+
+### Prize Distribution Currency Fix (October 24, 2025)
+**Problem:** Contest rewards were always distributed as GLORY tokens, regardless of the contest's configured currency setting.
+
+**Solution:**
+- Updated `MemStorage.distributeContestRewards` and `DbStorage.distributeContestRewards` to respect `contest.config.currency`
+- Prize distribution now correctly updates the appropriate user balance field based on currency:
+  - `GLORY` → updates `gloryBalance`
+  - `SOL` → updates `solBalance`
+  - `USDC` → updates `usdcBalance`
+- Ledger entries now include the correct currency field
+- Fixed type conversion for `contest.prizeGlory` (numeric to number) in percentage-based distribution
+
+**Impact:** Contests can now award prizes in SOL, USDC, or GLORY as configured, enabling multi-currency contest economies.
 
 ## Recent Updates (October 2025)
 

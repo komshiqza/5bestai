@@ -62,7 +62,7 @@ import {
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { eq, and, desc, sql, count, countDistinct, sum, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, count, countDistinct, sum, inArray, gte } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -275,7 +275,7 @@ export class MemStorage implements IStorage {
       rules: "Submit original artwork only (images or videos up to 100MB). One submission per user per contest. Voting ends when the contest timer reaches zero. Top 5 submissions win GLORY: 40%, 25%, 15%, 10%, 10%. Admin approval required before submissions are visible.",
       coverImageUrl: null,
       status: "active",
-      prizeGlory: 1000,
+      prizeGlory: "1000",
       startAt: new Date(),
       endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
       config: {
@@ -464,7 +464,7 @@ export class MemStorage implements IStorage {
       id,
       status: insertContest.status || "draft",
       coverImageUrl: insertContest.coverImageUrl || null,
-      prizeGlory: insertContest.prizeGlory || 0,
+      prizeGlory: insertContest.prizeGlory || "0",
       config: insertContest.config || null,
       createdAt: new Date()
     };
@@ -735,7 +735,7 @@ export class MemStorage implements IStorage {
     } else {
       // Fallback to percentage-based distribution
       const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
-      prizes = defaultPercentages.map(p => Math.floor(contest.prizeGlory * p));
+      prizes = defaultPercentages.map(p => Math.floor(Number(contest.prizeGlory) * p));
     }
 
     // Get top N submissions based on number of prizes
@@ -1546,7 +1546,7 @@ export class DbStorage implements IStorage {
     } else {
       // Fallback to percentage-based distribution
       const defaultPercentages = [0.4, 0.25, 0.15, 0.1, 0.1];
-      prizes = defaultPercentages.map(p => Math.floor(contest.prizeGlory * p));
+      prizes = defaultPercentages.map(p => Math.floor(Number(contest.prizeGlory) * p));
     }
 
     // Get top N submissions based on number of prizes
