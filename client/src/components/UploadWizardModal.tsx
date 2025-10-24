@@ -553,7 +553,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
                   Submit Your Work
                 </h2>
                 <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                  Upload your creative work and compete for GLORY rewards
+                  Upload your creative work and compete for rewards
                 </p>
               </div>
               <div className="flex items-center gap-3">
