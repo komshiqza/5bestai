@@ -4012,15 +4012,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
           job.finishedAt = new Date();
         } else if (prediction.status === 'failed') {
           const errorMessage = (prediction.error as string) || 'Processing failed';
-          await storage.updateEditJob(jobId, {
-            status: 'failed',
-            error: errorMessage,
-            finishedAt: new Date()
-          });
+          const MAX_RETRIES = 2;
+          
+          // Check if we should retry (same logic as webhook)
+          if (job.retryCount < MAX_RETRIES) {
+            console.log(`[ProEdit] Polling detected failure for job ${job.id} (retry ${job.retryCount + 1}/${MAX_RETRIES}):`, errorMessage);
+            
+            // Get input version to retry with original image
+            const inputVersion = await storage.getImageVersion(job.inputVersionId);
+            if (inputVersion) {
+              // Create new Replicate prediction for retry
+              const webhookUrl = `https://${req.get('host')}/api/replicate-webhook`;
+              const newPrediction = await replicate.createPrediction(
+                job.preset as any,
+                inputVersion.url,
+                job.params || {},
+                webhookUrl
+              );
+              
+              // Update job with new prediction ID, increment retry count
+              await storage.updateEditJob(jobId, {
+                replicatePredictionId: newPrediction.id,
+                retryCount: job.retryCount + 1,
+                lastAttemptAt: new Date(),
+                error: `Previous attempt failed: ${errorMessage}. Retrying...`
+              });
+              
+              job.retryCount = job.retryCount + 1;
+              job.error = `Previous attempt failed: ${errorMessage}. Retrying...`;
+              
+              console.log(`[ProEdit] Job ${job.id} retrying with new prediction: ${newPrediction.id}`);
+            }
+          } else {
+            // Max retries reached, mark as permanently failed and refund
+            await storage.updateEditJob(jobId, {
+              status: 'failed',
+              error: `Failed after ${MAX_RETRIES} retries: ${errorMessage}`,
+              finishedAt: new Date()
+            });
 
-          job.status = 'failed';
-          job.error = errorMessage;
-          job.finishedAt = new Date();
+            // Refund credits since job failed permanently
+            await storage.refundAiCredits(
+              job.userId,
+              job.costCredits,
+              `Job ${job.id} failed permanently after ${MAX_RETRIES} retries (detected via polling)`
+            );
+
+            job.status = 'failed';
+            job.error = `Failed after ${MAX_RETRIES} retries: ${errorMessage}`;
+            job.finishedAt = new Date();
+            
+            console.log(`[ProEdit] Job ${job.id} permanently failed after ${MAX_RETRIES} retries (polling)`);
+          }
         }
       }
 
@@ -4176,6 +4219,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             error: `Timeout: Job exceeded ${TIMEOUT_MINUTES} minute processing limit`,
             finishedAt: new Date()
           });
+
+          // Refund credits since job timed out
+          await storage.refundAiCredits(
+            job.userId,
+            job.costCredits,
+            `Job ${job.id} timed out after ${TIMEOUT_MINUTES} minutes`
+          );
         }
       }
     } catch (error) {
@@ -4315,6 +4365,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             error: `Failed after ${MAX_RETRIES} retries: ${errorMessage}`,
             finishedAt: new Date()
           });
+
+          // Refund credits since job failed permanently
+          await storage.refundAiCredits(
+            job.userId,
+            job.costCredits,
+            `Job ${job.id} failed permanently after ${MAX_RETRIES} retries`
+          );
 
           console.log(`[ProEdit] Job ${job.id} permanently failed after ${MAX_RETRIES} retries`);
         }
