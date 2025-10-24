@@ -1331,7 +1331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Capture entry fee at submission time to preserve original amount
       const config = contest ? (contest.config as any) : null;
       const entryFeeAmount = config?.entryFee && config?.entryFeeAmount ? String(config.entryFeeAmount) : null;
-      const entryFeeCurrency = config?.entryFeeCurrency || null;
+      const entryFeeCurrency = entryFeeAmount ? (config?.entryFeeCurrency || "GLORY") : null;
 
       // Create submission
       const submission = await storage.createSubmission({
