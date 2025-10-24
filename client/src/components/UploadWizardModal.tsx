@@ -1099,7 +1099,7 @@ function StepContest({
               Payment Method *
             </label>
             <div className="space-y-2">
-              {contestConfig.entryFeePaymentMethods.includes('balance') && (
+              {contestConfig.entryFeePaymentMethods.includes('balance') && !hasInsufficientBalance && (
                 <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   <input
                     type="radio"
