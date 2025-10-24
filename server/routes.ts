@@ -1315,8 +1315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Deduct from user balance when paying from balance (no paymentTxHash)
         // If paymentTxHash exists, payment was made via Solana wallet and already verified
         if (!paymentTxHash) {
-          await storage.updateUserBalance(req.user!.id, -config.entryFeeAmount, currency);
-          
+          // createGloryTransaction automatically updates the user balance
           await storage.createGloryTransaction({
             userId: req.user!.id,
             delta: -config.entryFeeAmount,
