@@ -13,8 +13,8 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 50 }).notNull().default("user"), // user, admin
   status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, approved, banned
   gloryBalance: integer("glory_balance").notNull().default(0),
-  solBalance: integer("sol_balance").notNull().default(0),
-  usdcBalance: integer("usdc_balance").notNull().default(0),
+  solBalance: numeric("sol_balance", { precision: 18, scale: 9 }).notNull().default("0"), // SOL with 9 decimals
+  usdcBalance: numeric("usdc_balance", { precision: 18, scale: 6 }).notNull().default("0"), // USDC with 6 decimals
   imageCredits: integer("image_credits").notNull().default(100), // Credits for AI image generation and upscaling
   withdrawalAddress: varchar("withdrawal_address", { length: 255 }), // Solana withdrawal address
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -83,7 +83,7 @@ export const votes = pgTable("votes", {
 export const gloryLedger = pgTable("glory_ledger", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  delta: integer("delta").notNull(), // positive or negative change
+  delta: numeric("delta", { precision: 18, scale: 9 }).notNull(), // positive or negative change (supports GLORY integers and SOL/USDC decimals)
   currency: varchar("currency", { length: 20 }).notNull().default("GLORY"), // GLORY, SOL, USDC
   reason: text("reason").notNull(),
   contestId: varchar("contest_id").references(() => contests.id, { onDelete: "set null" }),

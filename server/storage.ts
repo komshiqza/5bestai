@@ -226,8 +226,8 @@ export class MemStorage implements IStorage {
       role: "admin",
       status: "approved",
       gloryBalance: 0,
-      solBalance: 0,
-      usdcBalance: 0,
+      solBalance: "0",
+      usdcBalance: "0",
       imageCredits: 100,
       withdrawalAddress: null,
       createdAt: new Date(),
@@ -256,8 +256,8 @@ export class MemStorage implements IStorage {
         role: "user",
         status: "approved",
         gloryBalance: userData.gloryBalance,
-        solBalance: 0,
-        usdcBalance: 0,
+        solBalance: "0",
+        usdcBalance: "0",
         imageCredits: 100,
         withdrawalAddress: null,
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
@@ -310,8 +310,8 @@ export class MemStorage implements IStorage {
       role: insertUser.role || "user",
       status: insertUser.status || "pending",
       gloryBalance: 0,
-      solBalance: 0,
-      usdcBalance: 0,
+      solBalance: "0",
+      usdcBalance: "0",
       imageCredits: 100,
       withdrawalAddress: insertUser.withdrawalAddress || null,
       createdAt: new Date(),
@@ -676,15 +676,19 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateUserBalance(userId: string, delta: number, currency: string): Promise<void> {
+  async updateUserBalance(userId: string, delta: string | number, currency: string): Promise<void> {
     const user = this.users.get(userId);
     if (user) {
       if (currency === "GLORY") {
-        user.gloryBalance += delta;
+        user.gloryBalance += typeof delta === 'string' ? Number(delta) : delta;
       } else if (currency === "SOL") {
-        user.solBalance = (user.solBalance || 0) + delta;
+        const currentBalance = Number(user.solBalance || "0");
+        const deltaNum = typeof delta === 'string' ? Number(delta) : delta;
+        user.solBalance = (currentBalance + deltaNum).toString();
       } else if (currency === "USDC") {
-        user.usdcBalance = (user.usdcBalance || 0) + delta;
+        const currentBalance = Number(user.usdcBalance || "0");
+        const deltaNum = typeof delta === 'string' ? Number(delta) : delta;
+        user.usdcBalance = (currentBalance + deltaNum).toString();
       }
       user.updatedAt = new Date();
       this.users.set(userId, user);
@@ -749,7 +753,7 @@ export class MemStorage implements IStorage {
       // Create transaction with the contest's currency
       await this.createGloryTransaction({
         userId: submission.userId,
-        delta: prize,
+        delta: prize.toString(),
         currency: currency,
         reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
         contestId: contestId,
@@ -1473,11 +1477,12 @@ export class DbStorage implements IStorage {
     await db.delete(gloryLedger).where(eq(gloryLedger.userId, userId));
   }
 
-  async updateUserBalance(userId: string, delta: number, currency: string): Promise<void> {
+  async updateUserBalance(userId: string, delta: string | number, currency: string): Promise<void> {
+    const deltaNum = typeof delta === 'string' ? Number(delta) : delta;
     if (currency === "GLORY") {
       await db.update(users)
         .set({ 
-          gloryBalance: sql`${users.gloryBalance} + ${delta}`,
+          gloryBalance: sql`${users.gloryBalance} + ${deltaNum}`,
           updatedAt: new Date()
         })
         .where(eq(users.id, userId));
@@ -1593,7 +1598,7 @@ export class DbStorage implements IStorage {
 
       ledgerEntries.push({
         userId: submission.userId,
-        delta: prize,
+        delta: prize.toString(),
         currency: currency,
         reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
         contestId: contestId,
