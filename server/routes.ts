@@ -1308,14 +1308,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Deduct entry fee AFTER submission is successfully created
-      // Only deduct from internal balance for GLORY currency (SOL/USDC/tokens are paid via wallet)
       if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount) {
         const config = contest.config as any;
         const currency = config.entryFeeCurrency || "GLORY";
         
-        // Only deduct from user balance if paying with GLORY (internal currency)
-        // For SOL/USDC/tokens, payment happens via Solana wallet (verified by paymentTxHash)
-        if (currency === "GLORY" && !paymentTxHash) {
+        // Deduct from user balance when paying from balance (no paymentTxHash)
+        // If paymentTxHash exists, payment was made via Solana wallet and already verified
+        if (!paymentTxHash) {
           await storage.updateUserBalance(req.user!.id, -config.entryFeeAmount, currency);
           
           await storage.createGloryTransaction({
