@@ -1080,36 +1080,16 @@ function StepContest({
         </select>
       </div>
 
-      {/* Entry Fee Information - Always show when contest has entry fee */}
+      {/* Entry Fee Display */}
       {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && (
-        <div className={`flex items-start gap-3 rounded-xl border p-4 ${
-          hasInsufficientBalance
-            ? 'border-red-300/60 dark:border-red-700/60 bg-red-50/70 dark:bg-red-950/20'
-            : 'border-blue-300/60 dark:border-blue-700/60 bg-blue-50/70 dark:bg-blue-950/20'
-        }`}>
-          <Info className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-            hasInsufficientBalance
-              ? 'text-red-600 dark:text-red-400'
-              : 'text-blue-600 dark:text-blue-400'
-          }`} />
-          <div className="flex-1">
-            <h4 className={`text-sm font-medium ${
-              hasInsufficientBalance
-                ? 'text-red-900 dark:text-red-100'
-                : 'text-blue-900 dark:text-blue-100'
-            }`}>
-              {hasInsufficientBalance ? 'Insufficient Balance' : 'Entry Fee Required'}
-            </h4>
-            <p className={`text-xs mt-1 ${
-              hasInsufficientBalance
-                ? 'text-red-700 dark:text-red-300'
-                : 'text-blue-700 dark:text-blue-300'
-            }`}>
-              This contest requires an entry fee of {formatPrizeAmount(entryFeeAmount)} {entryFeeCurrency}.
-              {hasInsufficientBalance && (
-                <> Your current {entryFeeCurrency} balance: {formatPrizeAmount(userBalance)}</>
-              )}
-            </p>
+        <div className="flex items-center justify-center py-6">
+          <div className="text-center">
+            <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
+              Entry Fee
+            </div>
+            <div className="text-3xl font-bold text-violet-600 dark:text-violet-400">
+              {formatPrizeAmount(entryFeeAmount)} {entryFeeCurrency}
+            </div>
           </div>
         </div>
       )}
@@ -1122,7 +1102,7 @@ function StepContest({
               Payment Method *
             </label>
             <div className="space-y-2">
-              {contestConfig.entryFeePaymentMethods.includes('balance') && (
+              {contestConfig.entryFeePaymentMethods.includes('balance') && !hasInsufficientBalance && (
                 <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   <input
                     type="radio"
