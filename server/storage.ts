@@ -724,6 +724,7 @@ export class MemStorage implements IStorage {
 
     // Get prize distribution from config (fixed amounts) or use default percentages
     const config = contest.config as any;
+    const currency = config?.currency || "GLORY";
     let prizes: number[] = [];
     
     if (config?.prizeDistribution && Array.isArray(config.prizeDistribution)) {
@@ -745,10 +746,11 @@ export class MemStorage implements IStorage {
       const submission = topSubmissions[i];
       const prize = prizes[i];
       
-      // Create glory transaction
+      // Create transaction with the contest's currency
       await this.createGloryTransaction({
         userId: submission.userId,
         delta: prize,
+        currency: currency,
         reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
         contestId: contestId,
         submissionId: submission.id
@@ -1533,6 +1535,7 @@ export class DbStorage implements IStorage {
 
     // Get prize distribution from config (fixed amounts) or use default percentages
     const config = contest.config as any;
+    const currency = config?.currency || "GLORY";
     let prizes: number[] = [];
     
     if (config?.prizeDistribution && Array.isArray(config.prizeDistribution)) {
@@ -1591,6 +1594,7 @@ export class DbStorage implements IStorage {
       ledgerEntries.push({
         userId: submission.userId,
         delta: prize,
+        currency: currency,
         reason: `Contest Prize - ${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} Place`,
         contestId: contestId,
         submissionId: submission.id
@@ -1598,7 +1602,8 @@ export class DbStorage implements IStorage {
       
       userUpdates.push({
         userId: submission.userId,
-        prize: prize
+        prize: prize,
+        currency: currency
       });
     }
 
@@ -1606,14 +1611,30 @@ export class DbStorage implements IStorage {
     if (ledgerEntries.length > 0) {
       await db.insert(gloryLedger).values(ledgerEntries).onConflictDoNothing();
       
-      // Update user balances (unfortunately needs to be individual queries)
+      // Update user balances based on currency (unfortunately needs to be individual queries)
       for (const update of userUpdates) {
-        await db.update(users)
-          .set({ 
-            gloryBalance: sql`${users.gloryBalance} + ${update.prize}`,
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, update.userId));
+        if (update.currency === "GLORY") {
+          await db.update(users)
+            .set({ 
+              gloryBalance: sql`${users.gloryBalance} + ${update.prize}`,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, update.userId));
+        } else if (update.currency === "SOL") {
+          await db.update(users)
+            .set({ 
+              solBalance: sql`${users.solBalance} + ${update.prize}`,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, update.userId));
+        } else if (update.currency === "USDC") {
+          await db.update(users)
+            .set({ 
+              usdcBalance: sql`${users.usdcBalance} + ${update.prize}`,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, update.userId));
+        }
       }
     }
 
