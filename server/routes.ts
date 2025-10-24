@@ -49,6 +49,44 @@ import {
 // Create contest scheduler instance
 export const contestScheduler = new ContestScheduler(storage);
 
+// Helper function to refund entry fee when submission is rejected
+async function refundEntryFee(submissionId: string): Promise<boolean> {
+  try {
+    const submission = await storage.getSubmission(submissionId);
+    if (!submission || !submission.contestId) {
+      return false;
+    }
+
+    const contest = await storage.getContest(submission.contestId);
+    if (!contest || !contest.config) {
+      return false;
+    }
+
+    const config = contest.config as any;
+    const entryFeeAmount = config.entryFeeAmount;
+    const currency = config.currency || "GLORY";
+
+    // Only refund if there's an entry fee
+    if (!entryFeeAmount || Number(entryFeeAmount) <= 0) {
+      return false;
+    }
+
+    // Create refund transaction
+    await storage.createGloryTransaction({
+      userId: submission.userId,
+      delta: String(entryFeeAmount), // Positive delta to add back
+      reason: `Entry fee refund for rejected submission in contest: ${contest.title}`,
+      currency
+    });
+
+    console.log(`Refunded ${entryFeeAmount} ${currency} to user ${submission.userId} for rejected submission ${submissionId}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to refund entry fee for submission ${submissionId}:`, error);
+    return false;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
   
@@ -1498,6 +1536,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Submission not found" });
       }
 
+      // Refund entry fee if submission is rejected
+      if (status === "rejected") {
+        await refundEntryFee(req.params.id);
+      }
+
       // Log admin action
       await storage.createAuditLog({
         actorUserId: req.user!.id,
@@ -1582,6 +1625,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updated = await storage.updateSubmission(id, { status: "rejected" });
         if (updated) {
           count++;
+          // Refund entry fee
+          await refundEntryFee(id);
+          
           await storage.createAuditLog({
             actorUserId: req.user!.id,
             action: "UPDATE_SUBMISSION_STATUS",
