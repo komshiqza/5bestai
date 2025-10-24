@@ -1456,9 +1456,7 @@ export class DbStorage implements IStorage {
   }
 
   async createGloryTransaction(insertTransaction: InsertGloryLedger): Promise<GloryLedger> {
-    console.log("[createGloryTransaction] insertTransaction.delta:", insertTransaction.delta, "type:", typeof insertTransaction.delta);
     const [transaction] = await db.insert(gloryLedger).values(insertTransaction).returning();
-    console.log("[createGloryTransaction] transaction.delta from DB:", transaction.delta, "type:", typeof transaction.delta);
     
     await this.updateUserBalance(transaction.userId, transaction.delta, transaction.currency || "GLORY");
     
@@ -1488,7 +1486,6 @@ export class DbStorage implements IStorage {
 
   async updateUserBalance(userId: string, delta: string | number, currency: string): Promise<void> {
     const deltaNum = typeof delta === 'string' ? Number(delta) : delta;
-    console.log("[updateUserBalance] userId:", userId, "delta:", delta, "deltaNum:", deltaNum, "currency:", currency);
     if (currency === "GLORY") {
       await db.update(users)
         .set({ 
@@ -1504,14 +1501,12 @@ export class DbStorage implements IStorage {
         })
         .where(eq(users.id, userId));
     } else if (currency === "USDC") {
-      console.log("[updateUserBalance] Running USDC update with deltaNum:", deltaNum);
       await db.update(users)
         .set({ 
           usdcBalance: sql`${users.usdcBalance} + ${deltaNum}`,
           updatedAt: new Date()
         })
         .where(eq(users.id, userId));
-      console.log("[updateUserBalance] USDC update complete");
     }
   }
 
