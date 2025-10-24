@@ -202,7 +202,7 @@ export interface IStorage {
   updateEditJob(id: string, updates: Partial<EditJob>): Promise<EditJob | undefined>;
   
   // Pro Edit: Credit Management
-  refundAiCredits(userId: string, amount: number, reason: string): Promise<void>;
+  refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -1005,7 +1005,7 @@ export class MemStorage implements IStorage {
     throw new Error("MemStorage does not support Pro Edit - use DbStorage");
   }
 
-  async refundAiCredits(userId: string, amount: number, reason: string): Promise<void> {
+  async refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean> {
     throw new Error("MemStorage does not support Pro Edit - use DbStorage");
   }
 }
@@ -2249,24 +2249,53 @@ export class DbStorage implements IStorage {
   }
 
   // Pro Edit: Credit Management
-  async refundAiCredits(userId: string, amount: number, reason: string): Promise<void> {
-    console.log(`[ProEdit] Refunding ${amount} AI credits to user ${userId}. Reason: ${reason}`);
-    
-    await db.update(users)
-      .set({
-        imageCredits: sql`${users.imageCredits} + ${amount}`,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId));
-    
-    // Log the refund in audit log
-    await this.createAuditLog({
-      userId,
-      action: 'ai_credits_refund',
-      details: `Refunded ${amount} AI credits. Reason: ${reason}`,
-      ipAddress: 'system',
-      userAgent: 'system'
+  async refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean> {
+    // Use transaction for atomic check-and-refund
+    const refunded = await db.transaction(async (tx) => {
+      // Check if already refunded
+      const [job] = await tx.select()
+        .from(editJobs)
+        .where(eq(editJobs.id, jobId))
+        .limit(1);
+      
+      if (!job) {
+        console.log(`[ProEdit] Refund skipped: Job ${jobId} not found`);
+        return false;
+      }
+      
+      if (job.refundedAt) {
+        console.log(`[ProEdit] Refund skipped: Job ${jobId} already refunded at ${job.refundedAt}`);
+        return false;
+      }
+      
+      // Mark as refunded
+      await tx.update(editJobs)
+        .set({ refundedAt: new Date() })
+        .where(eq(editJobs.id, jobId));
+      
+      // Refund credits
+      await tx.update(users)
+        .set({
+          imageCredits: sql`${users.imageCredits} + ${amount}`,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
+      
+      console.log(`[ProEdit] Refunded ${amount} AI credits to user ${userId} for job ${jobId}. Reason: ${reason}`);
+      
+      return true;
     });
+    
+    // Log the refund in audit log if it happened
+    if (refunded) {
+      await this.createAuditLog({
+        actorUserId: userId,
+        action: 'ai_credits_refund',
+        meta: { amount, reason, jobId }
+      });
+    }
+    
+    return refunded;
   }
 }
 

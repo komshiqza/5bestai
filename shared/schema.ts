@@ -638,6 +638,8 @@ export const editJobs = pgTable("edit_jobs", {
   
   error: text("error"), // Error message if failed
   
+  refundedAt: timestamp("refunded_at"), // Timestamp when credits were refunded (for idempotency)
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   finishedAt: timestamp("finished_at")
 }, (table) => ({

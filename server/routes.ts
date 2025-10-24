@@ -4055,7 +4055,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.refundAiCredits(
               job.userId,
               job.costCredits,
-              `Job ${job.id} failed permanently after ${MAX_RETRIES} retries (detected via polling)`
+              `Job ${job.id} failed permanently after ${MAX_RETRIES} retries (detected via polling)`,
+              job.id
             );
 
             job.status = 'failed';
@@ -4224,7 +4225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.refundAiCredits(
             job.userId,
             job.costCredits,
-            `Job ${job.id} timed out after ${TIMEOUT_MINUTES} minutes`
+            `Job ${job.id} timed out after ${TIMEOUT_MINUTES} minutes`,
+            job.id
           );
         }
       }
@@ -4370,7 +4372,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.refundAiCredits(
             job.userId,
             job.costCredits,
-            `Job ${job.id} failed permanently after ${MAX_RETRIES} retries`
+            `Job ${job.id} failed permanently after ${MAX_RETRIES} retries`,
+            job.id
           );
 
           console.log(`[ProEdit] Job ${job.id} permanently failed after ${MAX_RETRIES} retries`);
