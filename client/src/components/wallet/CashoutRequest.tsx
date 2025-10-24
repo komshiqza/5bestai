@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatDecimalBalance } from "@/lib/utils";
 
 export function CashoutRequest() {
   const { toast } = useToast();
@@ -127,7 +128,7 @@ export function CashoutRequest() {
                     data-testid="input-cashout-amount"
                   />
                   <p className="text-sm text-muted-foreground whitespace-nowrap">
-                    of {getCurrentBalance().toLocaleString()}
+                    of {currency === "GLORY" ? getCurrentBalance().toLocaleString() : formatDecimalBalance(getCurrentBalance())}
                   </p>
                 </div>
               </div>
