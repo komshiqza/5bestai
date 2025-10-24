@@ -1496,14 +1496,14 @@ export class DbStorage implements IStorage {
     } else if (currency === "SOL") {
       await db.update(users)
         .set({ 
-          solBalance: sql`${users.solBalance} + ${delta}`,
+          solBalance: sql`${users.solBalance} + ${deltaNum}`,
           updatedAt: new Date()
         })
         .where(eq(users.id, userId));
     } else if (currency === "USDC") {
       await db.update(users)
         .set({ 
-          usdcBalance: sql`${users.usdcBalance} + ${delta}`,
+          usdcBalance: sql`${users.usdcBalance} + ${deltaNum}`,
           updatedAt: new Date()
         })
         .where(eq(users.id, userId));

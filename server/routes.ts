@@ -1308,24 +1308,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Deduct entry fee AFTER submission is successfully created
-      console.log("[ENTRY FEE DEBUG] Starting entry fee check...");
-      console.log("[ENTRY FEE DEBUG] contest exists:", !!contest);
-      console.log("[ENTRY FEE DEBUG] contest.config:", contest?.config);
-      console.log("[ENTRY FEE DEBUG] paymentTxHash:", paymentTxHash);
-      
       if (contest && (contest.config as any)?.entryFee && (contest.config as any)?.entryFeeAmount) {
         const config = contest.config as any;
         const currency = config.entryFeeCurrency || "GLORY";
         
-        console.log("[ENTRY FEE DEBUG] Entry fee condition met!");
-        console.log("[ENTRY FEE DEBUG] config.entryFee:", config.entryFee);
-        console.log("[ENTRY FEE DEBUG] config.entryFeeAmount:", config.entryFeeAmount);
-        console.log("[ENTRY FEE DEBUG] currency:", currency);
-        
         // Deduct from user balance when paying from balance (no paymentTxHash)
         // If paymentTxHash exists, payment was made via Solana wallet and already verified
         if (!paymentTxHash) {
-          console.log("[ENTRY FEE DEBUG] Deducting entry fee from balance...");
           await storage.updateUserBalance(req.user!.id, -config.entryFeeAmount, currency);
           
           await storage.createGloryTransaction({
@@ -1336,12 +1325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contestId: contestId || null,
             submissionId: submission.id
           });
-          console.log("[ENTRY FEE DEBUG] Entry fee deducted successfully!");
-        } else {
-          console.log("[ENTRY FEE DEBUG] Skipping balance deduction - wallet payment provided");
         }
-      } else {
-        console.log("[ENTRY FEE DEBUG] Entry fee condition NOT met - skipping deduction");
       }
 
       res.status(201).json(submission);
