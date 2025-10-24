@@ -19,6 +19,7 @@ import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { formatDecimalBalance } from "@/lib/utils";
 
 export default function Profile() {
   const { data: user } = useAuth();
@@ -405,13 +406,13 @@ export default function Profile() {
                     <div className="flex justify-between items-center">
                       <span className="text-white/80 text-sm">SOL</span>
                       <span className="text-white text-xl font-bold" data-testid="balance-sol-profile">
-                        {(user.solBalance || 0).toLocaleString()}
+                        {formatDecimalBalance(user.solBalance)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-white/80 text-sm">USDC</span>
                       <span className="text-white text-xl font-bold" data-testid="balance-usdc-profile">
-                        {(user.usdcBalance || 0).toLocaleString()}
+                        {formatDecimalBalance(user.usdcBalance)}
                       </span>
                     </div>
                   </div>
@@ -717,7 +718,7 @@ export default function Profile() {
                                         className={`font-semibold font-mono text-xs md:text-sm ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
                                         data-testid={`transaction-amount-${index}`}
                                       >
-                                        {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} {transaction.currency || "GLORY"}
+                                        {transaction.delta > 0 ? "+" : ""}{formatDecimalBalance(transaction.delta)} {transaction.currency || "GLORY"}
                                       </span>
                                     </td>
                                   </tr>
@@ -749,7 +750,7 @@ export default function Profile() {
                                   <span 
                                     className={`font-semibold font-mono text-sm ${transaction.delta > 0 ? "text-success" : "text-destructive"}`}
                                   >
-                                    {transaction.delta > 0 ? "+" : ""}{transaction.delta.toLocaleString()} {transaction.currency || "GLORY"}
+                                    {transaction.delta > 0 ? "+" : ""}{formatDecimalBalance(transaction.delta)} {transaction.currency || "GLORY"}
                                   </span>
                                 </div>
                                 <div className="text-xs text-muted-foreground">

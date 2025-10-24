@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles, CreditCard } from "lucide-react";
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { formatDecimalBalance } from "@/lib/utils";
 
 export function Navbar() {
   const { data: user } = useAuth();
@@ -99,13 +100,13 @@ export function Navbar() {
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">SOL</span>
                         <span className="text-sm font-semibold" data-testid="balance-sol">
-                          {(user?.solBalance || 0).toLocaleString()}
+                          {formatDecimalBalance(user?.solBalance)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">USDC</span>
                         <span className="text-sm font-semibold" data-testid="balance-usdc">
-                          {(user?.usdcBalance || 0).toLocaleString()}
+                          {formatDecimalBalance(user?.usdcBalance)}
                         </span>
                       </div>
                     </div>
