@@ -831,61 +831,67 @@ export default function AiGeneratorPage() {
                   </GlassButton>
                   
                   {/* Canvas Editor Buttons */}
-                  <div className="h-6 w-px bg-border ml-2" />
-                  <GlassButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => canvasEditorRef.current?.undo()}
-                    disabled={!canvasEditorRef.current?.canUndo()}
-                    className="gap-1.5"
-                    title="Undo"
-                    data-testid="button-undo"
-                  >
-                    <Undo className="h-3.5 w-3.5" />
-                  </GlassButton>
-                  <GlassButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => canvasEditorRef.current?.redo()}
-                    disabled={!canvasEditorRef.current?.canRedo()}
-                    className="gap-1.5"
-                    title="Redo"
-                    data-testid="button-redo"
-                  >
-                    <Redo className="h-3.5 w-3.5" />
-                  </GlassButton>
-                  <GlassButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => canvasEditorRef.current?.download()}
-                    disabled={!canvasEditorMode}
-                    className="gap-1.5"
-                    title="Download"
-                    data-testid="button-download-canvas"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Download
-                  </GlassButton>
-                  <GlassButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      const blob = await canvasEditorRef.current?.save();
-                      if (blob) {
-                        toast({
-                          title: "Saved",
-                          description: "Canvas saved successfully",
-                        });
-                      }
-                    }}
-                    disabled={!canvasEditorMode}
-                    className="gap-1.5"
-                    title="Save"
-                    data-testid="button-save-canvas"
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    Save
-                  </GlassButton>
+                  {canvasEditorMode && (
+                    <>
+                      <div className="h-6 w-px bg-border ml-2" />
+                      <GlassButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => canvasEditorRef.current?.undo()}
+                        disabled={!canvasEditorRef.current?.canUndo()}
+                        className="gap-1.5"
+                        title="Undo"
+                        data-testid="button-undo"
+                      >
+                        <Undo className="h-3.5 w-3.5" />
+                      </GlassButton>
+                      <GlassButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => canvasEditorRef.current?.redo()}
+                        disabled={!canvasEditorRef.current?.canRedo()}
+                        className="gap-1.5"
+                        title="Redo"
+                        data-testid="button-redo"
+                      >
+                        <Redo className="h-3.5 w-3.5" />
+                      </GlassButton>
+                    </>
+                  )}
+                  {canvasEditorMode && (
+                    <>
+                      <GlassButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => canvasEditorRef.current?.download()}
+                        className="gap-1.5"
+                        title="Download"
+                        data-testid="button-download-canvas"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download
+                      </GlassButton>
+                      <GlassButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          const blob = await canvasEditorRef.current?.save();
+                          if (blob) {
+                            toast({
+                              title: "Saved",
+                              description: "Canvas saved successfully",
+                            });
+                          }
+                        }}
+                        className="gap-1.5"
+                        title="Save"
+                        data-testid="button-save-canvas"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        Save
+                      </GlassButton>
+                    </>
+                  )}
                 </div>
               )}
             </div>

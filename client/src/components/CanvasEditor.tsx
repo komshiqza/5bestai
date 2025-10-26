@@ -440,10 +440,21 @@ export const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(
     const applyCrop = () => {
       if (!canvas || !cropRect || !baseImage) return;
 
-      const cropX = cropRect.left!;
-      const cropY = cropRect.top!;
-      const cropWidth = cropRect.width! * cropRect.scaleX!;
-      const cropHeight = cropRect.height! * cropRect.scaleY!;
+      // Get crop rectangle dimensions in canvas space
+      const cropCanvasX = cropRect.left!;
+      const cropCanvasY = cropRect.top!;
+      const cropCanvasWidth = cropRect.width! * cropRect.scaleX!;
+      const cropCanvasHeight = cropRect.height! * cropRect.scaleY!;
+
+      // Get base image position and dimensions in canvas space
+      const imageCanvasLeft = baseImage.left! - (baseImage.width! * baseImage.scaleX!) / 2;
+      const imageCanvasTop = baseImage.top! - (baseImage.height! * baseImage.scaleY!) / 2;
+
+      // Convert crop coordinates from canvas space to image space
+      const cropImageX = (cropCanvasX - imageCanvasLeft) / baseImage.scaleX!;
+      const cropImageY = (cropCanvasY - imageCanvasTop) / baseImage.scaleY!;
+      const cropImageWidth = cropCanvasWidth / baseImage.scaleX!;
+      const cropImageHeight = cropCanvasHeight / baseImage.scaleY!;
 
       // Remove crop rectangle
       canvas.remove(cropRect);
@@ -452,10 +463,10 @@ export const CanvasEditor = forwardRef<CanvasEditorRef, CanvasEditorProps>(
 
       // Apply crop to base image
       baseImage.set({
-        cropX: cropX / baseImage.scaleX!,
-        cropY: cropY / baseImage.scaleY!,
-        width: cropWidth / baseImage.scaleX!,
-        height: cropHeight / baseImage.scaleY!,
+        cropX: cropImageX,
+        cropY: cropImageY,
+        width: cropImageWidth,
+        height: cropImageHeight,
       });
 
       canvas.renderAll();
