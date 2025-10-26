@@ -45,13 +45,17 @@ function ScrollToTop() {
 function Router() {
   const { data: user } = useAuth();
   const { privateMode } = usePrivateMode();
+  const [location] = useLocation();
 
   // Show Footer and BottomNav when: Private Mode is OFF OR user is logged in
   const showFooterAndBottomNav = !privateMode || !!user;
+  
+  // Hide navbar on AI Studio pages (they have their own sidebar)
+  const hideNavbar = location === '/ai-generator' || location.startsWith('/image-editor/');
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      {!hideNavbar && <Navbar />}
       <main className="flex-1 pb-16">
         <ScrollToTop />
         <Switch>
