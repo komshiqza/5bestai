@@ -17,6 +17,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, Undo, Redo, Save } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
+import { Sidebar } from "@/components/layout/Sidebar";
 import * as fabric from "fabric";
 import type { AiGeneration, EditJob } from "@shared/schema";
 
@@ -892,13 +893,15 @@ export default function AiGeneratorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background font-['Space_Grotesk',sans-serif]">
-      {/* Header with Pro Edit Toolbar */}
-      <div className="sticky top-0 z-50 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold tracking-tight">AI Studio</h1>
+    <>
+      <Sidebar />
+      <div className="min-h-screen bg-background font-['Space_Grotesk',sans-serif] ml-20 transition-all duration-300">
+        {/* Header with Pro Edit Toolbar */}
+        <div className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <h1 className="text-2xl font-bold tracking-tight">AI Studio</h1>
               
               {/* Pro Edit Toolbar */}
               {currentImage && (
@@ -1884,7 +1887,7 @@ export default function AiGeneratorPage() {
         userCredits={userCredits}
         currentEditedUrl={lightboxGenerationId === currentGenerationId ? currentImage : null}
       />
-
-    </div>
+      </div>
+    </>
   );
 }
