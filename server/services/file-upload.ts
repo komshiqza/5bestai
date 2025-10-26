@@ -93,7 +93,9 @@ export async function uploadToCloudinary(file: Express.Multer.File): Promise<{
       resourceType,
     };
   } catch (error) {
-    throw new Error(`Cloudinary upload failed: ${error}`);
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error('Cloudinary upload error details:', error);
+    throw new Error(`Cloudinary upload failed: ${errorMessage}`);
   }
 }
 
@@ -117,7 +119,9 @@ export async function uploadFile(file: Express.Multer.File): Promise<{
         cloudinaryResourceType: result.resourceType,
       };
     } catch (error) {
-      console.error("Cloudinary upload failed, falling back to local:", error);
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      console.error("Cloudinary upload failed, falling back to local:", errorMessage);
+      console.error("Full error details:", error);
     }
   }
 
