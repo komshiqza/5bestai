@@ -472,4 +472,27 @@
   .masonry-grid > *:nth-child(6) { animation-delay: 0.6s; }
   .masonry-grid > *:nth-child(7) { animation-delay: 0.7s; }
   .masonry-grid > *:nth-child(8) { animation-delay: 0.8s; }
+
+  /* Wallet button - collapsed sidebar */
+  .wallet-adapter-button-trigger.sidebar-collapsed {
+    display: flex;
+    justify-content: center;
+  }
+
+  .wallet-adapter-button-trigger.sidebar-collapsed .wallet-adapter-button {
+    width: 40px !important;
+    min-width: 40px !important;
+    padding: 8px !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .wallet-adapter-button-trigger.sidebar-collapsed .wallet-adapter-button-start-icon {
+    margin: 0 !important;
+  }
+
+  .wallet-adapter-button-trigger.sidebar-collapsed .wallet-adapter-button > span:not(.wallet-adapter-button-start-icon) {
+    display: none;
+  }
 }

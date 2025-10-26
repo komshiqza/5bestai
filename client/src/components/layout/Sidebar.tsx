@@ -143,7 +143,7 @@ export function Sidebar() {
           {isAuthenticated(user) ? (
             <>
               {/* Wallet Button */}
-              <div className={`wallet-adapter-button-trigger ${isCollapsed ? 'flex justify-center' : ''}`} data-testid="wallet-button">
+              <div className={`wallet-adapter-button-trigger ${isCollapsed ? 'sidebar-collapsed' : ''}`} data-testid="wallet-button">
                 <WalletMultiButton />
               </div>
 
