@@ -1119,51 +1119,6 @@ export default function AiGeneratorPage() {
                     >
                       <Download className="h-3 w-3" />
                     </GlassButton>
-                    <GlassButton
-                      variant="primary"
-                      size="sm"
-                      onClick={async () => {
-                        if (!currentImage) return;
-                        
-                        const title = prompt("Въведете заглавие:");
-                        if (!title) return;
-                        
-                        const description = prompt("Описание (optional):");
-                        
-                        try {
-                          await apiRequest("/api/submissions/save-from-ai", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                              imageUrl: currentImage,
-                              title,
-                              description: description || ""
-                            }),
-                          });
-                          
-                          toast({
-                            title: "Запазено!",
-                            description: "Изображението е добавено в My Submissions",
-                          });
-                        } catch (error) {
-                          console.error("Save to gallery error:", error);
-                          toast({
-                            title: "Грешка",
-                            description: error instanceof Error ? error.message : "Failed to save",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      disabled={!currentImage}
-                      className="h-7 px-2 text-xs gap-1"
-                      title="Save to My Submissions"
-                      data-testid="button-save-to-gallery"
-                    >
-                      <Upload className="h-3 w-3" />
-                      Gallery
-                    </GlassButton>
                   </div>
                   <div className="flex items-center gap-2">
                     <GlassButton

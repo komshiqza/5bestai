@@ -1052,7 +1052,7 @@ function StepContest({
             Contest Submission
           </h3>
           <p className="text-xs text-violet-700 dark:text-violet-300 mt-0.5">
-            Submit your work to compete for {selectedContestData?.config?.currency || 'GLORY'} rewards
+            Submit your work to compete for rewards
           </p>
         </div>
       </div>
@@ -1167,7 +1167,7 @@ function StepContest({
                 I agree to the contest rules and confirm I own the rights to this content *
               </span>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                Top submissions receive GLORY rewards based on contest prize distribution
+                Top submissions receive rewards based on contest prize distribution
               </p>
             </div>
           </label>
