@@ -14,7 +14,7 @@ export function Navbar() {
   const { data: user } = useAuth();
   useUserBalance(); // Keep for auto-refresh functionality
   const logout = useLogout();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const handleLogout = () => {
     logout.mutate();
@@ -58,18 +58,20 @@ export function Navbar() {
                     AI Studio
                   </Button>
                 </Link>
-                <Link href="/upload" data-testid="link-upload">
-                  <GlassButton className="px-4 py-2">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload
-                  </GlassButton>
-                </Link>
+                {location !== '/ai-generator' && (
+                  <Link href="/upload" data-testid="link-upload">
+                    <GlassButton className="px-4 py-2">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload
+                    </GlassButton>
+                  </Link>
+                )}
               </>
             )}
           </div>
 
           {/* Upload Button - Mobile Only */}
-          {isAuthenticated(user) && (
+          {isAuthenticated(user) && location !== '/ai-generator' && (
             <Link href="/upload" data-testid="link-upload-mobile" className="ml-auto mr-3 md:hidden">
               <GlassButton className="px-4 py-2">
                 <Upload className="w-4 h-4" />
