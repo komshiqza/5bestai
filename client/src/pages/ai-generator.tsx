@@ -1836,7 +1836,7 @@ function AiGeneratorPageContent() {
                               <img
                                 alt={gen.prompt}
                                 className="h-full w-full object-cover"
-                                src={gen.editedImageUrl || gen.imageUrl}
+                                src={gen.thumbnailUrl || gen.editedImageUrl || gen.imageUrl}
                                 data-testid={`img-generation-${gen.id}`}
                               />
                               
@@ -2628,7 +2628,7 @@ function AiGeneratorPageContent() {
                           <img
                             alt={gen.prompt}
                             className="h-full w-full object-cover"
-                            src={gen.editedImageUrl || gen.imageUrl}
+                            src={gen.thumbnailUrl || gen.editedImageUrl || gen.imageUrl}
                             data-testid={`img-generation-${gen.id}`}
                           />
                           
