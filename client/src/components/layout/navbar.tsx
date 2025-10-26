@@ -57,33 +57,14 @@ export function Navbar() {
               </Button>
             </Link>
             {isAuthenticated(user) && (
-              <>
-                <Link href="/ai-generator" data-testid="link-ai-generator">
-                  <Button variant="ghost" className="px-4 py-2">
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    AI Studio
-                  </Button>
-                </Link>
-                {location !== '/ai-generator' && (
-                  <Link href="/upload" data-testid="link-upload">
-                    <GlassButton className="px-4 py-2">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload
-                    </GlassButton>
-                  </Link>
-                )}
-              </>
+              <Link href="/ai-generator" data-testid="link-ai-generator">
+                <Button variant="ghost" className="px-4 py-2">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  AI Studio
+                </Button>
+              </Link>
             )}
           </div>
-
-          {/* Upload Button - Mobile Only */}
-          {isAuthenticated(user) && location !== '/ai-generator' && (
-            <Link href="/upload" data-testid="link-upload-mobile" className="ml-auto mr-3 md:hidden">
-              <GlassButton className="px-4 py-2">
-                <Upload className="w-4 h-4" />
-              </GlassButton>
-            </Link>
-          )}
 
           {/* User Actions - Desktop Only */}
           <div className="hidden md:flex items-center space-x-3">

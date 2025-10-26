@@ -130,26 +130,15 @@ export function Sidebar() {
           </Link>
 
           {isAuthenticated(user) && (
-            <>
-              <Link href="/ai-generator" data-testid="link-ai-generator">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {!isCollapsed && <span className="ml-2">AI Studio</span>}
-                </Button>
-              </Link>
-
-              {location !== '/ai-generator' && (
-                <Link href="/upload" data-testid="link-upload">
-                  <GlassButton className={`w-full ${isCollapsed ? 'px-2 justify-center' : 'px-4 py-2'}`}>
-                    <Upload className="h-4 w-4" />
-                    {!isCollapsed && <span className="ml-2">Upload</span>}
-                  </GlassButton>
-                </Link>
-              )}
-            </>
+            <Link href="/ai-generator" data-testid="link-ai-generator">
+              <Button 
+                variant="ghost" 
+                className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
+              >
+                <Sparkles className="h-4 w-4" />
+                {!isCollapsed && <span className="ml-2">AI Studio</span>}
+              </Button>
+            </Link>
           )}
         </nav>
 
