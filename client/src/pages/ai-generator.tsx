@@ -1737,6 +1737,16 @@ export default function AiGeneratorPage() {
                   <TabsTrigger value="versions">Versions</TabsTrigger>
                 </TabsList>
                 
+                {/* Warning Banner */}
+                <div className="mx-4 mb-3 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Изображенията и техните версии се запазват 7 дни</span>
+                  </p>
+                </div>
+                
                 <TabsContent value="history" className="px-4 pb-4 mt-0">
                   <div className="mb-4">
                     <p className="text-xs text-muted-foreground">Your generated images</p>

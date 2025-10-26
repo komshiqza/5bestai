@@ -12,6 +12,7 @@ import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile, generateAndUploadThumbnail } from "./services/file-upload";
 import { calculateRewardDistribution } from "./services/reward-distribution";
 import { ContestScheduler } from "./contest-scheduler";
+import { AiCleanupScheduler } from "./ai-cleanup-scheduler";
 import { verifyTransaction, solanaConnection, solanaConnectionProcessed } from "./solana";
 import { findReference } from "@solana/pay";
 import { PublicKey } from "@solana/web3.js";
@@ -48,6 +49,9 @@ import {
 
 // Create contest scheduler instance
 export const contestScheduler = new ContestScheduler(storage);
+
+// Create AI cleanup scheduler instance
+export const aiCleanupScheduler = new AiCleanupScheduler(storage);
 
 // Helper function to refund entry fee when submission is rejected
 async function refundEntryFee(submissionId: string): Promise<boolean> {
@@ -91,6 +95,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize contest scheduler
   contestScheduler.initialize().catch(err => {
     console.error("Failed to initialize contest scheduler:", err);
+  });
+
+  // Initialize AI cleanup scheduler (runs daily to delete old generations)
+  aiCleanupScheduler.initialize().catch(err => {
+    console.error("Failed to initialize AI cleanup scheduler:", err);
   });
   
   // Track recent GLORY balance requests to prevent duplicates
