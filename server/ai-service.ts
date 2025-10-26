@@ -262,8 +262,9 @@ export interface GenerateImageOptions {
 
 export interface GeneratedImage {
   url: string;
+  thumbnailUrl?: string;
   cloudinaryUrl?: string;
-  cloudinaryPublicId?: string;
+  cloudinaryPublicId?: string | null;
   storageBucket: 'cloudinary' | 'supabase-temp';
   parameters: Record<string, any>;
 }
@@ -460,12 +461,14 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i];
       let uploadedUrl: string | undefined;
-      let cloudinaryPublicId: string | undefined;
+      let thumbnailUrl: string | undefined;
+      let cloudinaryPublicId: string | null | undefined;
       let storageBucket: 'cloudinary' | 'supabase-temp' = 'cloudinary';
 
       try {
         const uploadResult = await downloadAndUploadToCloudinary(imageUrl, false, userId);
         uploadedUrl = uploadResult.url;
+        thumbnailUrl = uploadResult.thumbnailUrl;
         cloudinaryPublicId = uploadResult.publicId;
         storageBucket = uploadResult.isSupabase ? 'supabase-temp' : 'cloudinary';
         
@@ -480,6 +483,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
 
       results.push({
         url: uploadedUrl || imageUrl,
+        thumbnailUrl,
         cloudinaryUrl: uploadedUrl, // Can be either Cloudinary or Supabase URL
         cloudinaryPublicId,
         storageBucket,
@@ -501,6 +505,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
 
 async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boolean = false, userId?: string): Promise<{
   url: string;
+  thumbnailUrl: string;
   publicId: string | null;
   isSupabase: boolean;
 }> {
@@ -531,8 +536,8 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
       const timestamp = Date.now();
       const generationId = `gen_${timestamp}`;
       
-      // Upload to Supabase temporary bucket
-      const { url: supabaseUrl } = await uploadImageToSupabase(
+      // Upload to Supabase temporary bucket (includes thumbnail generation)
+      const { url: supabaseUrl, thumbnailUrl: supabaseThumbnailUrl } = await uploadImageToSupabase(
         imageUrl,
         userId,
         generationId,
@@ -541,6 +546,7 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
 
       return {
         url: supabaseUrl,
+        thumbnailUrl: supabaseThumbnailUrl,
         publicId: null, // No Cloudinary public ID for Supabase images
         isSupabase: true
       };
@@ -604,8 +610,17 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
         result = await cloudinary.uploader.upload(tempFilePath, uploadOptions);
       }
 
+      // Generate Cloudinary transformation URL for thumbnail (400x400)
+      const thumbnailUrl = cloudinary.url(result.public_id, {
+        transformation: [
+          { width: 400, height: 400, crop: 'fill', quality: 'auto:good' },
+          { fetch_format: 'auto' }
+        ]
+      });
+
       return {
         url: result.secure_url,
+        thumbnailUrl,
         publicId: result.public_id,
         isSupabase: false
       };
@@ -625,8 +640,9 @@ export async function upscaleImage(
   options?: { scale?: number; faceEnhance?: boolean; userId?: string }
 ): Promise<{
   url: string;
+  thumbnailUrl?: string;
   cloudinaryUrl?: string;
-  cloudinaryPublicId?: string;
+  cloudinaryPublicId?: string | null;
 }> {
   try {
     console.log("Starting image upscaling with Real-ESRGAN:", imageUrl);
@@ -697,11 +713,13 @@ export async function upscaleImage(
     // Upload upscaled image to Cloudinary with quality optimization
     // Use quality:85 to balance file size (<10MB for free tier) and quality
     let uploadedUrl: string | undefined;
-    let cloudinaryPublicId: string | undefined;
+    let thumbnailUrl: string | undefined;
+    let cloudinaryPublicId: string | null | undefined;
 
     try {
       const uploadResult = await downloadAndUploadToCloudinary(upscaledUrl, true, options?.userId);
       uploadedUrl = uploadResult.url;
+      thumbnailUrl = uploadResult.thumbnailUrl;
       cloudinaryPublicId = uploadResult.publicId;
       
       if (uploadResult.isSupabase) {
@@ -715,6 +733,7 @@ export async function upscaleImage(
 
     return {
       url: uploadedUrl || upscaledUrl,
+      thumbnailUrl,
       cloudinaryUrl: uploadedUrl, // Can be either Cloudinary or Supabase URL
       cloudinaryPublicId,
     };
