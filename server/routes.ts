@@ -3177,6 +3177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               prompt: params.prompt,
               model: result.parameters.model,
               imageUrl: result.url,
+              thumbnailUrl: result.thumbnailUrl,
               parameters: result.parameters,
               cloudinaryPublicId: result.cloudinaryPublicId,
               storageBucket: result.storageBucket,
@@ -3435,7 +3436,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deductCredits(userId, upscaleCost);
       
       let upscaledImageUrl: string;
-      let cloudinaryPublicId: string | undefined;
+      let thumbnailUrl: string | undefined;
+      let cloudinaryPublicId: string | null | undefined;
 
       try {
         // Call upscaling service
@@ -3447,11 +3449,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         upscaledImageUrl = result.url;
+        thumbnailUrl = result.thumbnailUrl;
         cloudinaryPublicId = result.cloudinaryPublicId;
 
-        // Update generation record
+        // Update generation record with upscaled image and its thumbnail
         await storage.updateAiGeneration(params.generationId, {
           editedImageUrl: upscaledImageUrl,
+          thumbnailUrl: thumbnailUrl, // Update thumbnail to point to upscaled version
           isUpscaled: true,
           creditsUsed: generation.creditsUsed + upscaleCost
         });
