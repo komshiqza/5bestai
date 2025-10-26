@@ -50,7 +50,7 @@ export function Sidebar() {
         glass-effect border-r border-border
         transition-all duration-300 ease-in-out
         z-40
-        ${isCollapsed ? 'w-20' : 'w-64'}
+        ${isCollapsed ? 'w-[90px]' : 'w-64'}
       `}
       data-testid="sidebar"
     >

@@ -171,7 +171,7 @@ function ExploreContent() {
   const { isCollapsed } = useSidebar();
 
   return (
-    <div className={`min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+    <div className={`min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-[90px]' : 'md:ml-64'}`}>
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Header & Search */}
         <div className="mb-8">
