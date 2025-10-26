@@ -492,15 +492,15 @@ export default function AiGeneratorPage() {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      // Get container dimensions
-      const container = canvasRef.current!.parentElement;
-      const maxWidth = container?.clientWidth || 800;
-      const maxHeight = container?.clientHeight || 600;
+      // Get available space - look for the flex-1 container
+      const previewContainer = canvasRef.current!.closest('.flex-1');
+      const maxWidth = (previewContainer?.clientWidth || 1200) - 100; // Account for padding
+      const maxHeight = (previewContainer?.clientHeight || 800) - 150; // Account for header/padding
 
-      // Calculate scale to fit image in container
+      // Calculate scale to fit image in available space
       const scaleX = maxWidth / img.width;
       const scaleY = maxHeight / img.height;
-      const scale = Math.min(scaleX, scaleY, 1); // Don't upscale, only downscale
+      const scale = Math.min(scaleX, scaleY);
 
       const canvasWidth = img.width * scale;
       const canvasHeight = img.height * scale;
