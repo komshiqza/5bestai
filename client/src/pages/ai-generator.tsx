@@ -1925,11 +1925,51 @@ export default function AiGeneratorPage() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 rounded-full"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const title = prompt("Въведете заглавие:");
+                                if (!title) return;
+                                
+                                const description = prompt("Описание (optional):");
+                                
+                                try {
+                                  await apiRequest("/api/submissions/save-from-ai", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      imageUrl: versionUrl,
+                                      title,
+                                      description: description || ""
+                                    }),
+                                  });
+                                  
+                                  toast({
+                                    title: "Запазено!",
+                                    description: "Версията е добавена в My Submissions",
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    title: "Грешка",
+                                    description: error instanceof Error ? error.message : "Failed to save",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              title="Save to My Submissions"
+                              data-testid={`button-save-version-${index}`}
+                            >
+                              <Upload className="h-3 w-3" />
+                            </GlassButton>
+                            <GlassButton
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-full"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDownload(versionUrl, `version-${index + 1}`);
                               }}
                               disabled={downloadingId === `version-${index + 1}`}
+                              data-testid={`button-download-version-${index}`}
                             >
                               {downloadingId === `version-${index + 1}` ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -1937,6 +1977,26 @@ export default function AiGeneratorPage() {
                                 <Download className="h-3 w-3" />
                               )}
                             </GlassButton>
+                            {imageVersions.length > 1 && (
+                              <GlassButton
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-full text-red-400 hover:text-red-300"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!confirm("Изтриване на тази версия?")) return;
+                                  
+                                  toast({
+                                    title: "Скоро",
+                                    description: "Delete функцията скоро ще бъде добавена",
+                                  });
+                                }}
+                                title="Delete version"
+                                data-testid={`button-delete-version-${index}`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </GlassButton>
+                            )}
                           </div>
                         </div>
                       ))}
