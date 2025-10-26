@@ -74,6 +74,10 @@ export default function ImageEditor() {
   // History states for undo/redo
   const [historyStack, setHistoryStack] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isRestoring, setIsRestoring] = useState(false); // Flag to prevent history capture during undo/redo
+  
+  // Version selection
+  const [selectedVersion, setSelectedVersion] = useState<'original' | 'edited'>('original');
   
   const [isSaving, setIsSaving] = useState(false);
 
@@ -83,9 +87,23 @@ export default function ImageEditor() {
     enabled: !!id,
   });
 
+  // Get current image URL based on selected version
+  const getCurrentImageUrl = () => {
+    if (!generation) return null;
+    if (selectedVersion === 'edited' && generation.editedImageUrl) {
+      return generation.editedImageUrl;
+    }
+    return generation.imageUrl;
+  };
+
   // Initialize Fabric.js canvas
   useEffect(() => {
-    if (!canvasRef.current || !generation?.imageUrl) return;
+    const imageUrl = getCurrentImageUrl();
+    if (!canvasRef.current || !imageUrl) return;
+
+    // Clear history when version changes or canvas reinitializes
+    setHistoryStack([]);
+    setHistoryIndex(-1);
 
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
       width: 800,
@@ -94,7 +112,7 @@ export default function ImageEditor() {
     });
 
     // Load image onto canvas
-    fabric.FabricImage.fromURL(generation.imageUrl, { crossOrigin: "anonymous" }).then((img: any) => {
+    fabric.FabricImage.fromURL(imageUrl, { crossOrigin: "anonymous" }).then((img: any) => {
       const scale = Math.min(
         fabricCanvas.width! / img.width!,
         fabricCanvas.height! / img.height!
@@ -111,6 +129,13 @@ export default function ImageEditor() {
       fabricCanvas.sendObjectToBack(img);
       fabricCanvas.renderAll();
       setBaseImage(img);
+      
+      // Save initial state to history
+      setTimeout(() => {
+        const json = JSON.stringify(fabricCanvas.toJSON());
+        setHistoryStack([json]);
+        setHistoryIndex(0);
+      }, 100);
     });
 
     setCanvas(fabricCanvas);
@@ -118,7 +143,7 @@ export default function ImageEditor() {
     return () => {
       fabricCanvas.dispose();
     };
-  }, [generation?.imageUrl]);
+  }, [generation?.imageUrl, generation?.editedImageUrl, selectedVersion]);
 
   // Apply filters
   const applyFilters = () => {
@@ -160,6 +185,9 @@ export default function ImageEditor() {
     baseImage.filters = filters;
     baseImage.applyFilters();
     canvas.renderAll();
+    
+    // Save to history after filter changes
+    saveToHistory();
   };
 
   // Apply vignette overlay
@@ -203,6 +231,9 @@ export default function ImageEditor() {
       canvas.renderAll();
       setVignetteOverlay(rect);
     }
+    
+    // Save to history after vignette change
+    saveToHistory();
   }, [vignette, canvas, baseImage]);
 
   useEffect(() => {
@@ -479,7 +510,7 @@ export default function ImageEditor() {
 
   // History management functions
   const saveToHistory = () => {
-    if (!canvas) return;
+    if (!canvas || isRestoring) return;
     
     const json = JSON.stringify(canvas.toJSON());
     setHistoryStack(prev => {
@@ -497,6 +528,7 @@ export default function ImageEditor() {
     const newIndex = historyIndex - 1;
     const state = historyStack[newIndex];
     
+    setIsRestoring(true);
     canvas.loadFromJSON(state).then(() => {
       canvas.renderAll();
       setHistoryIndex(newIndex);
@@ -504,6 +536,7 @@ export default function ImageEditor() {
       const objects = canvas.getObjects();
       const bgImage = objects.find(obj => obj.selectable === false);
       if (bgImage) setBaseImage(bgImage as fabric.FabricImage);
+      setIsRestoring(false);
     });
   };
 
@@ -513,6 +546,7 @@ export default function ImageEditor() {
     const newIndex = historyIndex + 1;
     const state = historyStack[newIndex];
     
+    setIsRestoring(true);
     canvas.loadFromJSON(state).then(() => {
       canvas.renderAll();
       setHistoryIndex(newIndex);
@@ -520,6 +554,7 @@ export default function ImageEditor() {
       const objects = canvas.getObjects();
       const bgImage = objects.find(obj => obj.selectable === false);
       if (bgImage) setBaseImage(bgImage as fabric.FabricImage);
+      setIsRestoring(false);
     });
   };
 
@@ -704,6 +739,22 @@ export default function ImageEditor() {
         <div className="lg:col-span-3">
           <Card>
             <CardContent className="p-4">
+              {/* Version Selector */}
+              {generation?.editedImageUrl && (
+                <div className="mb-4 flex items-center gap-3">
+                  <Label className="text-sm font-medium">Version:</Label>
+                  <Select value={selectedVersion} onValueChange={(val: 'original' | 'edited') => setSelectedVersion(val)}>
+                    <SelectTrigger className="w-[200px]" data-testid="select-version">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="original" data-testid="version-original">Original</SelectItem>
+                      <SelectItem value="edited" data-testid="version-edited">Edited</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
               <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-lg">
                 <canvas ref={canvasRef} data-testid="canvas-editor" />
               </div>
