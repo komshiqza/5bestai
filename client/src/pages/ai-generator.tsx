@@ -578,6 +578,15 @@ export default function AiGeneratorPage() {
     });
   };
 
+  // Force reload canvas by clearing and re-creating it
+  const reloadCanvas = (imageUrl: string) => {
+    if (canvas) {
+      canvas.dispose();
+      setCanvas(null);
+    }
+    setCurrentImage(imageUrl);
+  };
+
   // Handle Pro Edit job completion
   useEffect(() => {
     if (jobStatus?.status === 'succeeded' && jobStatus.outputUrl) {
@@ -997,8 +1006,8 @@ export default function AiGeneratorPage() {
                         if (currentVersionIndex <= 0) return;
                         const newIndex = currentVersionIndex - 1;
                         setCurrentVersionIndex(newIndex);
-                        setCurrentImage(imageVersions[newIndex]);
                         historyIndexRef.current = newIndex;
+                        reloadCanvas(imageVersions[newIndex]);
                       }}
                       disabled={currentVersionIndex <= 0 || imageVersions.length === 0}
                       className="h-7 px-2 text-xs gap-1"
@@ -1014,8 +1023,8 @@ export default function AiGeneratorPage() {
                         if (currentVersionIndex >= imageVersions.length - 1) return;
                         const newIndex = currentVersionIndex + 1;
                         setCurrentVersionIndex(newIndex);
-                        setCurrentImage(imageVersions[newIndex]);
                         historyIndexRef.current = newIndex;
+                        reloadCanvas(imageVersions[newIndex]);
                       }}
                       disabled={currentVersionIndex >= imageVersions.length - 1 || imageVersions.length === 0}
                       className="h-7 px-2 text-xs gap-1"
@@ -1779,8 +1788,8 @@ export default function AiGeneratorPage() {
                           }`}
                           onClick={() => {
                             setCurrentVersionIndex(index);
-                            setCurrentImage(versionUrl);
                             historyIndexRef.current = index;
+                            reloadCanvas(versionUrl);
                           }}
                           data-testid={`version-${index}`}
                         >
