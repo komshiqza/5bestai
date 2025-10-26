@@ -18,6 +18,7 @@ import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 import * as fabric from "fabric";
 import type { AiGeneration, EditJob } from "@shared/schema";
 
@@ -247,7 +248,8 @@ async function uploadToCloudinary(file: File): Promise<string> {
   return data.url;
 }
 
-export default function AiGeneratorPage() {
+function AiGeneratorPageContent() {
+  const { isCollapsed } = useSidebar();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [prompt, setPrompt] = useState("");
@@ -893,9 +895,7 @@ export default function AiGeneratorPage() {
   };
 
   return (
-    <>
-      <Sidebar />
-      <div className="min-h-screen bg-background font-['Space_Grotesk',sans-serif] ml-20 transition-all duration-300">
+    <div className={`min-h-screen bg-background font-['Space_Grotesk',sans-serif] transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
         {/* Header with Pro Edit Toolbar */}
         <div className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -1887,7 +1887,15 @@ export default function AiGeneratorPage() {
         userCredits={userCredits}
         currentEditedUrl={lightboxGenerationId === currentGenerationId ? currentImage : null}
       />
-      </div>
-    </>
+    </div>
+  );
+}
+
+export default function AiGeneratorPage() {
+  return (
+    <SidebarProvider>
+      <Sidebar />
+      <AiGeneratorPageContent />
+    </SidebarProvider>
   );
 }

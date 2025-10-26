@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth, useLogout, isAuthenticated, isAdmin } from "@/lib/auth";
+import { useSidebar } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
 import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,7 +23,7 @@ import {
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const { data: user } = useAuth();
   const logout = useLogout();
   const [location, setLocation] = useLocation();
@@ -73,7 +73,7 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={toggleSidebar}
             className={`p-2 ${isCollapsed ? 'absolute -right-3 top-4 rounded-full bg-background border border-border' : ''}`}
             data-testid="button-toggle-sidebar"
           >
