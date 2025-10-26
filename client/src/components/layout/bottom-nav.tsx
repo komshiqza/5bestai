@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Home, Trophy, LogOut, User, Shield, Image } from "lucide-react";
+import { Home, Trophy, LogOut, User, Shield, Image, Sparkles } from "lucide-react";
 
 export function BottomNav() {
   const { data: user } = useAuth();
@@ -22,6 +22,10 @@ export function BottomNav() {
 
   const isActive = (path: string) => {
     return location === path;
+  };
+  
+  const isAiStudioActive = () => {
+    return location === '/ai-generator' || location.startsWith('/image-editor/');
   };
 
   return (
@@ -48,6 +52,19 @@ export function BottomNav() {
             <span className="text-xs mt-1">Contests</span>
           </Button>
         </Link>
+
+        {/* AI Studio - only for authenticated users */}
+        {isAuthenticated(user) && (
+          <Link href="/ai-generator" data-testid="bottom-link-ai-studio">
+            <Button 
+              variant="ghost" 
+              className={`flex flex-col items-center justify-center h-14 px-4 ${isAiStudioActive() ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <Sparkles className="w-5 h-5" />
+              <span className="text-xs mt-1">AI Studio</span>
+            </Button>
+          </Link>
+        )}
 
         {/* User Menu or Auth Buttons */}
         {isAuthenticated(user) ? (

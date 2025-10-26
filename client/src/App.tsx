@@ -50,13 +50,13 @@ function Router() {
   // Hide navbar on AI Studio pages (they have their own sidebar)
   const isAiStudioPage = location === '/ai-generator' || location.startsWith('/image-editor/');
   
-  // Show Footer and BottomNav when: Private Mode is OFF OR user is logged in, AND not on AI Studio pages
-  const showFooterAndBottomNav = (!privateMode || !!user) && !isAiStudioPage;
+  // Show Footer and BottomNav when: Private Mode is OFF OR user is logged in
+  const showFooterAndBottomNav = !privateMode || !!user;
 
   return (
     <div className="min-h-screen flex flex-col">
       {!isAiStudioPage && <Navbar />}
-      <main className={`flex-1 ${!isAiStudioPage ? 'pb-16' : ''}`}>
+      <main className="flex-1 pb-16">
         <ScrollToTop />
         <Switch>
           <Route path="/login" component={Login} />
