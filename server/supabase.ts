@@ -144,6 +144,75 @@ export async function copySupabaseFile(
   }
 }
 
+export async function copyCloudinaryFile(
+  sourceUrl: string,
+  userId: string
+): Promise<{ url: string; thumbnailUrl: string; publicId: string; resourceType: string }> {
+  try {
+    const { v2: cloudinary } = await import('cloudinary');
+    
+    console.log(`[Cloudinary] Copying AI image to permanent folder: ${sourceUrl}`);
+    
+    // Download the image from source URL
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Generate new public_id in permanent folder
+    const timestamp = Date.now();
+    const newPublicId = `5best-submissions/${userId}_${timestamp}`;
+    
+    console.log(`[Cloudinary] Uploading to permanent folder: ${newPublicId}`);
+    
+    // Upload to Cloudinary using stream for buffer upload
+    const result = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          public_id: newPublicId,
+          resource_type: 'image',
+          quality: 'auto:good',
+          fetch_format: 'auto'
+        },
+        (error: any, result: any) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      
+      uploadStream.end(buffer);
+    });
+    
+    const permanentUrl = result.secure_url;
+    
+    // Generate thumbnail URL using Cloudinary transformations (no upload needed)
+    const thumbnailUrl = cloudinary.url(result.public_id, {
+      transformation: [
+        { width: 400, height: 400, crop: 'fill', quality: 'auto:good' },
+        { fetch_format: 'auto' }
+      ]
+    });
+    
+    console.log(`[Cloudinary] Copy successful. URL: ${permanentUrl}`);
+    console.log(`[Cloudinary] Thumbnail URL: ${thumbnailUrl}`);
+    
+    return {
+      url: permanentUrl,
+      thumbnailUrl,
+      publicId: result.public_id,
+      resourceType: 'image'
+    };
+  } catch (error) {
+    console.error('[Cloudinary] Error copying file:', error);
+    throw new Error(
+      `Failed to copy Cloudinary file: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
 export async function ensureBucketExists(): Promise<void> {
   try {
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();

@@ -1367,17 +1367,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           finalThumbnailUrl = url; // Use Supabase URL directly, no Cloudinary thumbnail needed
           isGalleryReuse = false;
         } else if (isCloudinaryAI) {
-          // AI-generated image is already in Cloudinary, use it directly
-          finalMediaUrl = mediaUrl;
-          finalThumbnailUrl = mediaUrl; // Use same URL as thumbnail
-          // Extract public_id from Cloudinary URL for cleanup on deletion
-          const urlParts = mediaUrl.split('/');
-          const uploadIndex = urlParts.indexOf('upload');
-          if (uploadIndex !== -1 && uploadIndex + 1 < urlParts.length) {
-            const pathAfterUpload = urlParts.slice(uploadIndex + 2).join('/');
-            cloudinaryPublicId = pathAfterUpload.split('.')[0]; // Remove extension
-            cloudinaryResourceType = 'image';
-          }
+          // Copy AI image from temporary folder to permanent folder
+          const { copyCloudinaryFile } = await import("./supabase");
+          const copyResult = await copyCloudinaryFile(mediaUrl, req.user!.id);
+          finalMediaUrl = copyResult.url;
+          finalThumbnailUrl = copyResult.thumbnailUrl;
+          cloudinaryPublicId = copyResult.publicId;
+          cloudinaryResourceType = copyResult.resourceType;
           isGalleryReuse = false;
         } else {
           // Using existing image from permanent gallery - don't delete shared asset
@@ -1497,17 +1493,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use Supabase URL directly as thumbnail
         thumbnailUrl = url;
       } else {
-        // Cloudinary AI image is already in Cloudinary, use it directly
-        permanentUrl = imageUrl;
-        thumbnailUrl = imageUrl;
-        // Extract public_id from Cloudinary URL for cleanup on deletion
-        const urlParts = imageUrl.split('/');
-        const uploadIndex = urlParts.indexOf('upload');
-        if (uploadIndex !== -1 && uploadIndex + 1 < urlParts.length) {
-          const pathAfterUpload = urlParts.slice(uploadIndex + 2).join('/');
-          cloudinaryPublicId = pathAfterUpload.split('.')[0]; // Remove extension
-          cloudinaryResourceType = 'image';
-        }
+        // Copy AI image from temporary folder to permanent folder
+        const { copyCloudinaryFile } = await import("./supabase");
+        const copyResult = await copyCloudinaryFile(imageUrl, userId);
+        permanentUrl = copyResult.url;
+        thumbnailUrl = copyResult.thumbnailUrl;
+        cloudinaryPublicId = copyResult.publicId;
+        cloudinaryResourceType = copyResult.resourceType;
       }
 
       // Create submission without contestId and generationId
