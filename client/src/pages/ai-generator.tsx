@@ -1125,22 +1125,16 @@ export default function AiGeneratorPage() {
                       onClick={async () => {
                         if (!currentImage) return;
                         
-                        const title = prompt("Въведете заглавие:");
+                        const title = window.prompt("Въведете заглавие:");
                         if (!title) return;
                         
-                        const description = prompt("Описание (optional):");
+                        const description = window.prompt("Описание (optional):");
                         
                         try {
-                          await apiRequest("/api/submissions/save-from-ai", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                              imageUrl: currentImage,
-                              title,
-                              description: description || ""
-                            }),
+                          await apiRequest("POST", "/api/submissions/save-from-ai", {
+                            imageUrl: currentImage,
+                            title,
+                            description: description || ""
                           });
                           
                           toast({
