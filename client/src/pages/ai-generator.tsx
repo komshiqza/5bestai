@@ -1117,17 +1117,16 @@ export default function AiGeneratorPage() {
                     </GlassButton>
                     <GlassButton
                       variant="primary"
-                      size="sm"
                       onClick={() => {
                         const gen = generations?.find(g => g.id === currentGenerationId);
                         if (gen) handleOpenSubmitWizard(gen);
                       }}
                       disabled={!currentGenerationId}
-                      className="h-7 px-3 text-xs gap-1"
+                      className="px-4 py-2"
                       title="Upload to Contest or Gallery"
                       data-testid="button-upload"
                     >
-                      <Upload className="h-3 w-3" />
+                      <Upload className="h-4 w-4" />
                       Upload
                     </GlassButton>
                   </div>
