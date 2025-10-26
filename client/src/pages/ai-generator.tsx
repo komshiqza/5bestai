@@ -14,10 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, RotateCcw, Undo, Redo, Save } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, Undo, Redo, Save } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
-import { ImageComparisonSlider } from "@/components/pro-edit/ImageComparisonSlider";
 import * as fabric from "fabric";
 import type { AiGeneration, EditJob } from "@shared/schema";
 
@@ -299,7 +298,6 @@ export default function AiGeneratorPage() {
   const [imageId, setImageId] = useState<string | null>(null);
   const [imageVersions, setImageVersions] = useState<string[]>([]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
-  const [showComparison, setShowComparison] = useState(false);
   
   // Canvas zoom state
   const [zoomLevel, setZoomLevel] = useState<'fit' | '100' | '150' | '200'>('fit');
@@ -484,7 +482,7 @@ export default function AiGeneratorPage() {
 
   // Initialize fabric.js canvas when currentImage changes
   useEffect(() => {
-    if (!canvasRef.current || !currentImage || showComparison) return;
+    if (!canvasRef.current || !currentImage) return;
 
     let fabricCanvas: fabric.Canvas | null = null;
     let isMounted = true;
@@ -585,7 +583,7 @@ export default function AiGeneratorPage() {
         }
       }
     };
-  }, [currentImage, showComparison]);
+  }, [currentImage]);
 
   // Save state to history
   const saveToHistory = (fabricCanvas: fabric.Canvas) => {
@@ -659,7 +657,6 @@ export default function AiGeneratorPage() {
     setCurrentGenerationId(gen.id);
     setProcessingPreset(null);
     setEditJobId(null);
-    setShowComparison(false);
     setCurrentTab("versions");
     
     // Fetch imageId and versions for this generation
@@ -1169,17 +1166,6 @@ export default function AiGeneratorPage() {
                     </GlassButton>
                   </div>
                   <div className="flex items-center gap-2">
-                    {imageVersions.length > 1 && (
-                      <GlassButton
-                        variant={showComparison ? 'primary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setShowComparison(!showComparison)}
-                        className="h-7 px-2 text-xs gap-1"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Compare
-                      </GlassButton>
-                    )}
                     <GlassButton
                       variant={zoomLevel === 'fit' ? 'primary' : 'ghost'}
                       size="sm"
@@ -1219,24 +1205,17 @@ export default function AiGeneratorPage() {
                 <div className="flex-1 flex items-center justify-center overflow-auto bg-muted/10">
                   <div className={`p-8 ${zoomLevel === 'fit' ? 'max-w-4xl w-full' : 'w-auto'}`}>
                     <div className={`relative rounded-2xl glassmorphism p-4`}>
-                      {showComparison && imageVersions.length > 1 ? (
-                        <ImageComparisonSlider
-                          beforeImage={imageVersions[currentVersionIndex > 0 ? currentVersionIndex - 1 : 0]}
-                          afterImage={imageVersions[currentVersionIndex]}
-                        />
-                      ) : (
-                        <canvas
-                          ref={canvasRef}
-                          className="rounded-xl max-w-full"
-                          style={{
-                            transform: zoomLevel === 'fit' ? 'none' : 
-                                      zoomLevel === '100' ? 'scale(1)' :
-                                      zoomLevel === '150' ? 'scale(1.5)' :
-                                      'scale(2)',
-                            transformOrigin: 'center'
-                          }}
-                        />
-                      )}
+                      <canvas
+                        ref={canvasRef}
+                        className="rounded-xl max-w-full"
+                        style={{
+                          transform: zoomLevel === 'fit' ? 'none' : 
+                                    zoomLevel === '100' ? 'scale(1)' :
+                                    zoomLevel === '150' ? 'scale(1.5)' :
+                                    'scale(2)',
+                          transformOrigin: 'center'
+                        }}
+                      />
                       
                       {processingPreset && (
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl flex items-center justify-center">
