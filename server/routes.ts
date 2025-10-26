@@ -1330,11 +1330,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cloudinaryPublicId = uploadResult.cloudinaryPublicId || null;
         cloudinaryResourceType = uploadResult.cloudinaryResourceType || null;
       } else {
-        // Using existing image from gallery - don't delete shared asset
-        finalMediaUrl = mediaUrl;
-        finalThumbnailUrl = thumbnailUrl || null;
-        isGalleryReuse = true;
-        // Note: cloudinaryPublicId stays null to prevent deletion of shared asset
+        // Check if mediaUrl is from temporary AI storage
+        const isSupabase = mediaUrl.includes('supabase.co') && mediaUrl.includes('pro-edit-images');
+        const isCloudinaryAI = mediaUrl.includes('5best-ai-generated');
+        
+        if (isSupabase) {
+          // Copy from temporary Supabase to permanent bucket
+          const timestamp = Date.now();
+          const extension = mediaUrl.split('.').pop()?.split('?')[0] || 'png';
+          const destPath = `${req.user!.id}/submissions/${timestamp}.${extension}`;
+          
+          const { url } = await copySupabaseFile(mediaUrl, destPath);
+          finalMediaUrl = url;
+          finalThumbnailUrl = await generateAndUploadThumbnail(url, 200);
+          isGalleryReuse = false;
+        } else if (isCloudinaryAI) {
+          // Download and re-upload Cloudinary AI image to permanent folder
+          const response = await fetch(mediaUrl);
+          if (!response.ok) {
+            return res.status(400).json({ error: "Failed to download AI image" });
+          }
+          
+          const buffer = await response.arrayBuffer();
+          const timestamp = Date.now();
+          const extension = mediaUrl.split('.').pop()?.split('?')[0] || 'png';
+          const fileName = `${req.user!.id}_${timestamp}.${extension}`;
+          
+          const file = {
+            buffer: Buffer.from(buffer),
+            originalname: fileName,
+            mimetype: response.headers.get('content-type') || 'image/jpeg',
+          } as any;
+          
+          const uploadResult = await uploadFile(file);
+          finalMediaUrl = uploadResult.url;
+          finalThumbnailUrl = uploadResult.thumbnailUrl || null;
+          cloudinaryPublicId = uploadResult.cloudinaryPublicId || null;
+          cloudinaryResourceType = uploadResult.cloudinaryResourceType || null;
+          isGalleryReuse = false;
+        } else {
+          // Using existing image from permanent gallery - don't delete shared asset
+          finalMediaUrl = mediaUrl;
+          finalThumbnailUrl = thumbnailUrl || null;
+          isGalleryReuse = true;
+          // Note: cloudinaryPublicId stays null to prevent deletion of shared asset
+        }
       }
 
       // Capture entry fee at submission time to preserve original amount
