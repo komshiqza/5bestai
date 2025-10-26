@@ -421,6 +421,7 @@ export const aiGenerations = pgTable("ai_generations", {
   prompt: text("prompt").notNull(),
   model: varchar("model", { length: 255 }).notNull(), // e.g., "stability-ai/sdxl"
   imageUrl: text("image_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"), // Thumbnail URL for fast loading (400x400)
   parameters: jsonb("parameters"), // Store generation parameters (width, height, steps, etc.)
   cloudinaryPublicId: varchar("cloudinary_public_id", { length: 255 }),
   storageBucket: varchar("storage_bucket", { length: 50 }).notNull().default("cloudinary"), // cloudinary, supabase-temp
