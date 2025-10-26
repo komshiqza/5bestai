@@ -291,6 +291,7 @@ export default function AiGeneratorPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxGenerationId, setLightboxGenerationId] = useState<string | null>(null);
+  const [currentTab, setCurrentTab] = useState<string>("history");
   
   // Pro Edit canvas state
   const [processingPreset, setProcessingPreset] = useState<string | null>(null);
@@ -659,6 +660,7 @@ export default function AiGeneratorPage() {
     setProcessingPreset(null);
     setEditJobId(null);
     setShowComparison(false);
+    setCurrentTab("versions");
     
     // Fetch imageId and versions for this generation
     try {
@@ -1121,75 +1123,6 @@ export default function AiGeneratorPage() {
                       <Download className="h-3 w-3" />
                     </GlassButton>
                     <GlassButton
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        if (!canvas) return;
-                        
-                        try {
-                          // Convert canvas to blob
-                          const blob = await new Promise<Blob | null>((resolve) => {
-                            canvas.toCanvasElement(2).toBlob((b) => resolve(b), "image/png");
-                          });
-                          
-                          if (!blob) {
-                            toast({
-                              title: "Error",
-                              description: "Failed to generate image from canvas",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          
-                          // Upload to server
-                          const formData = new FormData();
-                          formData.append("image", blob, "canvas-edit.png");
-                          formData.append("imageId", imageId || "canvas");
-                          
-                          const response = await fetch("/api/canvas/save-version", {
-                            method: "POST",
-                            body: formData,
-                            credentials: "include",
-                          });
-                          
-                          if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.error || "Failed to save canvas");
-                          }
-                          
-                          const data = await response.json();
-                          
-                          // Add new version to imageVersions
-                          setImageVersions((prev) => {
-                            const newVersions = [...prev, data.url];
-                            setCurrentVersionIndex(newVersions.length - 1);
-                            historyIndexRef.current = newVersions.length - 1;
-                            return newVersions;
-                          });
-                          
-                          setCurrentImage(data.url);
-                          
-                          toast({
-                            title: "Saved!",
-                            description: "Canvas saved as new version",
-                          });
-                        } catch (error) {
-                          console.error("Save error:", error);
-                          toast({
-                            title: "Save Failed",
-                            description: error instanceof Error ? error.message : "Failed to save canvas",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      disabled={!canvas}
-                      className="h-7 px-2 text-xs gap-1"
-                      title="Save"
-                      data-testid="button-save"
-                    >
-                      <Save className="h-3 w-3" />
-                    </GlassButton>
-                    <GlassButton
                       variant="primary"
                       size="sm"
                       onClick={async () => {
@@ -1288,8 +1221,8 @@ export default function AiGeneratorPage() {
                     <div className={`relative rounded-2xl glassmorphism p-4`}>
                       {showComparison && imageVersions.length > 1 ? (
                         <ImageComparisonSlider
-                          beforeImage={imageVersions[imageVersions.length - 2]}
-                          afterImage={currentImage}
+                          beforeImage={imageVersions[currentVersionIndex > 0 ? currentVersionIndex - 1 : 0]}
+                          afterImage={imageVersions[currentVersionIndex]}
                         />
                       ) : (
                         <canvas
@@ -1776,21 +1709,19 @@ export default function AiGeneratorPage() {
           {/* Right Panel - History & Versions */}
           <div className="hidden lg:block w-[340px] border-l border-border/40 bg-muted/20">
             <div className="h-[calc(100vh-5rem)] overflow-y-auto">
-              <Tabs defaultValue="history" className="w-full">
-                <TabsList className="w-full grid grid-cols-2 mx-4 mt-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
+              {/* Warning Banner */}
+              <div className="mx-4 mt-4 mb-3 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2 font-medium">
+                  <span className="text-base">⚠️</span>
+                  <span>Images will be deleted after 7 days. Download soon!</span>
+                </p>
+              </div>
+              
+              <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+                <TabsList className="w-full grid grid-cols-2 mx-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
                   <TabsTrigger value="history">History</TabsTrigger>
                   <TabsTrigger value="versions">Versions</TabsTrigger>
                 </TabsList>
-                
-                {/* Warning Banner */}
-                <div className="mx-4 mb-3 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Изображенията и техните версии се запазват 7 дни</span>
-                  </p>
-                </div>
                 
                 <TabsContent value="history" className="px-4 pb-4 mt-0">
                   <div className="mb-4">
@@ -1919,47 +1850,8 @@ export default function AiGeneratorPage() {
                             <span className="text-xs font-semibold text-white">v{index + 1}</span>
                           </div>
                           
-                          {/* Hover Actions */}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                            <GlassButton
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-full"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const title = prompt("Въведете заглавие:");
-                                if (!title) return;
-                                
-                                const description = prompt("Описание (optional):");
-                                
-                                try {
-                                  await apiRequest("/api/submissions/save-from-ai", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      imageUrl: versionUrl,
-                                      title,
-                                      description: description || ""
-                                    }),
-                                  });
-                                  
-                                  toast({
-                                    title: "Запазено!",
-                                    description: "Версията е добавена в My Submissions",
-                                  });
-                                } catch (error) {
-                                  toast({
-                                    title: "Грешка",
-                                    description: error instanceof Error ? error.message : "Failed to save",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              title="Save to My Submissions"
-                              data-testid={`button-save-version-${index}`}
-                            >
-                              <Upload className="h-3 w-3" />
-                            </GlassButton>
+                          {/* Hover Actions - Top Right */}
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                             <GlassButton
                               variant="ghost"
                               size="icon"
@@ -1970,6 +1862,7 @@ export default function AiGeneratorPage() {
                               }}
                               disabled={downloadingId === `version-${index + 1}`}
                               data-testid={`button-download-version-${index}`}
+                              title="Download version"
                             >
                               {downloadingId === `version-${index + 1}` ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
