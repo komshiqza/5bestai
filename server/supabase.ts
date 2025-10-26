@@ -28,7 +28,8 @@ export const supabaseAdmin = createClient(
   }
 );
 
-const BUCKET_NAME = 'pro-edit-images';
+const TEMP_BUCKET = 'pro-edit-images';
+const PERMANENT_BUCKET = '5best-submissions';
 
 export async function uploadImageToSupabase(
   imageUrl: string,
@@ -52,10 +53,10 @@ export async function uploadImageToSupabase(
     
     const filePath = `${userId}/${imageId}/${versionId}.${extension}`;
     
-    console.log(`[Supabase] Uploading to bucket: ${BUCKET_NAME}, path: ${filePath}`);
+    console.log(`[Supabase] Uploading to bucket: ${TEMP_BUCKET}, path: ${filePath}`);
     
     const { data, error } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
+      .from(TEMP_BUCKET)
       .upload(filePath, buffer, {
         contentType,
         cacheControl: '3600',
@@ -70,7 +71,7 @@ export async function uploadImageToSupabase(
     console.log(`[Supabase] Upload successful:`, data);
     
     const { data: publicUrlData } = supabaseAdmin.storage
-      .from(BUCKET_NAME)
+      .from(TEMP_BUCKET)
       .getPublicUrl(filePath);
     
     const publicUrl = publicUrlData.publicUrl;
@@ -89,6 +90,60 @@ export async function uploadImageToSupabase(
   }
 }
 
+export async function copySupabaseFile(
+  sourceUrl: string,
+  destPath: string
+): Promise<{ url: string; path: string }> {
+  try {
+    console.log(`[Supabase] Copying file from ${sourceUrl} to ${destPath}`);
+    
+    // Download the source file
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download source file: ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Upload to permanent bucket
+    const { data, error } = await supabaseAdmin.storage
+      .from(PERMANENT_BUCKET)
+      .upload(destPath, buffer, {
+        contentType,
+        cacheControl: '31536000', // 1 year for permanent files
+        upsert: false // Don't overwrite existing files
+      });
+    
+    if (error) {
+      console.error('[Supabase] Copy error:', error);
+      throw error;
+    }
+    
+    console.log(`[Supabase] File copied successfully:`, data);
+    
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(PERMANENT_BUCKET)
+      .getPublicUrl(destPath);
+    
+    const publicUrl = publicUrlData.publicUrl;
+    
+    console.log(`[Supabase] Permanent URL generated: ${publicUrl}`);
+    
+    return {
+      url: publicUrl,
+      path: destPath
+    };
+  } catch (error) {
+    console.error('[Supabase] Error copying file:', error);
+    throw new Error(
+      `Failed to copy file to permanent storage: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
 export async function ensureBucketExists(): Promise<void> {
   try {
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
@@ -98,12 +153,19 @@ export async function ensureBucketExists(): Promise<void> {
       return;
     }
     
-    const bucketExists = buckets?.some(b => b.name === BUCKET_NAME);
+    const tempBucketExists = buckets?.some(b => b.name === TEMP_BUCKET);
+    const permanentBucketExists = buckets?.some(b => b.name === PERMANENT_BUCKET);
     
-    if (bucketExists) {
-      console.log(`[Supabase] Bucket verified: ${BUCKET_NAME}`);
+    if (tempBucketExists) {
+      console.log(`[Supabase] Bucket verified: ${TEMP_BUCKET}`);
     } else {
-      console.warn(`[Supabase] Bucket not found: ${BUCKET_NAME}. Please create it manually in Supabase Dashboard.`);
+      console.warn(`[Supabase] Bucket not found: ${TEMP_BUCKET}. Please create it manually in Supabase Dashboard.`);
+    }
+    
+    if (permanentBucketExists) {
+      console.log(`[Supabase] Bucket verified: ${PERMANENT_BUCKET}`);
+    } else {
+      console.warn(`[Supabase] Bucket not found: ${PERMANENT_BUCKET}. Please create it manually in Supabase Dashboard.`);
     }
   } catch (error) {
     console.error('[Supabase] Error checking bucket:', error);
