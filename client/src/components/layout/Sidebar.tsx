@@ -40,6 +40,7 @@ export function Sidebar() {
   return (
     <aside
       className={`
+        hidden md:flex
         fixed left-0 top-0 h-screen
         glass-effect border-r border-border
         transition-all duration-300 ease-in-out
