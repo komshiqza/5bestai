@@ -295,7 +295,6 @@ function AiGeneratorPageContent() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxGenerationId, setLightboxGenerationId] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<string>("history");
-  const [mobileTab, setMobileTab] = useState<string>("generator");
   
   // Pro Edit canvas state
   const [processingPreset, setProcessingPreset] = useState<string | null>(null);
@@ -317,13 +316,6 @@ function AiGeneratorPageContent() {
   useEffect(() => {
     document.title = "AI Studio - 5best";
   }, []);
-
-  // Set default mobile tab based on currentImage
-  useEffect(() => {
-    if (currentImage && mobileTab === "generator") {
-      setMobileTab("canvas");
-    }
-  }, [currentImage]);
 
   const { data: modelConfigs, isLoading: loadingModels } = useQuery<ModelConfig[]>({
     queryKey: ["/api/ai/models"],
@@ -1044,17 +1036,13 @@ function AiGeneratorPageContent() {
       </div>
 
       <div className="w-full">
-        {/* Mobile Tabs (< lg) */}
+        {/* Mobile Vertical Scroll Layout (< lg) */}
         <div className="lg:hidden">
-          <Tabs value={mobileTab} onValueChange={setMobileTab} className="w-full">
-            <TabsList className="w-full grid grid-cols-3 sticky top-16 z-30 bg-background">
-              <TabsTrigger value="generator" data-testid="tab-generator">Generator</TabsTrigger>
-              <TabsTrigger value="canvas" data-testid="tab-canvas">Canvas</TabsTrigger>
-              <TabsTrigger value="history" data-testid="tab-history">History</TabsTrigger>
-            </TabsList>
-
-            {/* Generator Tab Content */}
-            <TabsContent value="generator" className="mt-0">
+          {/* Section 1: Generator */}
+          <div className="border-b border-border/40">
+            <div className="sticky top-16 bg-background/95 backdrop-blur z-30 p-4 border-b border-border/40">
+              <h2 className="text-lg font-semibold">Generator</h2>
+            </div>
               <div className="min-h-[calc(100vh-10rem)] overflow-y-auto">
                 <div className="p-4 space-y-6">
                   {/* Prompt */}
@@ -1473,10 +1461,13 @@ function AiGeneratorPageContent() {
                   </FancyGlassButton>
                 </div>
               </div>
-            </TabsContent>
+          </div>
 
-            {/* Canvas Tab Content */}
-            <TabsContent value="canvas" className="mt-0">
+          {/* Section 2: Canvas */}
+          <div className="border-b border-border/40">
+            <div className="sticky top-16 bg-background/95 backdrop-blur z-30 p-4 border-b border-border/40">
+              <h2 className="text-lg font-semibold">Canvas</h2>
+            </div>
               <div className="min-h-[calc(100vh-10rem)] relative">
                 {generateMutation.isPending ? (
                   <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-10rem)]">
@@ -1789,10 +1780,13 @@ function AiGeneratorPageContent() {
                   </div>
                 )}
               </div>
-            </TabsContent>
+          </div>
 
-            {/* History Tab Content */}
-            <TabsContent value="history" className="mt-0">
+          {/* Section 3: History */}
+          <div>
+            <div className="sticky top-16 bg-background/95 backdrop-blur z-30 p-4 border-b border-border/40">
+              <h2 className="text-lg font-semibold">History</h2>
+            </div>
               <div className="min-h-[calc(100vh-10rem)] overflow-y-auto">
                 <div className="p-4">
                   {/* Warning Banner */}
@@ -1836,7 +1830,6 @@ function AiGeneratorPageContent() {
                               }`}
                               onClick={() => {
                                 handleSelectGeneration(gen);
-                                setMobileTab("canvas");
                               }}
                               data-testid={`generation-${gen.id}`}
                             >
@@ -1923,7 +1916,6 @@ function AiGeneratorPageContent() {
                                 setCurrentVersionIndex(index);
                                 historyIndexRef.current = index;
                                 reloadCanvas(versionUrl);
-                                setMobileTab("canvas");
                               }}
                               data-testid={`version-${index}`}
                             >
@@ -1968,8 +1960,7 @@ function AiGeneratorPageContent() {
                   </Tabs>
                 </div>
               </div>
-            </TabsContent>
-          </Tabs>
+          </div>
         </div>
 
         {/* Desktop 3-Column Layout (>= lg) */}
