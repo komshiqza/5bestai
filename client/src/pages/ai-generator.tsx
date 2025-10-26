@@ -485,17 +485,28 @@ export default function AiGeneratorPage() {
   useEffect(() => {
     if (!canvasRef.current || !currentImage || showComparison) return;
 
+    let fabricCanvas: fabric.Canvas | null = null;
+    let isMounted = true;
+
     // Clear existing canvas
     if (canvas) {
-      canvas.dispose();
+      try {
+        canvas.dispose();
+      } catch (e) {
+        // Ignore disposal errors
+        console.warn('Canvas disposal warning:', e);
+      }
+      setCanvas(null);
     }
 
     // Load image to get dimensions
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
+      if (!isMounted || !canvasRef.current) return;
+
       // Get available space - look for the flex-1 container
-      const previewContainer = canvasRef.current!.closest('.flex-1');
+      const previewContainer = canvasRef.current.closest('.flex-1');
       const maxWidth = (previewContainer?.clientWidth || 1200) - 100; // Account for padding
       const maxHeight = (previewContainer?.clientHeight || 800) - 150; // Account for header/padding
 
@@ -508,13 +519,15 @@ export default function AiGeneratorPage() {
       const canvasHeight = img.height * scale;
 
       // Create fabric canvas with scaled dimensions
-      const fabricCanvas = new fabric.Canvas(canvasRef.current!, {
+      fabricCanvas = new fabric.Canvas(canvasRef.current, {
         width: canvasWidth,
         height: canvasHeight,
       });
 
       // Load image onto canvas
       fabric.FabricImage.fromURL(currentImage, { crossOrigin: "anonymous" }).then((fabricImg: any) => {
+        if (!isMounted || !fabricCanvas) return;
+
         fabricImg.set({
           left: fabricCanvas.width! / 2,
           top: fabricCanvas.height! / 2,
@@ -532,34 +545,43 @@ export default function AiGeneratorPage() {
 
         // Save initial state to history
         setTimeout(() => {
-          const initialState = JSON.stringify(fabricCanvas.toJSON());
+          if (!isMounted) return;
+          const initialState = JSON.stringify(fabricCanvas!.toJSON());
           setHistoryStack([initialState]);
           historyIndexRef.current = 0;
         }, 100);
       });
 
-      setCanvas(fabricCanvas);
+      if (isMounted) {
+        setCanvas(fabricCanvas);
+      }
 
       // Add event listeners for history
       fabricCanvas.on("object:added", () => {
         if (isRestoring) return;
-        saveToHistory(fabricCanvas);
+        saveToHistory(fabricCanvas!);
       });
       fabricCanvas.on("object:modified", () => {
         if (isRestoring) return;
-        saveToHistory(fabricCanvas);
+        saveToHistory(fabricCanvas!);
       });
       fabricCanvas.on("object:removed", () => {
         if (isRestoring) return;
-        saveToHistory(fabricCanvas);
+        saveToHistory(fabricCanvas!);
       });
     };
 
     img.src = currentImage;
 
     return () => {
-      if (canvas) {
-        canvas.dispose();
+      isMounted = false;
+      if (fabricCanvas) {
+        try {
+          fabricCanvas.dispose();
+        } catch (e) {
+          // Ignore disposal errors during cleanup
+          console.warn('Canvas cleanup warning:', e);
+        }
       }
     };
   }, [currentImage, showComparison]);
@@ -578,12 +600,8 @@ export default function AiGeneratorPage() {
     });
   };
 
-  // Force reload canvas by clearing and re-creating it
+  // Force reload canvas by changing image URL (useEffect handles canvas recreation)
   const reloadCanvas = (imageUrl: string) => {
-    if (canvas) {
-      canvas.dispose();
-      setCanvas(null);
-    }
     setCurrentImage(imageUrl);
   };
 
@@ -635,13 +653,54 @@ export default function AiGeneratorPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
   };
 
-  const handleSelectGeneration = (gen: AiGeneration) => {
+  const handleSelectGeneration = async (gen: AiGeneration) => {
     setCurrentImage(gen.imageUrl);
     setCurrentGenerationId(gen.id);
     setProcessingPreset(null);
     setEditJobId(null);
-    setImageVersions([gen.imageUrl]); // Start fresh version history
     setShowComparison(false);
+    
+    // Fetch imageId and versions for this generation
+    try {
+      const imageIdResponse = await fetch(`/api/pro-edit/image-id?generationId=${gen.id}`, {
+        credentials: "include",
+      });
+      
+      if (imageIdResponse.ok) {
+        const { imageId: fetchedImageId } = await imageIdResponse.json();
+        
+        if (fetchedImageId) {
+          setImageId(fetchedImageId);
+          
+          // Fetch versions
+          const versionsResponse = await fetch(`/api/images/${fetchedImageId}/versions`, {
+            credentials: "include",
+          });
+          
+          if (versionsResponse.ok) {
+            const { versions } = await versionsResponse.json();
+            const versionUrls = versions.map((v: any) => v.url);
+            setImageVersions(versionUrls.length > 0 ? versionUrls : [gen.imageUrl]);
+            setCurrentVersionIndex(versionUrls.length > 0 ? versionUrls.length - 1 : 0);
+          } else {
+            setImageVersions([gen.imageUrl]);
+            setCurrentVersionIndex(0);
+          }
+        } else {
+          // No imageId yet, start fresh
+          setImageId(null);
+          setImageVersions([gen.imageUrl]);
+          setCurrentVersionIndex(0);
+        }
+      } else {
+        setImageVersions([gen.imageUrl]);
+        setCurrentVersionIndex(0);
+      }
+    } catch (error) {
+      console.error("Error fetching versions:", error);
+      setImageVersions([gen.imageUrl]);
+      setCurrentVersionIndex(0);
+    }
   };
 
   const handleGenerate = async () => {

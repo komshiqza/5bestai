@@ -4370,29 +4370,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const thumbnailUrl = await generateAndUploadThumbnail(supabaseUrl, 200);
         console.log(`[ProEdit] Thumbnail URL: ${thumbnailUrl}`);
 
-        // Create output version with Supabase URL and mark as current (atomic operation)
-        const outputVersion = await db.transaction(async (tx) => {
-          // First create the new version with isCurrent=true
-          const [newVersion] = await tx.insert(imageVersions).values({
-            imageId: job.imageId,
-            url: supabaseUrl,
-            thumbnailUrl: thumbnailUrl,
-            source: 'edit',
-            preset: job.preset,
-            params: job.params || {},
-            isCurrent: true
-          }).returning();
+        // Create output version with Supabase URL and mark as current
+        // First unset all other versions for this image
+        await db.update(imageVersions)
+          .set({ isCurrent: false })
+          .where(eq(imageVersions.imageId, job.imageId));
 
-          // Then unset all other versions for this image
-          await tx.update(imageVersions)
-            .set({ isCurrent: false })
-            .where(and(
-              eq(imageVersions.imageId, job.imageId),
-              ne(imageVersions.id, newVersion.id)
-            ));
-
-          return newVersion;
-        });
+        // Then create the new version with isCurrent=true
+        const [outputVersion] = await db.insert(imageVersions).values({
+          imageId: job.imageId,
+          url: supabaseUrl,
+          thumbnailUrl: thumbnailUrl,
+          source: 'edit',
+          preset: job.preset,
+          params: job.params || {},
+          isCurrent: true
+        }).returning();
 
         // Update job
         await storage.updateEditJob(job.id, {
