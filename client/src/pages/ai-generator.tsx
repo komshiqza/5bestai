@@ -657,7 +657,6 @@ export default function AiGeneratorPage() {
     setCurrentGenerationId(gen.id);
     setProcessingPreset(null);
     setEditJobId(null);
-    setCurrentTab("versions");
     
     // Fetch imageId and versions for this generation
     try {
@@ -681,24 +680,35 @@ export default function AiGeneratorPage() {
             const versionUrls = versions.map((v: any) => v.url);
             setImageVersions(versionUrls.length > 0 ? versionUrls : [gen.imageUrl]);
             setCurrentVersionIndex(versionUrls.length > 0 ? versionUrls.length - 1 : 0);
+            
+            // Only switch to Versions tab if there are actual versions (more than just the original)
+            if (versionUrls.length > 0) {
+              setCurrentTab("versions");
+            } else {
+              setCurrentTab("history");
+            }
           } else {
             setImageVersions([gen.imageUrl]);
             setCurrentVersionIndex(0);
+            setCurrentTab("history");
           }
         } else {
           // No imageId yet, start fresh
           setImageId(null);
           setImageVersions([gen.imageUrl]);
           setCurrentVersionIndex(0);
+          setCurrentTab("history");
         }
       } else {
         setImageVersions([gen.imageUrl]);
         setCurrentVersionIndex(0);
+        setCurrentTab("history");
       }
     } catch (error) {
       console.error("Error fetching versions:", error);
       setImageVersions([gen.imageUrl]);
       setCurrentVersionIndex(0);
+      setCurrentTab("history");
     }
   };
 
@@ -1008,20 +1018,6 @@ export default function AiGeneratorPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Upload to Contest Button */}
-              {currentGenerationId && (
-                <GlassButton
-                  onClick={() => {
-                    const gen = generations?.find(g => g.id === currentGenerationId);
-                    if (gen) handleOpenSubmitWizard(gen);
-                  }}
-                  className="gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span className="hidden sm:inline">Upload to Contest</span>
-                </GlassButton>
-              )}
-              
               {/* Credits Display */}
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg glassmorphism">
                 <span className="material-symbols-outlined text-primary text-xl">auto_awesome</span>
@@ -1118,6 +1114,21 @@ export default function AiGeneratorPage() {
                       data-testid="button-download"
                     >
                       <Download className="h-3 w-3" />
+                    </GlassButton>
+                    <GlassButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        const gen = generations?.find(g => g.id === currentGenerationId);
+                        if (gen) handleOpenSubmitWizard(gen);
+                      }}
+                      disabled={!currentGenerationId}
+                      className="h-7 px-3 text-xs gap-1"
+                      title="Upload to Contest or Gallery"
+                      data-testid="button-upload"
+                    >
+                      <Upload className="h-3 w-3" />
+                      Upload
                     </GlassButton>
                   </div>
                   <div className="flex items-center gap-2">
