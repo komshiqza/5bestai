@@ -96,6 +96,26 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (October 2025)
 
+### Automatic Thumbnail Generation for AI Images (October 26, 2025)
+**Problem:** Loading full-resolution AI-generated images in grid displays (AI Generator history panel, admin dashboard) caused slow page load times and excessive bandwidth usage.
+
+**Solution:**
+- **Added `thumbnailUrl` field** to `ai_generations` table to store optimized preview images
+- **Smart thumbnail strategy:**
+  - Cloudinary images: Use transformation URLs (no additional storage)
+  - Supabase images: Generate and upload 400x400 thumbnails using Sharp library
+  - `thumb_` prefix for Supabase thumbnail files
+- **Automatic generation:**
+  - Thumbnails created during initial upload to Cloudinary/Supabase
+  - Both generateImage and upscaleImage propagate thumbnailUrl through full call chain
+  - Frontend uses fallback chain: `thumbnailUrl || editedImageUrl || imageUrl`
+- **Performance optimization:**
+  - Reduces bandwidth for grid displays by ~95% (400x400 vs 4096x4096)
+  - Maintains full resolution for lightbox/detail views
+  - Graceful fallback if thumbnail generation fails
+
+**Impact:** Grid displays now load significantly faster with optimized 400x400 previews, while full-resolution images are only loaded when viewing individual images in detail mode.
+
 ### Size-Based Storage Routing with Full Metadata Tracking (October 26, 2025)
 **Problem:** AI-generated images >= 10MB need to use Supabase storage due to Cloudinary free tier limits, but the system wasn't tracking which storage backend was used for each image.
 
