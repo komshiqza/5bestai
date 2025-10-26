@@ -620,7 +620,7 @@ export const editJobs = pgTable("edit_jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   imageId: varchar("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
-  inputVersionId: varchar("input_version_id").notNull().references(() => imageVersions.id, { onDelete: "set null" }),
+  inputVersionId: varchar("input_version_id").references(() => imageVersions.id, { onDelete: "set null" }),
   
   preset: varchar("preset", { length: 50 }).notNull(), // 'clean', 'upscale4x', 'portrait_pro', etc.
   params: jsonb("params").notNull(), // Preset parameters

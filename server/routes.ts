@@ -4133,20 +4133,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentVersionId: null
       });
 
-      // Create original version record
-      const originalVersion = await storage.createImageVersion({
-        imageId: image.id,
-        url: imageUrl,
-        source: 'upload',
-        preset: null,
-        params: {}
-      });
-
-      // Update image with current version
-      await storage.updateImage(image.id, {
-        currentVersionId: originalVersion.id
-      });
-
       // Create Replicate prediction
       // Force HTTPS for webhook URL (Replicate requires HTTPS)
       const webhookUrl = `https://${req.get('host')}/api/replicate-webhook`;
@@ -4159,11 +4145,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         webhookUrl
       );
 
-      // Create edit job
+      // Create edit job (no inputVersionId - we only create the edited version)
       const job = await storage.createEditJob({
         userId,
         imageId: image.id,
-        inputVersionId: originalVersion.id,
+        inputVersionId: null,
         preset,
         params: {},
         status: 'running',
@@ -4249,14 +4235,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (job.retryCount < MAX_RETRIES) {
             console.log(`[ProEdit] Polling detected failure for job ${job.id} (retry ${job.retryCount + 1}/${MAX_RETRIES}):`, errorMessage);
             
-            // Get input version to retry with original image
-            const inputVersion = await storage.getImageVersion(job.inputVersionId);
-            if (inputVersion) {
-              // Create new Replicate prediction for retry
+            // Get image to retry with original URL
+            const image = await storage.getImage(job.imageId);
+            if (image) {
+              // Create new Replicate prediction for retry using original image URL
               const webhookUrl = `https://${req.get('host')}/api/replicate-webhook`;
               const newPrediction = await replicate.createPrediction(
                 job.preset as any,
-                inputVersion.url,
+                image.originalUrl,
                 job.params || {},
                 webhookUrl
               );
@@ -4559,17 +4545,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (job.retryCount < MAX_RETRIES) {
           console.log(`[ProEdit] Job ${job.id} failed (retry ${job.retryCount + 1}/${MAX_RETRIES}):`, errorMessage);
           
-          // Get input version to retry with original image
-          const inputVersion = await storage.getImageVersion(job.inputVersionId);
-          if (!inputVersion) {
-            throw new Error(`Input version not found: ${job.inputVersionId}`);
+          // Get image to retry with original URL
+          const image = await storage.getImage(job.imageId);
+          if (!image) {
+            throw new Error(`Image not found: ${job.imageId}`);
           }
           
-          // Create new Replicate prediction for retry
+          // Create new Replicate prediction for retry using original image URL
           const webhookUrl = `https://${req.get('host')}/api/replicate-webhook`;
           const newPrediction = await replicate.createPrediction(
             job.preset as any,
-            inputVersion.url,
+            image.originalUrl,
             job.params || {},
             webhookUrl
           );
