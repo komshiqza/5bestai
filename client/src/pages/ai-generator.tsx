@@ -492,10 +492,23 @@ export default function AiGeneratorPage() {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      // Create fabric canvas with image dimensions
+      // Get container dimensions
+      const container = canvasRef.current!.parentElement;
+      const maxWidth = container?.clientWidth || 800;
+      const maxHeight = container?.clientHeight || 600;
+
+      // Calculate scale to fit image in container
+      const scaleX = maxWidth / img.width;
+      const scaleY = maxHeight / img.height;
+      const scale = Math.min(scaleX, scaleY, 1); // Don't upscale, only downscale
+
+      const canvasWidth = img.width * scale;
+      const canvasHeight = img.height * scale;
+
+      // Create fabric canvas with scaled dimensions
       const fabricCanvas = new fabric.Canvas(canvasRef.current!, {
-        width: img.width,
-        height: img.height,
+        width: canvasWidth,
+        height: canvasHeight,
       });
 
       // Load image onto canvas
@@ -505,6 +518,8 @@ export default function AiGeneratorPage() {
           top: fabricCanvas.height! / 2,
           originX: "center",
           originY: "center",
+          scaleX: scale,
+          scaleY: scale,
           selectable: false,
           evented: false,
         });
