@@ -13,6 +13,7 @@ import { PrivateModeGuard } from "@/components/PrivateModeGuard";
 import { PrivateModeProvider, usePrivateMode } from "@/lib/private-mode-context";
 import { useAuth } from "@/lib/auth";
 import Home from "@/pages/home";
+import Explore from "@/pages/explore";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Contests from "@/pages/contests";
@@ -50,8 +51,11 @@ function Router() {
   // Hide navbar on AI Studio pages (they have their own sidebar)
   const isAiStudioPage = location === '/ai-generator' || location.startsWith('/image-editor/');
   
-  // Show Footer and BottomNav when: Private Mode is OFF OR user is logged in
-  const showFooterAndBottomNav = !privateMode || !!user;
+  // Hide footer on Explore page (infinite scroll) and AI Studio pages
+  const hideFooter = location === '/explore' || isAiStudioPage;
+  
+  // Show Footer and BottomNav when: Private Mode is OFF OR user is logged in, AND not on pages with infinity scroll
+  const showFooterAndBottomNav = (!privateMode || !!user) && !hideFooter;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -65,6 +69,7 @@ function Router() {
             <PrivateModeGuard>
               <Switch>
                 <Route path="/" component={Home} />
+                <Route path="/explore" component={Explore} />
                 <Route path="/roadmap" component={RoadmapPage} />
                 <Route path="/pricing" component={PricingPage} />
                 <Route path="/subscription" component={SubscriptionPage} />

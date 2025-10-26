@@ -1110,7 +1110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const { contestId, userId, status, page, limit } = req.query;
+      const { contestId, userId, status, tag, page, limit } = req.query;
       
       // Parse pagination parameters
       const pageNum = page ? parseInt(page as string, 10) : 1;
@@ -1126,6 +1126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contestId: contestId as string | undefined,
           userId: userId as string | undefined,
           status: status as string | undefined,
+          tag: tag as string | undefined,
           page: validPage,
           limit: validLimit
         });
@@ -1137,6 +1138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contestId: contestId as string | undefined,
         userId: userId as string | undefined,
         status: "approved",
+        tag: tag as string | undefined,
         page: validPage,
         limit: validLimit
       });
@@ -1147,6 +1149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contestId: contestId as string | undefined,
           userId: currentUserId,
           status: undefined, // Get all statuses for own submissions
+          tag: tag as string | undefined,
           page: 1,
           limit: 1000 // Get all user's own submissions without limit
         });

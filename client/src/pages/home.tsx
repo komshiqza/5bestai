@@ -1,236 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { SubmissionCard } from "@/components/submission-card";
-import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { GlassButton } from "@/components/GlassButton";
-import { Trophy, Upload, ArrowRight, Users, Image as ImageIcon, Clock, Play } from "lucide-react";
-import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { Trophy, ArrowRight } from "lucide-react";
+import { useAuth, isAuthenticated } from "@/lib/auth";
 
 export default function Home() {
   const { data: user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [allSubmissions, setAllSubmissions] = useState<any[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mediaFilter, setMediaFilter] = useState<'all' | 'images' | 'videos'>('all');
-
-  // Clear submissions cache on mount to ensure fresh data
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
-    queryClient.removeQueries({ queryKey: ["/api/submissions"] }); // Force remove cache
-    setAllSubmissions([]);
-    setPage(1);
-  }, [queryClient]);
-
-  const { data: contests = [] } = useQuery({
-    queryKey: ["/api/contests", { status: "active" }],
-    queryFn: async () => {
-      const response = await fetch("/api/contests?status=active");
-      if (!response.ok) throw new Error("Failed to fetch contests");
-      return response.json();
-    },
-  });
-
-  const { data: submissions = [], isLoading } = useQuery({
-    queryKey: ["/api/submissions", page],
-    queryFn: async () => {
-      const response = await fetch(`/api/submissions?status=approved&page=${page}&limit=8`);
-      if (!response.ok) throw new Error("Failed to fetch submissions");
-      return response.json();
-    },
-  });
-
-  // Update submissions when new data arrives
-  useEffect(() => {
-    if (submissions && submissions.length > 0) {
-      if (page === 1) {
-        setAllSubmissions(submissions);
-      } else {
-        setAllSubmissions(prev => [...prev, ...submissions]);
-      }
-      setHasMore(submissions.length === 8); // If we got less than 8, no more pages
-      setIsLoadingMore(false);
-    } else if (submissions && submissions.length === 0 && page > 1) {
-      // No more submissions available
-      setHasMore(false);
-      setIsLoadingMore(false);
-    }
-  }, [submissions, page]);
-
-  // Infinite scroll logic
-  const handleScroll = useCallback(() => {
-    if (isLoadingMore || !hasMore || allSubmissions.length < 8) return; // Don't scroll if less than 8 items
-    
-    const scrollTop = document.documentElement.scrollTop;
-    const scrollHeight = document.documentElement.scrollHeight;
-    const clientHeight = document.documentElement.clientHeight;
-    
-    if (scrollTop + clientHeight >= scrollHeight - 500) { // Reduced threshold to 500px
-      setIsLoadingMore(true);
-      setPage(prev => prev + 1);
-    }
-  }, [isLoadingMore, hasMore, allSubmissions.length]);
-
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
-
-  // Vote mutation for modal
-  const voteMutation = useMutation({
-    mutationFn: async (submissionId: string) => {
-      const response = await apiRequest("POST", "/api/votes", {
-        submissionId,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
-      toast({
-        title: "Vote recorded!",
-        description: "Your vote has been counted successfully.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to vote. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Handle voting from modal
-  const handleVoteFromModal = (submissionId: string) => {
-    if (!isAuthenticated(user)) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to vote on submissions.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!isApproved(user)) {
-      toast({
-        title: "Account approval required",
-        description: "Your account must be approved to vote.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (user.id === selectedSubmission?.user?.id) {
-      toast({
-        title: "Cannot vote",
-        description: "You cannot vote on your own submission.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    voteMutation.mutate(submissionId);
-  };
-
-  // Handle sharing from modal
-  const handleShareFromModal = () => {
-    if (selectedSubmission) {
-      const shareUrl = `${window.location.origin}/submission/${selectedSubmission.id}`;
-      
-      if (navigator.share) {
-        navigator.share({
-          title: selectedSubmission.title,
-          text: `Check out this amazing submission: ${selectedSubmission.title}`,
-          url: shareUrl,
-        }).catch(() => {
-          fallbackShare(shareUrl);
-        });
-      } else {
-        fallbackShare(shareUrl);
-      }
-    }
-  };
-
-  // Fallback share functionality
-  const fallbackShare = (url: string) => {
-    navigator.clipboard.writeText(url).then(() => {
-      toast({
-        title: "Link copied!",
-        description: "Submission link has been copied to clipboard.",
-      });
-    }).catch(() => {
-      toast({
-        title: "Error",
-        description: "Failed to copy link to clipboard.",
-        variant: "destructive",
-      });
-    });
-  };
-
-  // Handle opening submission modal
-  const handleOpenSubmissionModal = (submission: any) => {
-    setSelectedSubmission(submission);
-    setIsModalOpen(true);
-  };
-
-  // Handle closing submission modal
-  const handleCloseSubmissionModal = () => {
-    setIsModalOpen(false);
-    setSelectedSubmission(null);
-  };
-
-  const featuredContest = contests[0];
-
-  // Filter submissions by media type (always sorted by newest)
-  const filteredSubmissions = useMemo(() => {
-    let filtered = [...allSubmissions];
-
-    // Apply media filter
-    if (mediaFilter === 'images') {
-      filtered = filtered.filter((sub: any) => 
-        sub.mediaUrl?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-      );
-    } else if (mediaFilter === 'videos') {
-      filtered = filtered.filter((sub: any) => 
-        sub.mediaUrl?.match(/\.(mp4|webm|mov)$/i)
-      );
-    }
-
-    // Always sort by newest (already sorted from API, but ensure consistency)
-    filtered.sort((a: any, b: any) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    return filtered;
-  }, [allSubmissions, mediaFilter]);
 
   return (
     <div className="min-h-screen pb-32 md:pb-0" data-testid="home-page">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-10 md:py-20 border-b border-border">
+      <section className="relative overflow-hidden py-20 md:py-32">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600 rounded-full blur-3xl"></div>
         </div>
-        {/* Background Image Placeholder - uncomment and add your image here */}
-        {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
-          <img 
-            src={yourImagePath} 
-            alt="" 
-            className="w-64 h-64 md:w-96 md:h-96 opacity-5 select-none"
-          />
-        </div> */}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight mb-4 md:mb-6 leading-tight gradient-text" data-testid="hero-title">
@@ -243,144 +27,85 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/contests" data-testid="hero-button-contests">
                 <GlassButton className="text-lg px-8 py-3">
+                  <Trophy className="mr-2 h-5 w-5" />
                   Browse Contests
                 </GlassButton>
               </Link>
-              {isAuthenticated(user) ? (
-                <Link href="/upload" data-testid="hero-button-upload">
-                  <GlassButton className="text-lg px-8 py-3">
-                    Submit Your Art
-                  </GlassButton>
-                </Link>
-              ) : (
-                <Link href="/register" data-testid="hero-button-register">
-                  <Button size="lg" variant="outline" className="text-lg px-8 py-3">
-                    Join Now
-                  </Button>
-                </Link>
-              )}
+              <Link href="/explore" data-testid="hero-button-explore">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-3">
+                  Explore Submissions
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Latest Submissions */}
-      <section className="py-8 md:py-16">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 md:mb-8 gap-4">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-1 md:mb-2" data-testid="submissions-section-title">
-                Latest Submissions
-              </h2>
-              <p className="text-sm md:text-base text-muted-foreground">Discover amazing work from our community</p>
+      {/* Features Grid */}
+      <section className="py-16 md:py-24 border-t border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-center mb-12">Why Join 5best?</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full gradient-glory flex items-center justify-center">
+                <Trophy className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Compete & Win</h3>
+              <p className="text-muted-foreground">
+                Enter creative contests and earn GLORY rewards. Top 5 submissions get rewarded.
+              </p>
             </div>
-            
-            {/* Media Type Filter */}
-            <div className="flex items-center gap-2">
-              <Button 
-                variant={mediaFilter === 'all' ? 'default' : 'ghost'} 
-                size="sm" 
-                onClick={() => setMediaFilter('all')}
-                className="text-xs sm:text-sm"
-                data-testid="filter-all"
-              >
-                All
-              </Button>
-              <Button 
-                variant={mediaFilter === 'images' ? 'default' : 'ghost'} 
-                size="sm" 
-                onClick={() => setMediaFilter('images')}
-                className="text-xs sm:text-sm"
-                data-testid="filter-images"
-              >
-                <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Images</span>
-              </Button>
-              <Button 
-                variant={mediaFilter === 'videos' ? 'default' : 'ghost'} 
-                size="sm" 
-                onClick={() => setMediaFilter('videos')}
-                className="text-xs sm:text-sm"
-                data-testid="filter-videos"
-              >
-                <Play className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Videos</span>
-              </Button>
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full gradient-glory flex items-center justify-center">
+                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Showcase Talent</h3>
+              <p className="text-muted-foreground">
+                Display your creative work to a vibrant community of artists and creators.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full gradient-glory flex items-center justify-center">
+                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Join Community</h3>
+              <p className="text-muted-foreground">
+                Connect with fellow creators, vote on submissions, and grow together.
+              </p>
             </div>
           </div>
-
-          {filteredSubmissions.length > 0 ? (
-            <>
-              <div className="masonry-grid" data-testid="submissions-grid">
-                {filteredSubmissions.map((submission: any) => (
-                  <SubmissionCard 
-                    key={submission.id}
-                    submission={submission}
-                    showVoting={true}
-                    onExpand={() => handleOpenSubmissionModal(submission)}
-                  />
-                ))}
-              </div>
-              
-              {/* Loading indicator for infinite scroll */}
-              {isLoadingMore && (
-                <div className="mt-8 text-center">
-                  <div className="inline-flex items-center px-4 py-2 text-sm text-muted-foreground">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                    Loading more submissions...
-                  </div>
-                </div>
-              )}
-              
-              {/* End of content indicator */}
-              {!hasMore && filteredSubmissions.length > 0 && allSubmissions.length < 8 && (
-                <div className="mt-8 text-center">
-                  <p className="text-sm text-muted-foreground">All submissions loaded 📚</p>
-                </div>
-              )}
-              
-              {!hasMore && filteredSubmissions.length > 0 && allSubmissions.length >= 8 && (
-                <div className="mt-8 text-center">
-                  <p className="text-sm text-muted-foreground">You've reached the end! 🎉</p>
-                </div>
-              )}
-            </>
-          ) : isLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center px-4 py-2 text-sm text-muted-foreground">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                Loading submissions...
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
-                <ImageIcon className="w-12 h-12 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">No submissions yet</h3>
-              <p className="text-muted-foreground mb-6">Be the first to submit your creative work!</p>
-              {isAuthenticated(user) && (
-                <Link href="/upload" data-testid="empty-state-upload-link">
-                  <GlassButton>
-                    Submit Your Art
-                    <Upload className="ml-2 w-4 h-4" />
-                  </GlassButton>
-                </Link>
-              )}
-            </div>
-          )}
         </div>
       </section>
 
-      {/* Submission Lightbox Modal */}
-      {isModalOpen && selectedSubmission && (
-        <ContestLightboxModal
-          isOpen={isModalOpen}
-          submission={selectedSubmission}
-          onClose={handleCloseSubmissionModal}
-          onVote={handleVoteFromModal}
-          onShare={handleShareFromModal}
-        />
+      {/* CTA Section */}
+      {!isAuthenticated(user) && (
+        <section className="py-16 md:py-24 border-t border-border">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+              Ready to Start Winning?
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              Join thousands of creators competing for GLORY rewards
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/register" data-testid="cta-button-register">
+                <GlassButton className="text-lg px-8 py-3">
+                  Sign Up Now
+                </GlassButton>
+              </Link>
+              <Link href="/pricing" data-testid="cta-button-pricing">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-3">
+                  View Pricing
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
       )}
     </div>
   );

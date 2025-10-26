@@ -87,7 +87,7 @@ export interface IStorage {
   
   // Submissions
   getSubmission(id: string): Promise<Submission | undefined>;
-  getSubmissions(filters: { contestId?: string; userId?: string; status?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]>;
+  getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission | undefined>;
   deleteSubmission(id: string): Promise<boolean>;
@@ -493,7 +493,7 @@ export class MemStorage implements IStorage {
     return this.submissions.get(id);
   }
 
-  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
+  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
     let submissions = Array.from(this.submissions.values());
     
     if (filters.contestId) {
@@ -504,6 +504,9 @@ export class MemStorage implements IStorage {
     }
     if (filters.status) {
       submissions = submissions.filter(s => s.status === filters.status);
+    }
+    if (filters.tag) {
+      submissions = submissions.filter(s => s.tags && s.tags.some(t => t.toLowerCase().includes(filters.tag!.toLowerCase())));
     }
 
     // Sort by creation date (newest first)
@@ -1275,11 +1278,15 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
+  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
     const conditions = [];
     if (filters.contestId) conditions.push(eq(submissions.contestId, filters.contestId));
     if (filters.userId) conditions.push(eq(submissions.userId, filters.userId));
     if (filters.status) conditions.push(eq(submissions.status, filters.status));
+    if (filters.tag) {
+      // Check if any tag in the array contains the search string (case-insensitive)
+      conditions.push(sql`EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${'%' + filters.tag + '%'}))`);
+    }
 
     // Calculate pagination
     const page = filters.page || 1;
