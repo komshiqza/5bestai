@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 
 if (!process.env.SUPABASE_URL) {
   throw new Error("SUPABASE_URL is not set");
@@ -36,7 +37,7 @@ export async function uploadImageToSupabase(
   userId: string,
   imageId: string,
   versionId: string
-): Promise<{ url: string; path: string }> {
+): Promise<{ url: string; thumbnailUrl: string; path: string }> {
   try {
     console.log(`[Supabase] Downloading image from: ${imageUrl}`);
     
@@ -51,10 +52,12 @@ export async function uploadImageToSupabase(
     const contentType = response.headers.get('content-type') || 'image/jpeg';
     const extension = contentType.includes('png') ? 'png' : 'jpg';
     
+    // Original file path
     const filePath = `${userId}/${imageId}/${versionId}.${extension}`;
     
-    console.log(`[Supabase] Uploading to bucket: ${TEMP_BUCKET}, path: ${filePath}`);
+    console.log(`[Supabase] Uploading original to bucket: ${TEMP_BUCKET}, path: ${filePath}`);
     
+    // Upload original image
     const { data, error } = await supabaseAdmin.storage
       .from(TEMP_BUCKET)
       .upload(filePath, buffer, {
@@ -68,18 +71,56 @@ export async function uploadImageToSupabase(
       throw error;
     }
     
-    console.log(`[Supabase] Upload successful:`, data);
+    console.log(`[Supabase] Original upload successful:`, data);
     
+    // Generate thumbnail (400x400) using Sharp
+    console.log(`[Supabase] Generating thumbnail (400x400)...`);
+    const thumbnailBuffer = await sharp(buffer)
+      .resize(400, 400, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .jpeg({ quality: 80 }) // Always save thumbnails as JPEG for smaller size
+      .toBuffer();
+    
+    // Thumbnail file path
+    const thumbnailPath = `${userId}/${imageId}/thumb_${versionId}.jpg`;
+    
+    console.log(`[Supabase] Uploading thumbnail to bucket: ${TEMP_BUCKET}, path: ${thumbnailPath}`);
+    
+    // Upload thumbnail
+    const { error: thumbError } = await supabaseAdmin.storage
+      .from(TEMP_BUCKET)
+      .upload(thumbnailPath, thumbnailBuffer, {
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+        upsert: true
+      });
+    
+    if (thumbError) {
+      console.warn('[Supabase] Thumbnail upload failed, continuing without it:', thumbError);
+    } else {
+      console.log(`[Supabase] Thumbnail upload successful`);
+    }
+    
+    // Get public URLs
     const { data: publicUrlData } = supabaseAdmin.storage
       .from(TEMP_BUCKET)
       .getPublicUrl(filePath);
     
+    const { data: thumbnailUrlData } = supabaseAdmin.storage
+      .from(TEMP_BUCKET)
+      .getPublicUrl(thumbnailPath);
+    
     const publicUrl = publicUrlData.publicUrl;
+    const thumbnailUrl = thumbError ? publicUrl : thumbnailUrlData.publicUrl; // Fallback to original if thumbnail failed
     
     console.log(`[Supabase] Public URL generated: ${publicUrl}`);
+    console.log(`[Supabase] Thumbnail URL generated: ${thumbnailUrl}`);
     
     return {
       url: publicUrl,
+      thumbnailUrl,
       path: filePath
     };
   } catch (error) {
