@@ -3151,7 +3151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Generate image(s) using Replicate (returns array)
-        const results = await generateImage(params);
+        const results = await generateImage({ ...params, userId });
 
         // Guard against empty results
         if (!results || results.length === 0) {
@@ -3179,6 +3179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               imageUrl: result.url,
               parameters: result.parameters,
               cloudinaryPublicId: result.cloudinaryPublicId,
+              storageBucket: result.storageBucket,
               status: "generated",
               creditsUsed: creditsPerImage
             })
@@ -3441,7 +3442,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { upscaleImage } = await import("./ai-service");
         const result = await upscaleImage(generation.imageUrl, {
           scale: params.scale,
-          faceEnhance: params.faceEnhance
+          faceEnhance: params.faceEnhance,
+          userId
         });
 
         upscaledImageUrl = result.url;

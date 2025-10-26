@@ -219,6 +219,7 @@ export interface GenerateImageOptions {
   prompt: string;
   model?: string;
   seed?: number;
+  userId?: string; // Required for Supabase uploads of large images
   
   // Dimension options
   aspectRatio?: string;
@@ -263,6 +264,7 @@ export interface GeneratedImage {
   url: string;
   cloudinaryUrl?: string;
   cloudinaryPublicId?: string;
+  storageBucket: 'cloudinary' | 'supabase-temp';
   parameters: Record<string, any>;
 }
 
@@ -271,6 +273,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     prompt,
     model = "flux-1.1-pro",
     seed,
+    userId,
     aspectRatio = "1:1",
     width,
     height,
@@ -456,22 +459,30 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i];
-      let cloudinaryUrl: string | undefined;
+      let uploadedUrl: string | undefined;
       let cloudinaryPublicId: string | undefined;
+      let storageBucket: 'cloudinary' | 'supabase-temp' = 'cloudinary';
 
       try {
-        const uploadResult = await downloadAndUploadToCloudinary(imageUrl);
-        cloudinaryUrl = uploadResult.url;
+        const uploadResult = await downloadAndUploadToCloudinary(imageUrl, false, userId);
+        uploadedUrl = uploadResult.url;
         cloudinaryPublicId = uploadResult.publicId;
-        console.log(`Image ${i + 1}/${imageUrls.length} uploaded to Cloudinary:`, cloudinaryUrl);
+        storageBucket = uploadResult.isSupabase ? 'supabase-temp' : 'cloudinary';
+        
+        if (uploadResult.isSupabase) {
+          console.log(`Image ${i + 1}/${imageUrls.length} uploaded to Supabase:`, uploadedUrl);
+        } else {
+          console.log(`Image ${i + 1}/${imageUrls.length} uploaded to Cloudinary:`, uploadedUrl);
+        }
       } catch (uploadError) {
-        console.error(`Cloudinary upload failed for image ${i + 1}, using Replicate URL:`, uploadError);
+        console.error(`Upload failed for image ${i + 1}, using Replicate URL:`, uploadError);
       }
 
       results.push({
-        url: cloudinaryUrl || imageUrl,
-        cloudinaryUrl,
+        url: uploadedUrl || imageUrl,
+        cloudinaryUrl: uploadedUrl, // Can be either Cloudinary or Supabase URL
         cloudinaryPublicId,
+        storageBucket,
         parameters: {
           model: modelConfig.id,
           ...options, // Include all original parameters
@@ -488,25 +499,63 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   }
 }
 
-async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boolean = false): Promise<{
+async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boolean = false, userId?: string): Promise<{
   url: string;
-  publicId: string;
+  publicId: string | null;
+  isSupabase: boolean;
 }> {
-  const tempDir = path.join(process.cwd(), "temp");
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
-
-  const tempFilePath = path.join(tempDir, `ai-${Date.now()}.png`);
-
+  const SIZE_LIMIT = 10 * 1024 * 1024; // 10MB in bytes
+  
   try {
+    // Download image
     const response = await fetch(imageUrl);
     if (!response.ok) {
       throw new Error(`Failed to download image: ${response.statusText}`);
     }
 
-    const buffer = await response.arrayBuffer();
-    await writeFileAsync(tempFilePath, Buffer.from(buffer));
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const fileSizeBytes = buffer.byteLength;
+
+    console.log(`Image size: ${(fileSizeBytes / 1024 / 1024).toFixed(2)}MB`);
+
+    // If image is >= 10MB, upload to Supabase temporary bucket
+    if (fileSizeBytes >= SIZE_LIMIT) {
+      console.log(`Image is >= 10MB, uploading to Supabase temporary storage`);
+      
+      if (!userId) {
+        throw new Error('userId required for Supabase upload');
+      }
+
+      const { uploadImageToSupabase } = await import('./supabase');
+      const timestamp = Date.now();
+      const generationId = `gen_${timestamp}`;
+      
+      // Upload to Supabase temporary bucket
+      const { url: supabaseUrl } = await uploadImageToSupabase(
+        imageUrl,
+        userId,
+        generationId,
+        `v${timestamp}`
+      );
+
+      return {
+        url: supabaseUrl,
+        publicId: null, // No Cloudinary public ID for Supabase images
+        isSupabase: true
+      };
+    }
+
+    // If image is < 10MB, upload to Cloudinary
+    console.log(`Image is < 10MB, uploading to Cloudinary`);
+    
+    const tempDir = path.join(process.cwd(), "temp");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const tempFilePath = path.join(tempDir, `ai-${Date.now()}.png`);
+    await writeFileAsync(tempFilePath, buffer);
 
     const uploadOptions: any = {
       resource_type: "image",
@@ -558,6 +607,7 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
       return {
         url: result.secure_url,
         publicId: result.public_id,
+        isSupabase: false
       };
     } finally {
       // Always clean up temp file, whether upload succeeded or failed
@@ -572,7 +622,7 @@ async function downloadAndUploadToCloudinary(imageUrl: string, isUpscaled: boole
 
 export async function upscaleImage(
   imageUrl: string,
-  options?: { scale?: number; faceEnhance?: boolean }
+  options?: { scale?: number; faceEnhance?: boolean; userId?: string }
 ): Promise<{
   url: string;
   cloudinaryUrl?: string;
@@ -646,21 +696,26 @@ export async function upscaleImage(
 
     // Upload upscaled image to Cloudinary with quality optimization
     // Use quality:85 to balance file size (<10MB for free tier) and quality
-    let cloudinaryUrl: string | undefined;
+    let uploadedUrl: string | undefined;
     let cloudinaryPublicId: string | undefined;
 
     try {
-      const uploadResult = await downloadAndUploadToCloudinary(upscaledUrl, true);
-      cloudinaryUrl = uploadResult.url;
+      const uploadResult = await downloadAndUploadToCloudinary(upscaledUrl, true, options?.userId);
+      uploadedUrl = uploadResult.url;
       cloudinaryPublicId = uploadResult.publicId;
-      console.log("Upscaled image uploaded to Cloudinary:", cloudinaryUrl);
+      
+      if (uploadResult.isSupabase) {
+        console.log("Upscaled image uploaded to Supabase:", uploadedUrl);
+      } else {
+        console.log("Upscaled image uploaded to Cloudinary:", uploadedUrl);
+      }
     } catch (uploadError) {
-      console.error("Cloudinary upload failed for upscaled image, using Replicate URL:", uploadError);
+      console.error("Upload failed for upscaled image, using Replicate URL:", uploadError);
     }
 
     return {
-      url: cloudinaryUrl || upscaledUrl,
-      cloudinaryUrl,
+      url: uploadedUrl || upscaledUrl,
+      cloudinaryUrl: uploadedUrl, // Can be either Cloudinary or Supabase URL
       cloudinaryPublicId,
     };
   } catch (error) {

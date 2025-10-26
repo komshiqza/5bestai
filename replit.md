@@ -96,6 +96,25 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (October 2025)
 
+### Size-Based Storage Routing with Full Metadata Tracking (October 26, 2025)
+**Problem:** AI-generated images >= 10MB need to use Supabase storage due to Cloudinary free tier limits, but the system wasn't tracking which storage backend was used for each image.
+
+**Solution:**
+- **Added `storageBucket` column** to `ai_generations` table with values: `cloudinary`, `supabase-temp`
+- **Extended `GeneratedImage` interface** to include `storageBucket: 'cloudinary' | 'supabase-temp'`
+- **Updated `downloadAndUploadToCloudinary`** to return `isSupabase` flag indicating storage location
+- **Storage routing logic:**
+  - Images < 10MB → Cloudinary temporary folder (`5best-ai-generated`)
+  - Images >= 10MB → Supabase temporary bucket (`pro-edit-images`)
+  - `storageBucket` metadata tracked in database for all generations
+- **userId propagation:** Full call chain passes userId from routes → generateImage/upscaleImage → downloadAndUploadToCloudinary → Supabase upload
+- **Error handling:** Defaults to `'cloudinary'` if upload fails, ensuring graceful fallback
+
+**Impact:** System now correctly tracks storage location for each AI generation, enabling:
+- Proper cleanup of temporary files from correct storage backend
+- Accurate cost tracking per storage provider
+- Future optimization of storage migration and retrieval patterns
+
 ### AI Image Permanent Storage System (October 26, 2025)
 **Problem:** All AI-generated images and Pro Edit versions were deleted after 7 days by the cleanup scheduler, even if users wanted to keep them.
 

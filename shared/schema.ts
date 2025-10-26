@@ -423,6 +423,7 @@ export const aiGenerations = pgTable("ai_generations", {
   imageUrl: text("image_url").notNull(),
   parameters: jsonb("parameters"), // Store generation parameters (width, height, steps, etc.)
   cloudinaryPublicId: varchar("cloudinary_public_id", { length: 255 }),
+  storageBucket: varchar("storage_bucket", { length: 50 }).notNull().default("cloudinary"), // cloudinary, supabase-temp
   status: varchar("status", { length: 50 }).notNull().default("generated"), // generated, saved, submitted
   editedImageUrl: text("edited_image_url"), // URL of edited version (if edited via built-in editor)
   isEdited: boolean("is_edited").notNull().default(false), // True if edited via built-in editor
