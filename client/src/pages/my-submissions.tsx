@@ -150,6 +150,11 @@ export default function MySubmissions() {
   const handleDownload = async (submission: SubmissionWithUser) => {
     try {
       const response = await fetch(submission.mediaUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.statusText}`);
+      }
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -162,8 +167,12 @@ export default function MySubmissions() {
       
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      
+      // Delay revokeObjectURL to avoid race conditions
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
       
       toast({
         title: "Download started",
