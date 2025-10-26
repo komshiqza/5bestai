@@ -20,7 +20,6 @@ import {
   ChevronRight,
   Menu
 } from "lucide-react";
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 export function Sidebar() {
   const { isCollapsed, toggleSidebar } = useSidebar();
@@ -142,11 +141,6 @@ export function Sidebar() {
         <div className="border-t border-border/40 p-3 space-y-3">
           {isAuthenticated(user) ? (
             <>
-              {/* Wallet Button */}
-              <div className={`wallet-adapter-button-trigger ${isCollapsed ? 'sidebar-collapsed' : ''}`} data-testid="wallet-button">
-                <WalletMultiButton />
-              </div>
-
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
