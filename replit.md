@@ -96,6 +96,32 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (October 2025)
 
+### AI Image Permanent Storage System (October 26, 2025)
+**Problem:** All AI-generated images and Pro Edit versions were deleted after 7 days by the cleanup scheduler, even if users wanted to keep them.
+
+**Solution:**
+- **Two-bucket Supabase architecture:**
+  - `pro-edit-images` - temporary storage for AI generations/versions (7-day retention)
+  - `5best-submissions` - permanent storage for saved images (no auto-deletion)
+- **Save to Gallery feature:**
+  - New "Gallery" button in canvas toolbar saves current image to permanent storage
+  - Creates submission with `status: "approved"`, no `contestId` or `generationId`
+  - Submissions without `generationId` are immune to 7-day cleanup
+- **Version thumbnail actions:**
+  - Save button on each version - copies to permanent storage with title/description
+  - Download button - downloads version file
+  - Delete button - placeholder for future implementation
+- **Contest submission enhancement:**
+  - Automatically copies images from temporary to permanent storage when submitting to contests
+  - Prevents contest entries from being deleted after 7 days
+- **Security hardening:**
+  - URL validation ensures only user's own images can be saved
+  - Domain whitelisting (Supabase + Cloudinary)
+  - Ownership verification via database lookups
+  - Prevents SSRF attacks and unauthorized file access
+
+**Impact:** Users can now permanently save AI-generated images and Pro Edit versions to their gallery, while temporary work-in-progress files are still cleaned up after 7 days.
+
 ### Prize Distribution Currency Fix (October 24, 2025)
 **Problem:** Contest rewards were always distributed as GLORY tokens, regardless of the contest's configured currency setting.
 

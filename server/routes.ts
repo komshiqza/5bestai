@@ -1330,9 +1330,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cloudinaryPublicId = uploadResult.cloudinaryPublicId || null;
         cloudinaryResourceType = uploadResult.cloudinaryResourceType || null;
       } else {
-        // Check if mediaUrl is from temporary AI storage
-        const isSupabase = mediaUrl.includes('supabase.co') && mediaUrl.includes('pro-edit-images');
-        const isCloudinaryAI = mediaUrl.includes('5best-ai-generated');
+        // Security: Validate URL belongs to allowed domains and user's storage path
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME;
+        
+        const isSupabase = mediaUrl.includes(supabaseUrl!) && 
+                          mediaUrl.includes('pro-edit-images') &&
+                          mediaUrl.includes(req.user!.id);
+        
+        const isCloudinaryAI = mediaUrl.includes('cloudinary.com') && 
+                              mediaUrl.includes(cloudinaryCloudName!) &&
+                              mediaUrl.includes('5best-ai-generated');
+        
+        // Verify ownership before copying from temporary storage
+        if (isSupabase) {
+          const pathMatch = mediaUrl.match(/pro-edit-images\/([^/]+)/);
+          if (!pathMatch || pathMatch[1] !== req.user!.id) {
+            return res.status(403).json({ error: "Unauthorized: Image does not belong to you" });
+          }
+        } else if (isCloudinaryAI) {
+          const generations = await storage.getAiGenerations(req.user!.id);
+          const ownsImage = generations.some(gen => gen.imageUrl === mediaUrl);
+          if (!ownsImage) {
+            return res.status(403).json({ error: "Unauthorized: Image does not belong to you" });
+          }
+        }
         
         if (isSupabase) {
           // Copy from temporary Supabase to permanent bucket
@@ -1437,12 +1459,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userId = req.user!.id;
       
-      // Check if URL is from temporary storage (Supabase or Cloudinary AI folder)
-      const isSupabase = imageUrl.includes('supabase.co');
-      const isCloudinaryAI = imageUrl.includes('5best-ai-generated');
+      // Security: Validate URL belongs to allowed domains and user's storage path
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      
+      const isSupabase = imageUrl.includes(supabaseUrl!) && 
+                        imageUrl.includes('pro-edit-images') &&
+                        imageUrl.includes(userId); // Must be user's own folder
+      
+      const isCloudinaryAI = imageUrl.includes('cloudinary.com') && 
+                            imageUrl.includes(cloudinaryCloudName!) &&
+                            imageUrl.includes('5best-ai-generated');
       
       if (!isSupabase && !isCloudinaryAI) {
-        return res.status(400).json({ error: "Can only save images from temporary AI storage" });
+        return res.status(403).json({ error: "Invalid image URL or unauthorized access" });
+      }
+      
+      // Additional validation: Verify the image belongs to this user
+      if (isSupabase) {
+        // Extract path and verify it starts with userId
+        const pathMatch = imageUrl.match(/pro-edit-images\/([^/]+)/);
+        if (!pathMatch || pathMatch[1] !== userId) {
+          return res.status(403).json({ error: "Unauthorized: Image does not belong to you" });
+        }
+      } else if (isCloudinaryAI) {
+        // For Cloudinary AI images, verify user owns a generation with this URL
+        const generations = await storage.getAiGenerations(userId);
+        const ownsImage = generations.some(gen => gen.imageUrl === imageUrl);
+        if (!ownsImage) {
+          return res.status(403).json({ error: "Unauthorized: Image does not belong to you" });
+        }
       }
 
       let permanentUrl: string;
