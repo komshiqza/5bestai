@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, Undo, Redo, Save } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, Undo, Redo, Save, Menu } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -294,6 +295,7 @@ function AiGeneratorPageContent() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxGenerationId, setLightboxGenerationId] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<string>("history");
+  const [mobileTab, setMobileTab] = useState<string>("generator");
   
   // Pro Edit canvas state
   const [processingPreset, setProcessingPreset] = useState<string | null>(null);
@@ -315,6 +317,13 @@ function AiGeneratorPageContent() {
   useEffect(() => {
     document.title = "AI Studio - 5best";
   }, []);
+
+  // Set default mobile tab based on currentImage
+  useEffect(() => {
+    if (currentImage && mobileTab === "generator") {
+      setMobileTab("canvas");
+    }
+  }, [currentImage]);
 
   const { data: modelConfigs, isLoading: loadingModels } = useQuery<ModelConfig[]>({
     queryKey: ["/api/ai/models"],
@@ -1035,7 +1044,936 @@ function AiGeneratorPageContent() {
       </div>
 
       <div className="w-full">
-        <div className="flex gap-0">
+        {/* Mobile Tabs (< lg) */}
+        <div className="lg:hidden">
+          <Tabs value={mobileTab} onValueChange={setMobileTab} className="w-full">
+            <TabsList className="w-full grid grid-cols-3 sticky top-16 z-30 bg-background">
+              <TabsTrigger value="generator" data-testid="tab-generator">Generator</TabsTrigger>
+              <TabsTrigger value="canvas" data-testid="tab-canvas">Canvas</TabsTrigger>
+              <TabsTrigger value="history" data-testid="tab-history">History</TabsTrigger>
+            </TabsList>
+
+            {/* Generator Tab Content */}
+            <TabsContent value="generator" className="mt-0">
+              <div className="min-h-[calc(100vh-10rem)] overflow-y-auto">
+                <div className="p-4 space-y-6">
+                  {/* Prompt */}
+                  <div>
+                    <Label htmlFor="prompt-mobile" className="mb-2 block text-sm font-medium">
+                      Prompt
+                    </Label>
+                    <Textarea
+                      id="prompt-mobile"
+                      placeholder="e.g., a futuristic cityscape at sunset, neon lights, glassmorphism"
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      rows={4}
+                      className="w-full resize-none rounded-lg border-0 bg-black/20 dark:bg-white/5 p-3 text-sm placeholder:text-muted-foreground/50 ring-1 ring-inset ring-transparent transition-all focus:bg-black/30 dark:focus:bg-white/10 focus:ring-primary"
+                      data-testid="input-prompt"
+                    />
+                  </div>
+
+                  {/* Negative Prompt */}
+                  {currentModelConfig?.supportsNegativePrompt && (
+                    <div>
+                      <Label htmlFor="negative-prompt-mobile" className="mb-2 block text-sm font-medium">
+                        Negative Prompt (Optional)
+                      </Label>
+                      <Textarea
+                        id="negative-prompt-mobile"
+                        placeholder="blurry, low quality, distorted..."
+                        value={negativePrompt}
+                        onChange={(e) => setNegativePrompt(e.target.value)}
+                        rows={2}
+                        className="w-full resize-none rounded-lg border-0 bg-black/20 dark:bg-white/5 p-3 text-sm placeholder:text-muted-foreground/50 ring-1 ring-inset ring-transparent transition-all focus:bg-black/30 dark:focus:bg-white/10 focus:ring-primary"
+                        data-testid="input-negative-prompt"
+                      />
+                    </div>
+                  )}
+
+                  {/* AI Model Selector */}
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium">AI Generator</h3>
+                    {loadingModels ? (
+                      <div className="h-10 rounded-md border border-input bg-muted/50 animate-pulse" />
+                    ) : (
+                      <Select value={selectedModel} onValueChange={setSelectedModel}>
+                        <SelectTrigger data-testid="select-model">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {modelConfigs?.map((model) => {
+                            const pricingKey = modelToPricingKey[model.id] || model.id;
+                            const credits = pricing?.[pricingKey] || 0;
+                            return (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name} - {credits} {credits === 1 ? 'credit' : 'credits'}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  {/* Parameters */}
+                  {currentModelConfig && (
+                    <div className="space-y-4">
+                      <h3 className="mb-2 text-sm font-medium">Parameters</h3>
+                      
+                      {/* Number of Images */}
+                      <div>
+                        <Label className="mb-1 block text-xs text-muted-foreground">
+                          Num Images ({numImages})
+                        </Label>
+                        <Slider
+                          value={[numImages]}
+                          onValueChange={(value) => setNumImages(value[0])}
+                          min={1}
+                          max={8}
+                          step={1}
+                          className="mt-2"
+                        />
+                      </div>
+
+                      {/* Aspect Ratio */}
+                      {currentModelConfig.supportsAspectRatio && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Aspect Ratio</Label>
+                          <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-aspect-ratio">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {aspectRatiosForCurrentModel.map((ratio) => (
+                                <SelectItem key={ratio.value} value={ratio.value}>
+                                  {ratio.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Resolution (Ideogram) */}
+                      {currentModelConfig.supportsResolution && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Resolution</Label>
+                          <Select value={resolution} onValueChange={setResolution}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-resolution">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ideogramResolutions.map((res) => (
+                                <SelectItem key={res.value} value={res.value}>
+                                  {res.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Style Type (Ideogram) */}
+                      {currentModelConfig.supportsStyleType && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Style Type</Label>
+                          <Select value={styleType} onValueChange={setStyleType}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-style-type">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ideogramStyleTypes.map((style) => (
+                                <SelectItem key={style.value} value={style.value}>
+                                  {style.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Style Preset (Ideogram) */}
+                      {currentModelConfig.supportsStylePreset && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Style Preset</Label>
+                          <Select value={stylePreset} onValueChange={setStylePreset}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-style-preset">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ideogramStylePresets.map((preset) => (
+                                <SelectItem key={preset.value} value={preset.value}>
+                                  {preset.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Magic Prompt (Ideogram) */}
+                      {currentModelConfig.supportsMagicPrompt && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Magic Prompt</Label>
+                          <Select value={magicPromptOption} onValueChange={setMagicPromptOption}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-magic-prompt">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {magicPromptOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Automatically enhances your prompt
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Leonardo Style */}
+                      {currentModelConfig.supportsLeonardoStyle && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Leonardo Style</Label>
+                          <Select value={leonardoStyle} onValueChange={setLeonardoStyle}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-leonardo-style">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leonardoStyles.map((style) => (
+                                <SelectItem key={style.value} value={style.value}>
+                                  {style.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Contrast (Leonardo) */}
+                      {currentModelConfig.supportsContrast && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Contrast</Label>
+                          <Select value={contrast} onValueChange={setContrast}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-contrast">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {contrastLevels.map((level) => (
+                                <SelectItem key={level.value} value={level.value}>
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Generation Mode (Leonardo) */}
+                      {currentModelConfig.supportsGenerationMode && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">Generation Mode</Label>
+                          <Select value={generationMode} onValueChange={setGenerationMode}>
+                            <SelectTrigger className="h-9 text-xs" data-testid="select-generation-mode">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {generationModes.map((mode) => (
+                                <SelectItem key={mode.value} value={mode.value}>
+                                  {mode.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Prompt Enhance (Leonardo) */}
+                      {currentModelConfig.supportsPromptEnhance && (
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground">Prompt Enhance</Label>
+                          <Checkbox
+                            checked={promptEnhance}
+                            onCheckedChange={(checked) => setPromptEnhance(checked as boolean)}
+                            data-testid="checkbox-prompt-enhance"
+                          />
+                        </div>
+                      )}
+
+                      {/* Prompt Upsampling (Flux) */}
+                      {currentModelConfig.supportsPromptUpsampling && (
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground">Prompt Upsampling</Label>
+                          <Checkbox
+                            checked={promptUpsampling}
+                            onCheckedChange={(checked) => setPromptUpsampling(checked as boolean)}
+                            data-testid="checkbox-prompt-upsampling"
+                          />
+                        </div>
+                      )}
+
+                      {/* Safety Tolerance (Flux) */}
+                      {currentModelConfig.supportsSafetyTolerance && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">
+                            Safety Tolerance ({safetyTolerance})
+                          </Label>
+                          <Slider
+                            value={[safetyTolerance]}
+                            onValueChange={(value) => setSafetyTolerance(value[0])}
+                            min={0}
+                            max={6}
+                            step={1}
+                          />
+                        </div>
+                      )}
+
+                      {/* CFG Scale (Stable Diffusion) */}
+                      {currentModelConfig.supportsCfg && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">
+                            CFG Scale ({cfg})
+                          </Label>
+                          <Slider
+                            value={[cfg]}
+                            onValueChange={(value) => setCfg(value[0])}
+                            min={0}
+                            max={20}
+                            step={0.5}
+                          />
+                        </div>
+                      )}
+
+                      {/* Prompt Strength (Stable Diffusion) */}
+                      {currentModelConfig.supportsPromptStrength && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">
+                            Prompt Strength ({promptStrength.toFixed(2)})
+                          </Label>
+                          <Slider
+                            value={[promptStrength]}
+                            onValueChange={(value) => setPromptStrength(value[0])}
+                            min={0}
+                            max={1}
+                            step={0.05}
+                          />
+                        </div>
+                      )}
+
+                      {/* Seed */}
+                      {currentModelConfig.supportsSeed && (
+                        <div>
+                          <Label htmlFor="seed-mobile" className="mb-1 block text-xs text-muted-foreground">
+                            Seed (0 for random)
+                          </Label>
+                          <Input
+                            id="seed-mobile"
+                            type="number"
+                            value={seed}
+                            onChange={(e) => setSeed(Number(e.target.value))}
+                            className="h-9"
+                            data-testid="input-seed"
+                          />
+                        </div>
+                      )}
+
+                      {/* Image Input */}
+                      {currentModelConfig.supportsImageInput && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">
+                            {getImageInputLabel()}
+                          </Label>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setImageInput(e.target.files?.[0] || null)}
+                            className="h-9 text-xs"
+                            data-testid="input-image-input"
+                          />
+                          {imageInput && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{imageInput.name}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setImageInput(null)}
+                                className="h-5 px-1"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Style Reference Images */}
+                      {currentModelConfig.supportsStyleReferenceImages && (
+                        <div>
+                          <Label className="mb-1 block text-xs text-muted-foreground">
+                            Style Reference Images
+                          </Label>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => setStyleReferenceImages(Array.from(e.target.files || []))}
+                            className="h-9 text-xs"
+                            data-testid="input-style-reference"
+                          />
+                          {styleReferenceImages.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {styleReferenceImages.map((file, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">{file.name}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setStyleReferenceImages(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                    className="h-5 px-1"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Generate Button */}
+                  <FancyGlassButton
+                    onClick={handleGenerate}
+                    disabled={generateMutation.isPending || !hasEnoughCredits}
+                    className="w-full"
+                    data-testid="button-generate"
+                  >
+                    {generateMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : !hasEnoughCredits ? (
+                      <>
+                        <Sparkles className="h-5 w-5" />
+                        Insufficient Credits
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined">auto_awesome</span>
+                        Generate Image ({totalCost} {totalCost === 1 ? 'credit' : 'credits'})
+                      </>
+                    )}
+                  </FancyGlassButton>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Canvas Tab Content */}
+            <TabsContent value="canvas" className="mt-0">
+              <div className="min-h-[calc(100vh-10rem)] relative">
+                {generateMutation.isPending ? (
+                  <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-10rem)]">
+                    <div className="text-center space-y-4">
+                      <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto" />
+                      <div>
+                        <h3 className="text-xl font-bold mb-2">Generating...</h3>
+                        <p className="text-sm text-muted-foreground">This may take a few moments</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : currentImage ? (
+                  <>
+                    {/* Zoom Controls */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-background sticky top-0 z-10">
+                      <div className="text-sm text-muted-foreground">
+                        Preview
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <GlassButton
+                          variant={zoomLevel === 'fit' ? 'primary' : 'ghost'}
+                          size="sm"
+                          onClick={() => setZoomLevel('fit')}
+                          className="h-7 px-2 text-xs"
+                        >
+                          Fit
+                        </GlassButton>
+                        <GlassButton
+                          variant={zoomLevel === '100' ? 'primary' : 'ghost'}
+                          size="sm"
+                          onClick={() => setZoomLevel('100')}
+                          className="h-7 px-2 text-xs"
+                        >
+                          100%
+                        </GlassButton>
+                      </div>
+                    </div>
+                    
+                    {/* Canvas Container */}
+                    <div className="flex items-center justify-center overflow-auto bg-muted/10 min-h-[calc(100vh-16rem)] p-4">
+                      <div className={`${zoomLevel === 'fit' ? 'max-w-full w-full' : 'w-auto'}`}>
+                        <div className="relative rounded-2xl glassmorphism p-4">
+                          <canvas
+                            ref={canvasRef}
+                            className="rounded-xl max-w-full"
+                            style={{
+                              transform: zoomLevel === 'fit' ? 'none' : 
+                                        zoomLevel === '100' ? 'scale(1)' :
+                                        zoomLevel === '150' ? 'scale(1.5)' :
+                                        'scale(2)',
+                              transformOrigin: 'center'
+                            }}
+                          />
+                          
+                          {processingPreset && (
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                              <div className="text-center space-y-3">
+                                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                                <div>
+                                  <h4 className="text-lg font-semibold">Processing...</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    Applying {processingPreset === 'clean' ? 'Clean & Denoise' : 
+                                              processingPreset === 'upscale4x' ? 'Upscale 4×' :
+                                              processingPreset === 'portrait_pro' ? 'Portrait Pro' :
+                                              processingPreset === 'enhance' ? 'Smart Enhance' :
+                                              processingPreset === 'bg_remove' ? 'Remove Background' :
+                                              'Relight Scene'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Overlay Controls - Bottom Right */}
+                    {currentImage && (
+                      <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-2 glassmorphism p-3 rounded-xl shadow-lg">
+                        <GlassButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (currentVersionIndex <= 0) return;
+                            const newIndex = currentVersionIndex - 1;
+                            setCurrentVersionIndex(newIndex);
+                            historyIndexRef.current = newIndex;
+                            reloadCanvas(imageVersions[newIndex]);
+                          }}
+                          disabled={currentVersionIndex <= 0 || imageVersions.length === 0}
+                          className="h-9 w-9 p-0"
+                          title="Undo"
+                          data-testid="button-undo"
+                        >
+                          <Undo className="h-4 w-4" />
+                        </GlassButton>
+                        <GlassButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (currentVersionIndex >= imageVersions.length - 1) return;
+                            const newIndex = currentVersionIndex + 1;
+                            setCurrentVersionIndex(newIndex);
+                            historyIndexRef.current = newIndex;
+                            reloadCanvas(imageVersions[newIndex]);
+                          }}
+                          disabled={currentVersionIndex >= imageVersions.length - 1 || imageVersions.length === 0}
+                          className="h-9 w-9 p-0"
+                          title="Redo"
+                          data-testid="button-redo"
+                        >
+                          <Redo className="h-4 w-4" />
+                        </GlassButton>
+                        <GlassButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const dataURL = canvas.toDataURL({
+                              format: "png",
+                              quality: 1,
+                              multiplier: 2,
+                            });
+                            const link = document.createElement("a");
+                            link.href = dataURL;
+                            link.download = `edited-${Date.now()}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            toast({
+                              title: "Downloaded",
+                              description: "Image downloaded successfully",
+                            });
+                          }}
+                          disabled={!canvas}
+                          className="h-9 w-9 p-0"
+                          title="Download"
+                          data-testid="button-download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </GlassButton>
+                        <GlassButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const gen = generations?.find(g => g.id === currentGenerationId);
+                            if (gen) handleOpenSubmitWizard(gen);
+                          }}
+                          disabled={!currentGenerationId}
+                          className="h-9 w-9 p-0"
+                          title="Upload to Contest"
+                          data-testid="button-upload"
+                        >
+                          <Upload className="h-4 w-4" />
+                        </GlassButton>
+                      </div>
+                    )}
+
+                    {/* Pro Edit FAB - Bottom Left */}
+                    {currentImage && (
+                      <div className="fixed bottom-20 left-4 z-50">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <FancyGlassButton
+                              disabled={processingPreset !== null}
+                              className="gap-2 shadow-xl"
+                              data-testid="button-pro-edit-fab"
+                            >
+                              <Sparkles className="h-5 w-5" />
+                              Pro Edit
+                            </FancyGlassButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-56">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProcessingPreset('clean');
+                                startEditMutation.mutate({ preset: 'clean', imageUrl: currentImage! });
+                              }}
+                              disabled={processingPreset !== null}
+                              data-testid="menu-item-clean"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  {processingPreset === 'clean' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-4 w-4" />
+                                  )}
+                                  <span>Clean & Denoise</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">2 credits</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProcessingPreset('upscale4x');
+                                startEditMutation.mutate({ preset: 'upscale4x', imageUrl: currentImage! });
+                              }}
+                              disabled={processingPreset !== null}
+                              data-testid="menu-item-upscale"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  {processingPreset === 'upscale4x' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Maximize2 className="h-4 w-4" />
+                                  )}
+                                  <span>Upscale 4×</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">4 credits</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProcessingPreset('portrait_pro');
+                                startEditMutation.mutate({ preset: 'portrait_pro', imageUrl: currentImage! });
+                              }}
+                              disabled={processingPreset !== null}
+                              data-testid="menu-item-portrait"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  {processingPreset === 'portrait_pro' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <User className="h-4 w-4" />
+                                  )}
+                                  <span>Portrait Pro</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">4 credits</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProcessingPreset('enhance');
+                                startEditMutation.mutate({ preset: 'enhance', imageUrl: currentImage! });
+                              }}
+                              disabled={processingPreset !== null}
+                              data-testid="menu-item-enhance"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  {processingPreset === 'enhance' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Wand2 className="h-4 w-4" />
+                                  )}
+                                  <span>Smart Enhance</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">3 credits</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProcessingPreset('bg_remove');
+                                startEditMutation.mutate({ preset: 'bg_remove', imageUrl: currentImage! });
+                              }}
+                              disabled={processingPreset !== null}
+                              data-testid="menu-item-bg-remove"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  {processingPreset === 'bg_remove' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                  <span>Remove Background</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">2 credits</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setProcessingPreset('relight');
+                                startEditMutation.mutate({ preset: 'relight', imageUrl: currentImage! });
+                              }}
+                              disabled={processingPreset !== null}
+                              data-testid="menu-item-relight"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  {processingPreset === 'relight' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-4 w-4" />
+                                  )}
+                                  <span>Relight Scene</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">4 credits</span>
+                              </div>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-10rem)]">
+                    <div className="text-center space-y-4">
+                      <div className="mx-auto h-32 w-32 rounded-full bg-muted/50 flex items-center justify-center">
+                        <ImageIcon className="h-16 w-16 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold mb-2">Your images will be displayed here</h3>
+                        <p className="text-sm text-muted-foreground">Generate an image to see it here</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* History Tab Content */}
+            <TabsContent value="history" className="mt-0">
+              <div className="min-h-[calc(100vh-10rem)] overflow-y-auto">
+                <div className="p-4">
+                  {/* Warning Banner */}
+                  <div className="mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2 font-medium">
+                      <span className="text-base">⚠️</span>
+                      <span>Images will be deleted after 7 days. Download soon!</span>
+                    </p>
+                  </div>
+                  
+                  <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+                    <TabsList className="w-full grid grid-cols-2 mb-4">
+                      <TabsTrigger value="history">History</TabsTrigger>
+                      <TabsTrigger value="versions">Versions</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="history" className="mt-0">
+                      <div className="mb-4">
+                        <p className="text-xs text-muted-foreground">Your generated images</p>
+                      </div>
+
+                      {/* Images Grid */}
+                      {loadingHistory ? (
+                        <div className="flex justify-center py-12">
+                          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : !generations || generations.length === 0 ? (
+                        <div className="text-center py-12">
+                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground">No generations yet</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          {generations.map((gen) => (
+                            <div
+                              key={gen.id}
+                              className={`group cursor-pointer relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+                                currentGenerationId === gen.id
+                                  ? 'border-primary shadow-lg shadow-primary/20'
+                                  : 'border-transparent hover:border-primary/50'
+                              }`}
+                              onClick={() => {
+                                handleSelectGeneration(gen);
+                                setMobileTab("canvas");
+                              }}
+                              data-testid={`generation-${gen.id}`}
+                            >
+                              <img
+                                alt={gen.prompt}
+                                className="h-full w-full object-cover"
+                                src={gen.editedImageUrl || gen.imageUrl}
+                                data-testid={`img-generation-${gen.id}`}
+                              />
+                              
+                              {/* Hover Actions */}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                <GlassButton
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const downloadUrl = currentGenerationId === gen.id && currentImage 
+                                      ? currentImage 
+                                      : gen.editedImageUrl || gen.imageUrl;
+                                    handleDownload(downloadUrl, gen.id);
+                                  }}
+                                  disabled={downloadingId === gen.id}
+                                >
+                                  {downloadingId === gen.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Download className="h-3 w-3" />
+                                  )}
+                                </GlassButton>
+                                
+                                <GlassButton
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteMutation.mutate(gen.id);
+                                  }}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  {deleteMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
+                                </GlassButton>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                    
+                    <TabsContent value="versions" className="mt-0">
+                      <div className="mb-4">
+                        <p className="text-xs text-muted-foreground">Pro Edit versions ({imageVersions.length})</p>
+                      </div>
+                      
+                      {/* Versions Grid */}
+                      {!currentImage ? (
+                        <div className="text-center py-12">
+                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground">Select an image to see versions</p>
+                        </div>
+                      ) : imageVersions.length === 0 ? (
+                        <div className="text-center py-12">
+                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground">No versions yet</p>
+                          <p className="text-xs text-muted-foreground mt-2">Apply Pro Edit effects to create versions</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          {imageVersions.map((versionUrl, index) => (
+                            <div
+                              key={`${versionUrl}-${index}`}
+                              className={`group cursor-pointer relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+                                currentVersionIndex === index
+                                  ? 'border-primary shadow-lg shadow-primary/20'
+                                  : 'border-transparent hover:border-primary/50'
+                              }`}
+                              onClick={() => {
+                                setCurrentVersionIndex(index);
+                                historyIndexRef.current = index;
+                                reloadCanvas(versionUrl);
+                                setMobileTab("canvas");
+                              }}
+                              data-testid={`version-${index}`}
+                            >
+                              <img
+                                alt={`Version ${index + 1}`}
+                                className="h-full w-full object-cover"
+                                src={versionUrl}
+                                data-testid={`img-version-${index}`}
+                              />
+                              
+                              {/* Version Number Badge */}
+                              <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded px-2 py-0.5">
+                                <span className="text-xs font-semibold text-white">v{index + 1}</span>
+                              </div>
+                              
+                              {/* Hover Actions - Top Right */}
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                <GlassButton
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownload(versionUrl, `version-${index + 1}`);
+                                  }}
+                                  disabled={downloadingId === `version-${index + 1}`}
+                                  data-testid={`button-download-version-${index}`}
+                                  title="Download version"
+                                >
+                                  {downloadingId === `version-${index + 1}` ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Download className="h-3 w-3" />
+                                  )}
+                                </GlassButton>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Desktop 3-Column Layout (>= lg) */}
+        <div className="hidden lg:flex gap-0">
           {/* Center Panel - Canvas (flex-grow) */}
           <div className="flex-1 min-h-[calc(100vh-5rem)] flex flex-col">
             {generateMutation.isPending ? (
