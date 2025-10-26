@@ -1367,28 +1367,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           finalThumbnailUrl = url; // Use Supabase URL directly, no Cloudinary thumbnail needed
           isGalleryReuse = false;
         } else if (isCloudinaryAI) {
-          // Download and re-upload Cloudinary AI image to permanent folder
-          const response = await fetch(mediaUrl);
-          if (!response.ok) {
-            return res.status(400).json({ error: "Failed to download AI image" });
+          // AI-generated image is already in Cloudinary, use it directly
+          finalMediaUrl = mediaUrl;
+          finalThumbnailUrl = mediaUrl; // Use same URL as thumbnail
+          // Extract public_id from Cloudinary URL for cleanup on deletion
+          const urlParts = mediaUrl.split('/');
+          const uploadIndex = urlParts.indexOf('upload');
+          if (uploadIndex !== -1 && uploadIndex + 1 < urlParts.length) {
+            const pathAfterUpload = urlParts.slice(uploadIndex + 2).join('/');
+            cloudinaryPublicId = pathAfterUpload.split('.')[0]; // Remove extension
+            cloudinaryResourceType = 'image';
           }
-          
-          const buffer = await response.arrayBuffer();
-          const timestamp = Date.now();
-          const extension = mediaUrl.split('.').pop()?.split('?')[0] || 'png';
-          const fileName = `${req.user!.id}_${timestamp}.${extension}`;
-          
-          const file = {
-            buffer: Buffer.from(buffer),
-            originalname: fileName,
-            mimetype: response.headers.get('content-type') || 'image/jpeg',
-          } as any;
-          
-          const uploadResult = await uploadFile(file);
-          finalMediaUrl = uploadResult.url;
-          finalThumbnailUrl = uploadResult.thumbnailUrl || null;
-          cloudinaryPublicId = uploadResult.cloudinaryPublicId || null;
-          cloudinaryResourceType = uploadResult.cloudinaryResourceType || null;
           isGalleryReuse = false;
         } else {
           // Using existing image from permanent gallery - don't delete shared asset
@@ -1508,29 +1497,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use Supabase URL directly as thumbnail
         thumbnailUrl = url;
       } else {
-        // Cloudinary AI image - download and re-upload to permanent folder
-        const response = await fetch(imageUrl);
-        if (!response.ok) {
-          return res.status(400).json({ error: "Failed to download image" });
+        // Cloudinary AI image is already in Cloudinary, use it directly
+        permanentUrl = imageUrl;
+        thumbnailUrl = imageUrl;
+        // Extract public_id from Cloudinary URL for cleanup on deletion
+        const urlParts = imageUrl.split('/');
+        const uploadIndex = urlParts.indexOf('upload');
+        if (uploadIndex !== -1 && uploadIndex + 1 < urlParts.length) {
+          const pathAfterUpload = urlParts.slice(uploadIndex + 2).join('/');
+          cloudinaryPublicId = pathAfterUpload.split('.')[0]; // Remove extension
+          cloudinaryResourceType = 'image';
         }
-        
-        const buffer = await response.arrayBuffer();
-        const timestamp = Date.now();
-        const extension = imageUrl.split('.').pop()?.split('?')[0] || 'png';
-        const fileName = `${userId}_${timestamp}.${extension}`;
-        
-        // Create a file-like object for uploadFile
-        const file = {
-          buffer: Buffer.from(buffer),
-          originalname: fileName,
-          mimetype: response.headers.get('content-type') || 'image/jpeg',
-        } as any;
-        
-        const uploadResult = await uploadFile(file);
-        permanentUrl = uploadResult.url;
-        thumbnailUrl = uploadResult.thumbnailUrl || null;
-        cloudinaryPublicId = uploadResult.cloudinaryPublicId || null;
-        cloudinaryResourceType = uploadResult.cloudinaryResourceType || null;
       }
 
       // Create submission without contestId and generationId
