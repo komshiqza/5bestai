@@ -1364,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const { url } = await copySupabaseFile(mediaUrl, destPath);
           finalMediaUrl = url;
-          finalThumbnailUrl = await generateAndUploadThumbnail(url, 200);
+          finalThumbnailUrl = url; // Use Supabase URL directly, no Cloudinary thumbnail needed
           isGalleryReuse = false;
         } else if (isCloudinaryAI) {
           // Download and re-upload Cloudinary AI image to permanent folder
@@ -1505,8 +1505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { url } = await copySupabaseFile(imageUrl, destPath);
         permanentUrl = url;
         
-        // Generate thumbnail
-        thumbnailUrl = await generateAndUploadThumbnail(permanentUrl, 200);
+        // Use Supabase URL directly as thumbnail
+        thumbnailUrl = url;
       } else {
         // Cloudinary AI image - download and re-upload to permanent folder
         const response = await fetch(imageUrl);
@@ -4548,9 +4548,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`[ProEdit] Uploaded to Supabase: ${supabaseUrl}`);
 
-        // Generate and upload thumbnail to Cloudinary
-        console.log(`[ProEdit] Generating thumbnail for version...`);
-        const thumbnailUrl = await generateAndUploadThumbnail(supabaseUrl, 200);
+        // Use Supabase URL directly as thumbnail (no Cloudinary upload needed)
+        const thumbnailUrl = supabaseUrl;
         console.log(`[ProEdit] Thumbnail URL: ${thumbnailUrl}`);
 
         // Create output version with Supabase URL and mark as current
