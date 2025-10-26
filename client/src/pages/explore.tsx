@@ -9,8 +9,10 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 
-export default function Explore() {
+function ExploreContent() {
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -166,8 +168,10 @@ export default function Explore() {
     setSearchTag(searchInput.trim());
   };
 
+  const { isCollapsed } = useSidebar();
+
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Header & Search */}
         <div className="mb-8">
@@ -337,5 +341,14 @@ export default function Explore() {
         />
       )}
     </div>
+  );
+}
+
+export default function Explore() {
+  return (
+    <SidebarProvider>
+      <Sidebar />
+      <ExploreContent />
+    </SidebarProvider>
   );
 }
