@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Image, Share2, Expand, Trash2, Play, X, User, Calendar, Pencil } from "lucide-react";
+import { Image, Share2, Expand, Trash2, Play, X, User, Calendar, Pencil, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { SubmissionWithUser } from "@shared/schema";
@@ -145,6 +145,37 @@ export default function MySubmissions() {
 
   const handleExpand = (submission: SubmissionWithUser) => {
     setSelectedSubmission(submission);
+  };
+
+  const handleDownload = async (submission: SubmissionWithUser) => {
+    try {
+      const response = await fetch(submission.mediaUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Extract file extension from URL or use default based on type
+      const urlPath = submission.mediaUrl.split('?')[0];
+      const extension = urlPath.split('.').pop() || (submission.type === 'video' ? 'mp4' : 'jpg');
+      a.download = `${submission.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${extension}`;
+      
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Download started",
+        description: "Your file is being downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download the file. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = (submissionId: string) => {
@@ -295,6 +326,21 @@ export default function MySubmissions() {
                           <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
                         </GlassButton>
                       )}
+                      
+                      {/* Download button */}
+                      <GlassButton 
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(submission);
+                        }}
+                        title="Download"
+                        data-testid={`button-download-${submission.id}`}
+                      >
+                        <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </GlassButton>
                     </div>
                   </div>
 
