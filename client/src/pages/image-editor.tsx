@@ -26,7 +26,10 @@ import {
   Circle,
   Minus,
   Check,
-  X as XIcon
+  X as XIcon,
+  Undo,
+  Redo,
+  Download
 } from "lucide-react";
 
 export default function ImageEditor() {
@@ -67,6 +70,10 @@ export default function ImageEditor() {
   // Crop states
   const [cropMode, setCropMode] = useState(false);
   const [cropRect, setCropRect] = useState<fabric.Rect | null>(null);
+  
+  // History states for undo/redo
+  const [historyStack, setHistoryStack] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   
   const [isSaving, setIsSaving] = useState(false);
 
@@ -470,6 +477,100 @@ export default function ImageEditor() {
     canvas.renderAll();
   };
 
+  // History management functions
+  const saveToHistory = () => {
+    if (!canvas) return;
+    
+    const json = JSON.stringify(canvas.toJSON());
+    setHistoryStack(prev => {
+      const newStack = prev.slice(0, historyIndex + 1);
+      newStack.push(json);
+      // Limit history to 50 states
+      return newStack.slice(-50);
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  };
+
+  const undo = () => {
+    if (!canvas || historyIndex <= 0) return;
+    
+    const newIndex = historyIndex - 1;
+    const state = historyStack[newIndex];
+    
+    canvas.loadFromJSON(state).then(() => {
+      canvas.renderAll();
+      setHistoryIndex(newIndex);
+      // Update baseImage reference after loading
+      const objects = canvas.getObjects();
+      const bgImage = objects.find(obj => obj.selectable === false);
+      if (bgImage) setBaseImage(bgImage as fabric.FabricImage);
+    });
+  };
+
+  const redo = () => {
+    if (!canvas || historyIndex >= historyStack.length - 1) return;
+    
+    const newIndex = historyIndex + 1;
+    const state = historyStack[newIndex];
+    
+    canvas.loadFromJSON(state).then(() => {
+      canvas.renderAll();
+      setHistoryIndex(newIndex);
+      // Update baseImage reference after loading
+      const objects = canvas.getObjects();
+      const bgImage = objects.find(obj => obj.selectable === false);
+      if (bgImage) setBaseImage(bgImage as fabric.FabricImage);
+    });
+  };
+
+  // Download current canvas
+  const handleDownload = () => {
+    if (!canvas) return;
+
+    try {
+      const dataURL = canvas.toDataURL({ format: "png", quality: 1, multiplier: 2 });
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = `edited-image-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 100);
+      
+      toast({
+        title: "Downloaded",
+        description: "Image downloaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download the image.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Save to history on canvas changes
+  useEffect(() => {
+    if (!canvas) return;
+
+    const handleCanvasChange = () => {
+      saveToHistory();
+    };
+
+    canvas.on('object:added', handleCanvasChange);
+    canvas.on('object:modified', handleCanvasChange);
+    canvas.on('object:removed', handleCanvasChange);
+
+    return () => {
+      canvas.off('object:added', handleCanvasChange);
+      canvas.off('object:modified', handleCanvasChange);
+      canvas.off('object:removed', handleCanvasChange);
+    };
+  }, [canvas, historyIndex]);
+
   // Save edited image
   const handleSave = async () => {
     if (!canvas) return;
@@ -555,6 +656,33 @@ export default function ImageEditor() {
           <Button variant="outline" onClick={() => setLocation("/ai-generator")} data-testid="button-cancel">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Cancel
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={undo} 
+            disabled={historyIndex <= 0}
+            data-testid="button-undo"
+            title="Undo"
+          >
+            <Undo className="w-4 h-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={redo} 
+            disabled={historyIndex >= historyStack.length - 1}
+            data-testid="button-redo"
+            title="Redo"
+          >
+            <Redo className="w-4 h-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleDownload}
+            data-testid="button-download"
+            title="Download"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download
           </Button>
           <Button onClick={handleSave} disabled={isSaving} data-testid="button-save">
             {isSaving ? (
