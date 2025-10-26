@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, RotateCcw } from "lucide-react";
+import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, RotateCcw, Undo, Redo, Save } from "lucide-react";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
 import { ImageComparisonSlider } from "@/components/pro-edit/ImageComparisonSlider";
+import { CanvasEditor, type CanvasEditorRef } from "@/components/CanvasEditor";
 import type { AiGeneration, EditJob } from "@shared/schema";
 
 type EditJobStatus = EditJob & {
@@ -299,6 +300,10 @@ export default function AiGeneratorPage() {
   
   // Canvas zoom state
   const [zoomLevel, setZoomLevel] = useState<'fit' | '100' | '150' | '200'>('fit');
+  
+  // Canvas editor state
+  const canvasEditorRef = useRef<CanvasEditorRef>(null);
+  const [canvasEditorMode, setCanvasEditorMode] = useState(false);
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -824,6 +829,63 @@ export default function AiGeneratorPage() {
                     )}
                     Relight
                   </GlassButton>
+                  
+                  {/* Canvas Editor Buttons */}
+                  <div className="h-6 w-px bg-border ml-2" />
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => canvasEditorRef.current?.undo()}
+                    disabled={!canvasEditorRef.current?.canUndo()}
+                    className="gap-1.5"
+                    title="Undo"
+                    data-testid="button-undo"
+                  >
+                    <Undo className="h-3.5 w-3.5" />
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => canvasEditorRef.current?.redo()}
+                    disabled={!canvasEditorRef.current?.canRedo()}
+                    className="gap-1.5"
+                    title="Redo"
+                    data-testid="button-redo"
+                  >
+                    <Redo className="h-3.5 w-3.5" />
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => canvasEditorRef.current?.download()}
+                    disabled={!canvasEditorMode}
+                    className="gap-1.5"
+                    title="Download"
+                    data-testid="button-download-canvas"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      const blob = await canvasEditorRef.current?.save();
+                      if (blob) {
+                        toast({
+                          title: "Saved",
+                          description: "Canvas saved successfully",
+                        });
+                      }
+                    }}
+                    disabled={!canvasEditorMode}
+                    className="gap-1.5"
+                    title="Save"
+                    data-testid="button-save-canvas"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    Save
+                  </GlassButton>
                 </div>
               )}
             </div>
@@ -874,8 +936,20 @@ export default function AiGeneratorPage() {
               <>
                 {/* Zoom Controls */}
                 <div className="flex items-center justify-between px-6 py-3 border-b border-border/40">
-                  <div className="text-sm text-muted-foreground">
-                    Preview
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-muted-foreground">
+                      Preview
+                    </div>
+                    <GlassButton
+                      variant={canvasEditorMode ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setCanvasEditorMode(!canvasEditorMode)}
+                      className="h-7 px-2 text-xs gap-1"
+                      title="Toggle Canvas Editor"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      {canvasEditorMode ? 'Editor ON' : 'Editor OFF'}
+                    </GlassButton>
                   </div>
                   <div className="flex items-center gap-2">
                     {imageVersions.length > 1 && (
@@ -934,6 +1008,12 @@ export default function AiGeneratorPage() {
                         <ImageComparisonSlider
                           beforeImage={imageVersions[imageVersions.length - 2]}
                           afterImage={currentImage}
+                        />
+                      ) : canvasEditorMode ? (
+                        <CanvasEditor
+                          ref={canvasEditorRef}
+                          imageUrl={currentImage}
+                          className="w-full"
                         />
                       ) : (
                         <img
