@@ -17,7 +17,7 @@ import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader
 import { UploadWizardModal } from "@/components/UploadWizardModal";
 import { AiLightboxModal } from "@/components/AiLightboxModal";
 import { ImageComparisonSlider } from "@/components/pro-edit/ImageComparisonSlider";
-import { CanvasEditor, type CanvasEditorRef } from "@/components/CanvasEditor";
+import * as fabric from "fabric";
 import type { AiGeneration, EditJob } from "@shared/schema";
 
 type EditJobStatus = EditJob & {
@@ -301,9 +301,12 @@ export default function AiGeneratorPage() {
   // Canvas zoom state
   const [zoomLevel, setZoomLevel] = useState<'fit' | '100' | '150' | '200'>('fit');
   
-  // Canvas editor state
-  const canvasEditorRef = useRef<CanvasEditorRef>(null);
-  const [canvasEditorMode, setCanvasEditorMode] = useState(false);
+  // Canvas state for fabric.js
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
+  const [historyStack, setHistoryStack] = useState<string[]>([]);
+  const historyIndexRef = useRef(-1);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     document.title = "AI Studio - 5best";
@@ -475,6 +478,88 @@ export default function AiGeneratorPage() {
       return 2000; // Poll every 2 seconds
     }
   });
+
+  // Initialize fabric.js canvas when currentImage changes
+  useEffect(() => {
+    if (!canvasRef.current || !currentImage || showComparison) return;
+
+    // Clear existing canvas
+    if (canvas) {
+      canvas.dispose();
+    }
+
+    // Load image to get dimensions
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      // Create fabric canvas with image dimensions
+      const fabricCanvas = new fabric.Canvas(canvasRef.current!, {
+        width: img.width,
+        height: img.height,
+      });
+
+      // Load image onto canvas
+      fabric.FabricImage.fromURL(currentImage, { crossOrigin: "anonymous" }).then((fabricImg: any) => {
+        fabricImg.set({
+          left: fabricCanvas.width! / 2,
+          top: fabricCanvas.height! / 2,
+          originX: "center",
+          originY: "center",
+          selectable: false,
+          evented: false,
+        });
+
+        fabricCanvas.add(fabricImg);
+        fabricCanvas.sendObjectToBack(fabricImg);
+        fabricCanvas.renderAll();
+
+        // Save initial state to history
+        setTimeout(() => {
+          const initialState = JSON.stringify(fabricCanvas.toJSON());
+          setHistoryStack([initialState]);
+          historyIndexRef.current = 0;
+        }, 100);
+      });
+
+      setCanvas(fabricCanvas);
+
+      // Add event listeners for history
+      fabricCanvas.on("object:added", () => {
+        if (isRestoring) return;
+        saveToHistory(fabricCanvas);
+      });
+      fabricCanvas.on("object:modified", () => {
+        if (isRestoring) return;
+        saveToHistory(fabricCanvas);
+      });
+      fabricCanvas.on("object:removed", () => {
+        if (isRestoring) return;
+        saveToHistory(fabricCanvas);
+      });
+    };
+
+    img.src = currentImage;
+
+    return () => {
+      if (canvas) {
+        canvas.dispose();
+      }
+    };
+  }, [currentImage, showComparison]);
+
+  // Save state to history
+  const saveToHistory = (fabricCanvas: fabric.Canvas) => {
+    if (isRestoring) return;
+
+    const state = JSON.stringify(fabricCanvas.toJSON());
+    setHistoryStack((prev) => {
+      const newStack = prev.slice(0, historyIndexRef.current + 1);
+      newStack.push(state);
+      const finalStack = newStack.length > 50 ? newStack.slice(-50) : newStack;
+      historyIndexRef.current = finalStack.length - 1;
+      return finalStack;
+    });
+  };
 
   // Handle Pro Edit job completion
   useEffect(() => {
@@ -829,69 +914,6 @@ export default function AiGeneratorPage() {
                     )}
                     Relight
                   </GlassButton>
-                  
-                  {/* Canvas Editor Buttons */}
-                  {canvasEditorMode && (
-                    <>
-                      <div className="h-6 w-px bg-border ml-2" />
-                      <GlassButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => canvasEditorRef.current?.undo()}
-                        disabled={!canvasEditorRef.current?.canUndo()}
-                        className="gap-1.5"
-                        title="Undo"
-                        data-testid="button-undo"
-                      >
-                        <Undo className="h-3.5 w-3.5" />
-                      </GlassButton>
-                      <GlassButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => canvasEditorRef.current?.redo()}
-                        disabled={!canvasEditorRef.current?.canRedo()}
-                        className="gap-1.5"
-                        title="Redo"
-                        data-testid="button-redo"
-                      >
-                        <Redo className="h-3.5 w-3.5" />
-                      </GlassButton>
-                    </>
-                  )}
-                  {canvasEditorMode && (
-                    <>
-                      <GlassButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => canvasEditorRef.current?.download()}
-                        className="gap-1.5"
-                        title="Download"
-                        data-testid="button-download-canvas"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download
-                      </GlassButton>
-                      <GlassButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          const blob = await canvasEditorRef.current?.save();
-                          if (blob) {
-                            toast({
-                              title: "Saved",
-                              description: "Canvas saved successfully",
-                            });
-                          }
-                        }}
-                        className="gap-1.5"
-                        title="Save"
-                        data-testid="button-save-canvas"
-                      >
-                        <Save className="h-3.5 w-3.5" />
-                        Save
-                      </GlassButton>
-                    </>
-                  )}
                 </div>
               )}
             </div>
@@ -942,19 +964,98 @@ export default function AiGeneratorPage() {
               <>
                 {/* Zoom Controls */}
                 <div className="flex items-center justify-between px-6 py-3 border-b border-border/40">
-                  <div className="flex items-center gap-3">
-                    <div className="text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-muted-foreground mr-2">
                       Preview
                     </div>
                     <GlassButton
-                      variant={canvasEditorMode ? 'primary' : 'ghost'}
+                      variant="ghost"
                       size="sm"
-                      onClick={() => setCanvasEditorMode(!canvasEditorMode)}
+                      onClick={() => {
+                        if (!canvas || historyIndexRef.current <= 0) return;
+                        setIsRestoring(true);
+                        const previousState = historyStack[historyIndexRef.current - 1];
+                        canvas.loadFromJSON(previousState, () => {
+                          canvas.renderAll();
+                          historyIndexRef.current = historyIndexRef.current - 1;
+                          setIsRestoring(false);
+                        });
+                      }}
+                      disabled={historyIndexRef.current <= 0}
                       className="h-7 px-2 text-xs gap-1"
-                      title="Toggle Canvas Editor"
+                      title="Undo"
+                      data-testid="button-undo"
                     >
-                      <Pencil className="h-3 w-3" />
-                      {canvasEditorMode ? 'Editor ON' : 'Editor OFF'}
+                      <Undo className="h-3 w-3" />
+                    </GlassButton>
+                    <GlassButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (!canvas || historyIndexRef.current >= historyStack.length - 1) return;
+                        setIsRestoring(true);
+                        const nextState = historyStack[historyIndexRef.current + 1];
+                        canvas.loadFromJSON(nextState, () => {
+                          canvas.renderAll();
+                          historyIndexRef.current = historyIndexRef.current + 1;
+                          setIsRestoring(false);
+                        });
+                      }}
+                      disabled={historyIndexRef.current >= historyStack.length - 1}
+                      className="h-7 px-2 text-xs gap-1"
+                      title="Redo"
+                      data-testid="button-redo"
+                    >
+                      <Redo className="h-3 w-3" />
+                    </GlassButton>
+                    <GlassButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (!canvas) return;
+                        const dataURL = canvas.toDataURL({
+                          format: "png",
+                          quality: 1,
+                          multiplier: 2,
+                        });
+                        const link = document.createElement("a");
+                        link.href = dataURL;
+                        link.download = `edited-${Date.now()}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        toast({
+                          title: "Downloaded",
+                          description: "Image downloaded successfully",
+                        });
+                      }}
+                      disabled={!canvas}
+                      className="h-7 px-2 text-xs gap-1"
+                      title="Download"
+                      data-testid="button-download"
+                    >
+                      <Download className="h-3 w-3" />
+                    </GlassButton>
+                    <GlassButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (!canvas) return;
+                        canvas.toCanvasElement(2).toBlob((blob) => {
+                          if (blob) {
+                            toast({
+                              title: "Saved",
+                              description: "Canvas saved successfully",
+                            });
+                          }
+                        }, "image/png");
+                      }}
+                      disabled={!canvas}
+                      className="h-7 px-2 text-xs gap-1"
+                      title="Save"
+                      data-testid="button-save"
+                    >
+                      <Save className="h-3 w-3" />
                     </GlassButton>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1007,32 +1108,17 @@ export default function AiGeneratorPage() {
                 {/* Canvas */}
                 <div className="flex-1 flex items-center justify-center overflow-auto bg-muted/10">
                   <div className={`p-8 ${zoomLevel === 'fit' ? 'max-w-4xl w-full' : 'w-auto'}`}>
-                    <div className={`relative rounded-2xl glassmorphism p-4 ${
-                      zoomLevel === 'fit' ? 'aspect-square' : ''
-                    }`}>
+                    <div className={`relative rounded-2xl glassmorphism p-4`}>
                       {showComparison && imageVersions.length > 1 ? (
                         <ImageComparisonSlider
                           beforeImage={imageVersions[imageVersions.length - 2]}
                           afterImage={currentImage}
                         />
-                      ) : canvasEditorMode ? (
-                        <CanvasEditor
-                          ref={canvasEditorRef}
-                          imageUrl={currentImage}
-                          className="w-full"
-                        />
                       ) : (
-                        <img
-                          src={currentImage}
-                          alt="Current selection"
-                          className="rounded-xl"
+                        <canvas
+                          ref={canvasRef}
+                          className="rounded-xl max-w-full"
                           style={{
-                            width: zoomLevel === 'fit' ? '100%' :
-                                   zoomLevel === '100' ? 'auto' :
-                                   zoomLevel === '150' ? 'auto' :
-                                   'auto',
-                            height: zoomLevel === 'fit' ? '100%' : 'auto',
-                            objectFit: zoomLevel === 'fit' ? 'contain' : 'none',
                             transform: zoomLevel === 'fit' ? 'none' : 
                                       zoomLevel === '100' ? 'scale(1)' :
                                       zoomLevel === '150' ? 'scale(1.5)' :
