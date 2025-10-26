@@ -18,7 +18,7 @@ import { findReference } from "@solana/pay";
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
 import * as replicate from "./replicate";
-import { uploadImageToSupabase } from "./supabase";
+import { uploadImageToSupabase, copySupabaseFile } from "./supabase";
 import { 
   loginSchema, 
   registerSchema, 
@@ -1383,6 +1383,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Submission creation error:", error);
       res.status(500).json({ error: "Failed to create submission" });
+    }
+  });
+
+  // Save AI-generated image to permanent storage and create submission
+  app.post("/api/submissions/save-from-ai", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { imageUrl, title, description } = req.body;
+      
+      if (!imageUrl || !title) {
+        return res.status(400).json({ error: "imageUrl and title are required" });
+      }
+
+      const userId = req.user!.id;
+      
+      // Check if URL is from temporary storage (Supabase or Cloudinary AI folder)
+      const isSupabase = imageUrl.includes('supabase.co');
+      const isCloudinaryAI = imageUrl.includes('5best-ai-generated');
+      
+      if (!isSupabase && !isCloudinaryAI) {
+        return res.status(400).json({ error: "Can only save images from temporary AI storage" });
+      }
+
+      let permanentUrl: string;
+      let thumbnailUrl: string | null = null;
+      let cloudinaryPublicId: string | null = null;
+      let cloudinaryResourceType: string | null = null;
+
+      if (isSupabase) {
+        // Copy from temporary Supabase bucket to permanent bucket
+        const timestamp = Date.now();
+        const extension = imageUrl.split('.').pop()?.split('?')[0] || 'png';
+        const destPath = `${userId}/submissions/${timestamp}.${extension}`;
+        
+        const { url } = await copySupabaseFile(imageUrl, destPath);
+        permanentUrl = url;
+        
+        // Generate thumbnail
+        thumbnailUrl = await generateAndUploadThumbnail(permanentUrl, 200);
+      } else {
+        // Cloudinary AI image - download and re-upload to permanent folder
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+          return res.status(400).json({ error: "Failed to download image" });
+        }
+        
+        const buffer = await response.arrayBuffer();
+        const timestamp = Date.now();
+        const extension = imageUrl.split('.').pop()?.split('?')[0] || 'png';
+        const fileName = `${userId}_${timestamp}.${extension}`;
+        
+        // Create a file-like object for uploadFile
+        const file = {
+          buffer: Buffer.from(buffer),
+          originalname: fileName,
+          mimetype: response.headers.get('content-type') || 'image/jpeg',
+        } as any;
+        
+        const uploadResult = await uploadFile(file);
+        permanentUrl = uploadResult.url;
+        thumbnailUrl = uploadResult.thumbnailUrl || null;
+        cloudinaryPublicId = uploadResult.cloudinaryPublicId || null;
+        cloudinaryResourceType = uploadResult.cloudinaryResourceType || null;
+      }
+
+      // Create submission without contestId and generationId
+      const submission = await storage.createSubmission({
+        userId,
+        contestId: null, // No contest - this is for My Submissions
+        contestName: null,
+        type: "image",
+        title,
+        description: description || "",
+        mediaUrl: permanentUrl,
+        thumbnailUrl,
+        cloudinaryPublicId,
+        cloudinaryResourceType,
+        status: "approved", // Auto-approve since it's user's own gallery
+        entryFeeAmount: null,
+        entryFeeCurrency: null
+      });
+
+      res.status(201).json({ 
+        message: "Image saved to My Submissions",
+        submission 
+      });
+    } catch (error) {
+      console.error("Error saving AI image:", error);
+      res.status(500).json({ error: "Failed to save image" });
     }
   });
 
