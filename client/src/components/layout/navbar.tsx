@@ -6,7 +6,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles, CreditCard } from "lucide-react";
+import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles, CreditCard, Compass } from "lucide-react";
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { formatDecimalBalance } from "@/lib/utils";
 
@@ -49,6 +49,12 @@ export function Navbar() {
             </Link>
             <Link href="/contests" data-testid="link-contests">
               <Button variant="ghost" className="px-4 py-2">Contests</Button>
+            </Link>
+            <Link href="/explore" data-testid="link-explore">
+              <Button variant="ghost" className="px-4 py-2">
+                <Compass className="w-4 h-4 mr-2" />
+                Explore
+              </Button>
             </Link>
             {isAuthenticated(user) && (
               <>

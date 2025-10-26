@@ -23,7 +23,8 @@ import {
   Map,
   MessageCircle,
   HelpCircle,
-  FileText
+  FileText,
+  Compass
 } from "lucide-react";
 
 export function Sidebar() {
@@ -95,6 +96,16 @@ export function Sidebar() {
             >
               <Home className="h-4 w-4" />
               {!isCollapsed && <span className="ml-2">Home</span>}
+            </Button>
+          </Link>
+
+          <Link href="/explore" data-testid="link-explore">
+            <Button 
+              variant="ghost" 
+              className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
+            >
+              <Compass className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">Explore</span>}
             </Button>
           </Link>
 
