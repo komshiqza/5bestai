@@ -3908,6 +3908,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PRO EDIT - AI-powered image enhancement
   // =============================================================================
 
+  // POST /api/canvas/save-version - Save canvas as new version
+  app.post("/api/canvas/save-version", upload.single("image"), authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { imageId } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+
+      if (!imageId) {
+        return res.status(400).json({ error: "Image ID is required" });
+      }
+
+      // Upload to Cloudinary
+      const uploadResult = await uploadFile(req.file);
+
+      res.json({
+        message: "Canvas version saved successfully",
+        url: uploadResult.url,
+        cloudinaryPublicId: uploadResult.cloudinaryPublicId
+      });
+    } catch (error) {
+      console.error("[Canvas] Error saving canvas version:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to save canvas version" 
+      });
+    }
+  });
+
   // POST /api/edits - Create new edit job
   app.post("/api/edits", authenticateToken, async (req: AuthRequest, res) => {
     try {

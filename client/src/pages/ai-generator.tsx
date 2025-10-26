@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sparkles, Download, Trash2, Wand2, Settings, Image as ImageIcon, Loader2, Upload, X, Pencil, Maximize2, User, RotateCcw, Undo, Redo, Save } from "lucide-react";
@@ -296,6 +297,7 @@ export default function AiGeneratorPage() {
   const [editJobId, setEditJobId] = useState<string | null>(null);
   const [imageId, setImageId] = useState<string | null>(null);
   const [imageVersions, setImageVersions] = useState<string[]>([]);
+  const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
   const [showComparison, setShowComparison] = useState(false);
   
   // Canvas zoom state
@@ -581,7 +583,12 @@ export default function AiGeneratorPage() {
     if (jobStatus?.status === 'succeeded' && jobStatus.outputUrl) {
       const outputUrl = jobStatus.outputUrl;
       setCurrentImage(outputUrl);
-      setImageVersions(prev => [...prev, outputUrl]);
+      setImageVersions(prev => {
+        const newVersions = [...prev, outputUrl];
+        setCurrentVersionIndex(newVersions.length - 1);
+        historyIndexRef.current = newVersions.length - 1;
+        return newVersions;
+      });
       setProcessingPreset(null);
       setEditJobId(null);
       toast({ 
@@ -987,16 +994,13 @@ export default function AiGeneratorPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        if (!canvas || historyIndexRef.current <= 0) return;
-                        setIsRestoring(true);
-                        const previousState = historyStack[historyIndexRef.current - 1];
-                        canvas.loadFromJSON(previousState, () => {
-                          canvas.renderAll();
-                          historyIndexRef.current = historyIndexRef.current - 1;
-                          setIsRestoring(false);
-                        });
+                        if (currentVersionIndex <= 0) return;
+                        const newIndex = currentVersionIndex - 1;
+                        setCurrentVersionIndex(newIndex);
+                        setCurrentImage(imageVersions[newIndex]);
+                        historyIndexRef.current = newIndex;
                       }}
-                      disabled={historyIndexRef.current <= 0}
+                      disabled={currentVersionIndex <= 0 || imageVersions.length === 0}
                       className="h-7 px-2 text-xs gap-1"
                       title="Undo"
                       data-testid="button-undo"
@@ -1007,16 +1011,13 @@ export default function AiGeneratorPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        if (!canvas || historyIndexRef.current >= historyStack.length - 1) return;
-                        setIsRestoring(true);
-                        const nextState = historyStack[historyIndexRef.current + 1];
-                        canvas.loadFromJSON(nextState, () => {
-                          canvas.renderAll();
-                          historyIndexRef.current = historyIndexRef.current + 1;
-                          setIsRestoring(false);
-                        });
+                        if (currentVersionIndex >= imageVersions.length - 1) return;
+                        const newIndex = currentVersionIndex + 1;
+                        setCurrentVersionIndex(newIndex);
+                        setCurrentImage(imageVersions[newIndex]);
+                        historyIndexRef.current = newIndex;
                       }}
-                      disabled={historyIndexRef.current >= historyStack.length - 1}
+                      disabled={currentVersionIndex >= imageVersions.length - 1 || imageVersions.length === 0}
                       className="h-7 px-2 text-xs gap-1"
                       title="Redo"
                       data-testid="button-redo"
@@ -1054,16 +1055,64 @@ export default function AiGeneratorPage() {
                     <GlassButton
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!canvas) return;
-                        canvas.toCanvasElement(2).toBlob((blob) => {
-                          if (blob) {
+                        
+                        try {
+                          // Convert canvas to blob
+                          const blob = await new Promise<Blob | null>((resolve) => {
+                            canvas.toCanvasElement(2).toBlob((b) => resolve(b), "image/png");
+                          });
+                          
+                          if (!blob) {
                             toast({
-                              title: "Saved",
-                              description: "Canvas saved successfully",
+                              title: "Error",
+                              description: "Failed to generate image from canvas",
+                              variant: "destructive",
                             });
+                            return;
                           }
-                        }, "image/png");
+                          
+                          // Upload to server
+                          const formData = new FormData();
+                          formData.append("image", blob, "canvas-edit.png");
+                          formData.append("imageId", imageId || "canvas");
+                          
+                          const response = await fetch("/api/canvas/save-version", {
+                            method: "POST",
+                            body: formData,
+                            credentials: "include",
+                          });
+                          
+                          if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || "Failed to save canvas");
+                          }
+                          
+                          const data = await response.json();
+                          
+                          // Add new version to imageVersions
+                          setImageVersions((prev) => {
+                            const newVersions = [...prev, data.url];
+                            setCurrentVersionIndex(newVersions.length - 1);
+                            historyIndexRef.current = newVersions.length - 1;
+                            return newVersions;
+                          });
+                          
+                          setCurrentImage(data.url);
+                          
+                          toast({
+                            title: "Saved!",
+                            description: "Canvas saved as new version",
+                          });
+                        } catch (error) {
+                          console.error("Save error:", error);
+                          toast({
+                            title: "Save Failed",
+                            description: error instanceof Error ? error.message : "Failed to save canvas",
+                            variant: "destructive",
+                          });
+                        }
                       }}
                       disabled={!canvas}
                       className="h-7 px-2 text-xs gap-1"
@@ -1611,88 +1660,167 @@ export default function AiGeneratorPage() {
             </div>
           </div>
 
-          {/* Right Panel - History */}
+          {/* Right Panel - History & Versions */}
           <div className="hidden lg:block w-[340px] border-l border-border/40 bg-muted/20">
-            <div className="h-[calc(100vh-5rem)] overflow-y-auto p-4">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold mb-1">History</h2>
-                <p className="text-xs text-muted-foreground">Your generated images</p>
-              </div>
+            <div className="h-[calc(100vh-5rem)] overflow-y-auto">
+              <Tabs defaultValue="history" className="w-full">
+                <TabsList className="w-full grid grid-cols-2 mx-4 mt-4 mb-2" style={{ width: 'calc(100% - 2rem)' }}>
+                  <TabsTrigger value="history">History</TabsTrigger>
+                  <TabsTrigger value="versions">Versions</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="history" className="px-4 pb-4 mt-0">
+                  <div className="mb-4">
+                    <p className="text-xs text-muted-foreground">Your generated images</p>
+                  </div>
 
-              {/* Images Grid */}
-              {loadingHistory ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-                </div>
-              ) : !generations || generations.length === 0 ? (
-                <div className="text-center py-12">
-                  <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">No generations yet</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {generations.map((gen) => (
-                    <div
-                      key={gen.id}
-                      className={`group cursor-pointer relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
-                        currentGenerationId === gen.id
-                          ? 'border-primary shadow-lg shadow-primary/20'
-                          : 'border-transparent hover:border-primary/50'
-                      }`}
-                      onClick={() => handleSelectGeneration(gen)}
-                      data-testid={`generation-${gen.id}`}
-                    >
-                      <img
-                        alt={gen.prompt}
-                        className="h-full w-full object-cover"
-                        src={gen.editedImageUrl || gen.imageUrl}
-                        data-testid={`img-generation-${gen.id}`}
-                      />
-                      
-                      {/* Hover Actions */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                        <GlassButton
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Use currentImage if this generation is selected and has been edited
-                            const downloadUrl = currentGenerationId === gen.id && currentImage 
-                              ? currentImage 
-                              : gen.editedImageUrl || gen.imageUrl;
-                            handleDownload(downloadUrl, gen.id);
-                          }}
-                          disabled={downloadingId === gen.id}
-                        >
-                          {downloadingId === gen.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Download className="h-3 w-3" />
-                          )}
-                        </GlassButton>
-                        
-                        <GlassButton
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteMutation.mutate(gen.id);
-                          }}
-                          disabled={deleteMutation.isPending}
-                        >
-                          {deleteMutation.isPending ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                        </GlassButton>
-                      </div>
+                  {/* Images Grid */}
+                  {loadingHistory ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
                     </div>
-                  ))}
-                </div>
-              )}
+                  ) : !generations || generations.length === 0 ? (
+                    <div className="text-center py-12">
+                      <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">No generations yet</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {generations.map((gen) => (
+                        <div
+                          key={gen.id}
+                          className={`group cursor-pointer relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+                            currentGenerationId === gen.id
+                              ? 'border-primary shadow-lg shadow-primary/20'
+                              : 'border-transparent hover:border-primary/50'
+                          }`}
+                          onClick={() => handleSelectGeneration(gen)}
+                          data-testid={`generation-${gen.id}`}
+                        >
+                          <img
+                            alt={gen.prompt}
+                            className="h-full w-full object-cover"
+                            src={gen.editedImageUrl || gen.imageUrl}
+                            data-testid={`img-generation-${gen.id}`}
+                          />
+                          
+                          {/* Hover Actions */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <GlassButton
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Use currentImage if this generation is selected and has been edited
+                                const downloadUrl = currentGenerationId === gen.id && currentImage 
+                                  ? currentImage 
+                                  : gen.editedImageUrl || gen.imageUrl;
+                                handleDownload(downloadUrl, gen.id);
+                              }}
+                              disabled={downloadingId === gen.id}
+                            >
+                              {downloadingId === gen.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Download className="h-3 w-3" />
+                              )}
+                            </GlassButton>
+                            
+                            <GlassButton
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteMutation.mutate(gen.id);
+                              }}
+                              disabled={deleteMutation.isPending}
+                            >
+                              {deleteMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3 w-3" />
+                              )}
+                            </GlassButton>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="versions" className="px-4 pb-4 mt-0">
+                  <div className="mb-4">
+                    <p className="text-xs text-muted-foreground">Pro Edit versions ({imageVersions.length})</p>
+                  </div>
+                  
+                  {/* Versions Grid */}
+                  {!currentImage ? (
+                    <div className="text-center py-12">
+                      <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">Select an image to see versions</p>
+                    </div>
+                  ) : imageVersions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <p className="text-sm text-muted-foreground">No versions yet</p>
+                      <p className="text-xs text-muted-foreground mt-2">Apply Pro Edit effects to create versions</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {imageVersions.map((versionUrl, index) => (
+                        <div
+                          key={`${versionUrl}-${index}`}
+                          className={`group cursor-pointer relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+                            currentVersionIndex === index
+                              ? 'border-primary shadow-lg shadow-primary/20'
+                              : 'border-transparent hover:border-primary/50'
+                          }`}
+                          onClick={() => {
+                            setCurrentVersionIndex(index);
+                            setCurrentImage(versionUrl);
+                            historyIndexRef.current = index;
+                          }}
+                          data-testid={`version-${index}`}
+                        >
+                          <img
+                            alt={`Version ${index + 1}`}
+                            className="h-full w-full object-cover"
+                            src={versionUrl}
+                            data-testid={`img-version-${index}`}
+                          />
+                          
+                          {/* Version Number Badge */}
+                          <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded px-2 py-0.5">
+                            <span className="text-xs font-semibold text-white">v{index + 1}</span>
+                          </div>
+                          
+                          {/* Hover Actions */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <GlassButton
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(versionUrl, `version-${index + 1}`);
+                              }}
+                              disabled={downloadingId === `version-${index + 1}`}
+                            >
+                              {downloadingId === `version-${index + 1}` ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Download className="h-3 w-3" />
+                              )}
+                            </GlassButton>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
