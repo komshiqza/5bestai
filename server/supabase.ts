@@ -29,7 +29,7 @@ export const supabaseAdmin = createClient(
 );
 
 const TEMP_BUCKET = 'pro-edit-images';
-const PERMANENT_BUCKET = '5best-submissions';
+const PERMANENT_BUCKET = '5best-uploads';
 
 export async function uploadImageToSupabase(
   imageUrl: string,
