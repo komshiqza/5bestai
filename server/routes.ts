@@ -1157,7 +1157,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Check if user has purchased this prompt
           if (submission.promptForSale) {
             hasPurchasedPrompt = await storage.checkIfPromptPurchased(currentUserId, submission.id);
-            console.log(`[DEBUG] Submission ${submission.id} (by ${submission.userId}): promptForSale=${submission.promptForSale}, hasPurchasedPrompt=${hasPurchasedPrompt}, currentUserId=${currentUserId}`);
           }
           
           return {

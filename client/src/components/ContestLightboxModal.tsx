@@ -83,20 +83,10 @@ export function ContestLightboxModal({
 
   if (!isOpen || !submission) return null;
 
-  // Debug blur logic
+  // Calculate blur logic
   const isCreator = currentUser?.id === submission.userId;
   const hasPurchased = submission.hasPurchasedPrompt;
   const shouldBlur = submission.promptForSale && !hasPurchased && !isCreator;
-  
-  console.log('[DEBUG Blur Logic]', {
-    submissionId: submission.id,
-    currentUserId: currentUser?.id,
-    submissionUserId: submission.userId,
-    isCreator,
-    promptForSale: submission.promptForSale,
-    hasPurchasedPrompt: hasPurchased,
-    shouldBlur
-  });
 
   const handleVote = () => {
     if (onVote) {
@@ -262,7 +252,7 @@ export function ContestLightboxModal({
                       <div className="relative">
                         <p 
                           className={`text-white text-sm leading-relaxed ${
-                            submission.promptForSale && !submission.hasPurchasedPrompt && currentUser?.id !== submission.userId ? 'filter blur-sm select-none pointer-events-none' : ''
+                            shouldBlur ? 'filter blur-sm select-none pointer-events-none' : ''
                           }`}
                           data-testid="text-prompt-content"
                         >
