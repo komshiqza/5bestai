@@ -145,7 +145,7 @@ export function ContestCard({ contest }: ContestCardProps) {
         </div>
 
         {/* Title + Desc (top section) */}
-        <div className="mt-16">
+        <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white drop-shadow mb-2">
             {contest.title}
           </h1>
