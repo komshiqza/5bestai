@@ -43,6 +43,17 @@ export function ContestLightboxModal({
   const { data: user } = useAuth();
 
   useEffect(() => {
+    console.log('purchaseModalOpen changed to:', purchaseModalOpen);
+    if (purchaseModalOpen) {
+      console.log('Modal should be open. Checking conditions:');
+      console.log('- purchaseModalOpen:', purchaseModalOpen);
+      console.log('- user:', user);
+      console.log('- submission.promptPrice:', submission?.promptPrice);
+      console.log('- submission.promptCurrency:', submission?.promptCurrency);
+    }
+  }, [purchaseModalOpen, user, submission]);
+
+  useEffect(() => {
     if (!isOpen) return;
 
     const modalId = Date.now();
@@ -206,7 +217,13 @@ export function ContestLightboxModal({
                   
                   {needsPurchase && user && submission.promptPrice && submission.promptCurrency && (
                     <button
-                      onClick={() => setPurchaseModalOpen(true)}
+                      onClick={() => {
+                        console.log('Buy button clicked, opening modal');
+                        console.log('User:', user);
+                        console.log('Prompt price:', submission.promptPrice);
+                        console.log('Prompt currency:', submission.promptCurrency);
+                        setPurchaseModalOpen(true);
+                      }}
                       className="w-full py-2.5 px-4 rounded-lg font-semibold bg-violet-600 text-white hover:bg-violet-700 transition-all flex items-center justify-center gap-2 text-sm"
                       data-testid="button-buy-prompt"
                     >
