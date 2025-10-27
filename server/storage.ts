@@ -289,6 +289,7 @@ export class MemStorage implements IStorage {
       prizeGlory: "1000",
       startAt: new Date(),
       endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      isFeatured: false,
       config: {
         votesPerUserPerPeriod: 1,
         periodDurationHours: 24,
@@ -476,6 +477,7 @@ export class MemStorage implements IStorage {
       status: insertContest.status || "draft",
       coverImageUrl: insertContest.coverImageUrl || null,
       prizeGlory: insertContest.prizeGlory || "0",
+      isFeatured: insertContest.isFeatured ?? false,
       config: insertContest.config || null,
       createdAt: new Date()
     };
