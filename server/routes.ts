@@ -37,6 +37,9 @@ import {
   bulkCashoutIdsSchema,
   bulkRejectCashoutSchema,
   insertSiteSettingsSchema,
+  purchasePromptSchema,
+  updateDefaultCommissionSchema,
+  updateUserCommissionSchema,
   subscriptionTiers,
   editJobs,
   images,
@@ -4629,6 +4632,343 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("[ProEdit] Webhook error:", error);
       res.status(500).json({ error: "Webhook processing failed" });
+    }
+  });
+
+  // =============================================================================
+  // PROMPT MARKETPLACE - Buying and selling prompts
+  // =============================================================================
+
+  // POST /api/prompts/purchase/:id - Purchase a prompt
+  app.post("/api/prompts/purchase/:id", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const promptId = req.params.id;
+      const buyerId = req.user!.id;
+      
+      // Validate request body
+      const { paymentMethod, txHash } = purchasePromptSchema.parse(req.body);
+
+      // Step 1: Find prompt (check submissions first, then ai_generations)
+      let prompt: string | null = null;
+      let sellerId: string | null = null;
+      let price: string | null = null;
+      let currency: string | null = null;
+      let sellPrompt = false;
+      let submissionId: string | null = null;
+      let generationId: string | null = null;
+
+      // Try to find in submissions
+      const submission = await storage.getSubmission(promptId);
+      if (submission) {
+        prompt = submission.description || null; // Submission uses description as prompt
+        sellerId = submission.userId;
+        price = submission.promptPrice;
+        currency = submission.promptCurrency;
+        sellPrompt = submission.sellPrompt;
+        submissionId = submission.id;
+      } else {
+        // Try to find in ai_generations
+        const generation = await storage.getAiGeneration(promptId);
+        if (generation) {
+          prompt = generation.prompt;
+          sellerId = generation.userId;
+          price = generation.promptPrice;
+          currency = generation.promptCurrency;
+          sellPrompt = generation.sellPrompt;
+          generationId = generation.id;
+        }
+      }
+
+      // Step 2: Validations
+      if (!prompt || !sellerId) {
+        return res.status(404).json({ error: "Prompt not found" });
+      }
+
+      if (!sellPrompt) {
+        return res.status(400).json({ error: "This prompt is not for sale" });
+      }
+
+      if (sellerId === buyerId) {
+        return res.status(400).json({ error: "You cannot purchase your own prompt" });
+      }
+
+      // Check if user already purchased this prompt
+      const alreadyPurchased = await storage.hasUserPurchasedPrompt(buyerId, submissionId || undefined, generationId || undefined);
+      if (alreadyPurchased) {
+        return res.status(400).json({ error: "You have already purchased this prompt" });
+      }
+
+      if (!price || !currency) {
+        return res.status(400).json({ error: "Prompt price and currency are not set" });
+      }
+
+      // Step 3: Payment handling validations
+      if (paymentMethod === "wallet") {
+        // Validate txHash is provided
+        if (!txHash) {
+          return res.status(400).json({ error: "Transaction hash is required for wallet payments" });
+        }
+
+        // Check that platform wallet address is configured
+        const siteSettings = await storage.getSiteSettings();
+        if (!siteSettings.platformWalletAddress) {
+          return res.status(500).json({ error: "Platform wallet address not configured" });
+        }
+
+        // Verify transaction hasn't been used before
+        const existingTx = await storage.getGloryTransactionByHash(txHash);
+        if (existingTx) {
+          return res.status(400).json({ error: "Transaction hash already used" });
+        }
+      } else if (paymentMethod === "balance") {
+        // Verify buyer has enough balance
+        const buyer = await storage.getUser(buyerId);
+        if (!buyer) {
+          return res.status(404).json({ error: "Buyer not found" });
+        }
+
+        const priceNum = parseFloat(price);
+        let buyerBalance = 0;
+
+        if (currency === "GLORY") {
+          buyerBalance = buyer.gloryBalance;
+        } else if (currency === "SOL") {
+          buyerBalance = parseFloat(buyer.solBalance);
+        } else if (currency === "USDC") {
+          buyerBalance = parseFloat(buyer.usdcBalance);
+        }
+
+        if (buyerBalance < priceNum) {
+          return res.status(402).json({ 
+            error: `Insufficient ${currency} balance`,
+            required: priceNum,
+            available: buyerBalance
+          });
+        }
+      }
+
+      // Step 4: Commission calculation
+      const commissionPercentage = await storage.getUserCommission(sellerId);
+      const priceNum = parseFloat(price);
+      const platformCommission = priceNum * (commissionPercentage / 100);
+      const sellerPayout = priceNum - platformCommission;
+
+      console.log(`[Prompt Purchase] Price: ${priceNum} ${currency}, Commission: ${commissionPercentage}%, Platform: ${platformCommission}, Seller: ${sellerPayout}`);
+
+      // Step 5: Execute transaction
+      if (paymentMethod === "wallet") {
+        // For wallet payments: Platform receives the payment via blockchain
+        // Record the transaction in ledger with txHash
+        await storage.createGloryTransaction({
+          userId: buyerId,
+          delta: String(-priceNum), // Negative delta (payment out)
+          currency: currency,
+          reason: `Prompt purchase from ${submissionId ? 'submission' : 'generation'} ${promptId}`,
+          txHash: txHash,
+          metadata: {
+            promptPurchase: true,
+            submissionId,
+            generationId,
+            sellerId,
+            paymentMethod: "wallet"
+          }
+        });
+
+        // Credit seller with their payout
+        await storage.updateUserBalance(sellerId, sellerPayout, currency);
+        await storage.createGloryTransaction({
+          userId: sellerId,
+          delta: String(sellerPayout),
+          currency: currency,
+          reason: `Prompt sale to user ${buyerId}`,
+          metadata: {
+            promptSale: true,
+            buyerId,
+            submissionId,
+            generationId,
+            grossAmount: priceNum,
+            commission: platformCommission,
+            commissionPercentage
+          }
+        });
+      } else {
+        // Balance payment: Deduct from buyer, credit seller
+        await storage.updateUserBalance(buyerId, -priceNum, currency);
+        await storage.createGloryTransaction({
+          userId: buyerId,
+          delta: String(-priceNum),
+          currency: currency,
+          reason: `Prompt purchase from ${submissionId ? 'submission' : 'generation'} ${promptId}`,
+          metadata: {
+            promptPurchase: true,
+            submissionId,
+            generationId,
+            sellerId,
+            paymentMethod: "balance"
+          }
+        });
+
+        await storage.updateUserBalance(sellerId, sellerPayout, currency);
+        await storage.createGloryTransaction({
+          userId: sellerId,
+          delta: String(sellerPayout),
+          currency: currency,
+          reason: `Prompt sale to user ${buyerId}`,
+          metadata: {
+            promptSale: true,
+            buyerId,
+            submissionId,
+            generationId,
+            grossAmount: priceNum,
+            commission: platformCommission,
+            commissionPercentage
+          }
+        });
+      }
+
+      // Step 6: Create prompt purchase record
+      const purchase = await storage.createPromptPurchase({
+        buyerId,
+        sellerId,
+        submissionId: submissionId || null,
+        generationId: generationId || null,
+        price: String(priceNum),
+        currency: currency,
+        platformCommission: String(platformCommission),
+        sellerPayout: String(sellerPayout),
+        commissionPercentage,
+        paymentMethod,
+        txHash: txHash || null,
+        prompt: prompt
+      });
+
+      // Step 7: Update promptSoldCount
+      if (submissionId) {
+        const currentSubmission = await storage.getSubmission(submissionId);
+        if (currentSubmission) {
+          await storage.updateSubmission(submissionId, {
+            promptSoldCount: (currentSubmission.promptSoldCount || 0) + 1
+          });
+        }
+      } else if (generationId) {
+        const currentGeneration = await storage.getAiGeneration(generationId);
+        if (currentGeneration) {
+          await storage.updateAiGeneration(generationId, {
+            promptSoldCount: (currentGeneration.promptSoldCount || 0) + 1
+          });
+        }
+      }
+
+      console.log(`[Prompt Purchase] Success: ${purchase.id}, Buyer: ${buyerId}, Seller: ${sellerId}, Amount: ${priceNum} ${currency}`);
+
+      // Step 8: Return success response
+      res.json({
+        data: {
+          purchase,
+          prompt
+        }
+      });
+    } catch (error) {
+      console.error("[Prompt Purchase] Error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid request data",
+          details: error.errors
+        });
+      }
+      
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to purchase prompt" 
+      });
+    }
+  });
+
+  // =============================================================================
+  // ADMIN ROUTES - Commission Management
+  // =============================================================================
+
+  // GET /api/admin/commission/insights - Get commission insights
+  app.get("/api/admin/commission/insights", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      console.log(`[Admin] Getting commission insights by user ${req.user!.id}`);
+      
+      const insights = await storage.getCommissionInsights();
+      
+      res.json({ data: insights });
+    } catch (error) {
+      console.error("[Admin] Failed to get commission insights:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to get commission insights" 
+      });
+    }
+  });
+
+  // PATCH /api/admin/commission/default - Update default commission percentage
+  app.patch("/api/admin/commission/default", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { commission } = updateDefaultCommissionSchema.parse(req.body);
+      
+      console.log(`[Admin] Updating default commission to ${commission}% by user ${req.user!.id}`);
+      
+      await storage.updateDefaultCommission(commission);
+      
+      res.json({ 
+        data: { commission } 
+      });
+    } catch (error) {
+      console.error("[Admin] Failed to update default commission:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid commission value",
+          details: error.errors
+        });
+      }
+      
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to update default commission" 
+      });
+    }
+  });
+
+  // PATCH /api/admin/users/:userId/commission - Update user custom commission
+  app.patch("/api/admin/users/:userId/commission", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.params;
+      const { commission } = updateUserCommissionSchema.parse(req.body);
+      
+      console.log(`[Admin] Updating user ${userId} commission to ${commission ?? 'default'}% by user ${req.user!.id}`);
+      
+      // Validate user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Update user commission
+      const updatedUser = await storage.updateUserCommission(userId, commission);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ 
+        data: { user: updatedUser } 
+      });
+    } catch (error) {
+      console.error("[Admin] Failed to update user commission:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid commission value",
+          details: error.errors
+        });
+      }
+      
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to update user commission" 
+      });
     }
   });
 
