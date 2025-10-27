@@ -29,7 +29,8 @@ export function PromptPurchaseModal({
 }: PromptPurchaseModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<'balance' | 'wallet'>('balance');
   const [showSolanaPayment, setShowSolanaPayment] = useState(false);
-  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { toast} = useToast();
   const queryClient = useQueryClient();
 
   const price = parseFloat(promptPrice);
@@ -60,6 +61,7 @@ export function PromptPurchaseModal({
       return response.json();
     },
     onSuccess: () => {
+      setIsProcessing(false);
       queryClient.invalidateQueries({ queryKey: ["/api/submissions", submissionId] });
       queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       toast({
@@ -69,6 +71,7 @@ export function PromptPurchaseModal({
       onClose();
     },
     onError: (error: any) => {
+      setIsProcessing(false);
       toast({
         title: "Purchase failed",
         description: error.message || "Please try again",
@@ -78,6 +81,11 @@ export function PromptPurchaseModal({
   });
 
   const handlePurchase = () => {
+    // Prevent double-clicking
+    if (isProcessing || purchaseMutation.isPending) {
+      return;
+    }
+
     if (paymentMethod === 'balance') {
       if (hasInsufficientBalance) {
         toast({
@@ -87,6 +95,7 @@ export function PromptPurchaseModal({
         });
         return;
       }
+      setIsProcessing(true);
       purchaseMutation.mutate();
     } else if (paymentMethod === 'wallet') {
       // Show Solana payment interface
@@ -265,11 +274,11 @@ export function PromptPurchaseModal({
           </button>
           <button
             onClick={handlePurchase}
-            disabled={purchaseMutation.isPending || (paymentMethod === 'balance' && hasInsufficientBalance)}
+            disabled={isProcessing || purchaseMutation.isPending || (paymentMethod === 'balance' && hasInsufficientBalance)}
             className="px-6 py-2 rounded-lg font-semibold bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             data-testid="button-purchase"
           >
-            {purchaseMutation.isPending ? "Processing..." : `Purchase for ${formatCurrency(price, currency)}`}
+            {(isProcessing || purchaseMutation.isPending) ? "Processing..." : `Purchase for ${formatCurrency(price, currency)}`}
           </button>
         </div>
         )}

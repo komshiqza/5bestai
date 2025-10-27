@@ -4656,11 +4656,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PROMPT MARKETPLACE - Buying and selling prompts
   // =============================================================================
 
+  // Idempotency tracker: prevents duplicate purchases within 5 seconds
+  const recentPurchases = new Map<string, number>();
+  const PURCHASE_COOLDOWN_MS = 5000; // 5 seconds
+
   // POST /api/prompts/purchase/:id - Purchase a prompt
   app.post("/api/prompts/purchase/:id", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const promptId = req.params.id;
       const buyerId = req.user!.id;
+      
+      // Idempotency check: prevent duplicate purchases within cooldown period
+      const purchaseKey = `${buyerId}:${promptId}`;
+      const lastPurchaseTime = recentPurchases.get(purchaseKey);
+      const now = Date.now();
+      
+      if (lastPurchaseTime && (now - lastPurchaseTime) < PURCHASE_COOLDOWN_MS) {
+        const remainingSeconds = Math.ceil((PURCHASE_COOLDOWN_MS - (now - lastPurchaseTime)) / 1000);
+        return res.status(429).json({ 
+          error: `Please wait ${remainingSeconds} seconds before trying again` 
+        });
+      }
+      
+      // Mark this purchase attempt
+      recentPurchases.set(purchaseKey, now);
+      
+      // Clean up old entries (older than cooldown period)
+      for (const [key, time] of recentPurchases.entries()) {
+        if (now - time > PURCHASE_COOLDOWN_MS) {
+          recentPurchases.delete(key);
+        }
+      }
       
       // Validate request body
       const { paymentMethod, txHash } = purchasePromptSchema.parse(req.body);
