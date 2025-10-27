@@ -421,7 +421,7 @@ export const listPromptForSaleSchema = z.object({
 
 export const purchasePromptSchema = z.object({
   paymentMethod: z.enum(["wallet", "balance"]),
-  txHash: z.string().optional() // Required for wallet payments
+  txHash: z.string().nullable().optional() // Required for wallet payments
 }).refine(data => {
   if (data.paymentMethod === "wallet") {
     return !!data.txHash;

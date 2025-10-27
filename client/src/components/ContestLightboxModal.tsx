@@ -201,7 +201,7 @@ export function ContestLightboxModal({
                 <div className="space-y-2.5">
                   <BlurredPrompt
                     prompt={submission.description || ""}
-                    isBlurred={needsPurchase}
+                    isBlurred={!!needsPurchase}
                   />
                   
                   {needsPurchase && user && submission.promptPrice && submission.promptCurrency && (
