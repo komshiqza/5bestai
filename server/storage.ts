@@ -1725,7 +1725,7 @@ export class DbStorage implements IStorage {
 
   // Purchased Prompts
   async purchasePrompt(userId: string, submissionId: string): Promise<PurchasedPrompt> {
-    // Get submission with prompt details
+    // Get submission with prompt details (outside transaction - read-only)
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
       with: {
@@ -1749,45 +1749,96 @@ export class DbStorage implements IStorage {
       throw new Error("Cannot purchase your own prompt");
     }
 
-    // Check if already purchased
-    const existing = await db.query.purchasedPrompts.findFirst({
-      where: and(
-        eq(purchasedPrompts.userId, userId),
-        eq(purchasedPrompts.submissionId, submissionId)
-      )
-    });
-
-    if (existing) {
-      throw new Error("You have already purchased this prompt");
-    }
-
-    // Get buyer details
-    const buyer = await this.getUser(userId);
-    if (!buyer) {
-      throw new Error("Buyer not found");
-    }
-
     const price = parseFloat(submission.promptPrice);
     const currency = submission.promptCurrency;
 
-    // Check buyer balance
-    let hasSufficientBalance = false;
-    if (currency === "GLORY") {
-      hasSufficientBalance = buyer.gloryBalance >= price;
-    } else if (currency === "SOL") {
-      hasSufficientBalance = parseFloat(buyer.solBalance) >= price;
-    } else if (currency === "USDC") {
-      hasSufficientBalance = parseFloat(buyer.usdcBalance) >= price;
-    }
+    // Perform entire purchase atomically to prevent race conditions and double transactions
+    const purchase = await db.transaction(async (tx) => {
+      // Check if already purchased (inside transaction to prevent race conditions)
+      const existing = await tx.query.purchasedPrompts.findFirst({
+        where: and(
+          eq(purchasedPrompts.userId, userId),
+          eq(purchasedPrompts.submissionId, submissionId)
+        )
+      });
 
-    if (!hasSufficientBalance) {
-      throw new Error(`Insufficient ${currency} balance`);
-    }
+      if (existing) {
+        throw new Error("You have already purchased this prompt");
+      }
 
-    // Perform transaction atomically
-    await db.transaction(async (tx) => {
-      // Deduct from buyer
-      await this.createGloryTransaction({
+      // Get buyer details (inside transaction for consistent balance check)
+      const buyer = await tx.query.users.findFirst({
+        where: eq(users.id, userId)
+      });
+
+      if (!buyer) {
+        throw new Error("Buyer not found");
+      }
+
+      // Check buyer balance
+      let hasSufficientBalance = false;
+      if (currency === "GLORY") {
+        hasSufficientBalance = buyer.gloryBalance >= price;
+      } else if (currency === "SOL") {
+        hasSufficientBalance = parseFloat(buyer.solBalance) >= price;
+      } else if (currency === "USDC") {
+        hasSufficientBalance = parseFloat(buyer.usdcBalance) >= price;
+      }
+
+      if (!hasSufficientBalance) {
+        throw new Error(`Insufficient ${currency} balance`);
+      }
+
+      // Deduct from buyer balance
+      if (currency === "GLORY") {
+        await tx.update(users)
+          .set({ 
+            gloryBalance: sql`${users.gloryBalance} - ${price}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId));
+      } else if (currency === "SOL") {
+        await tx.update(users)
+          .set({ 
+            solBalance: sql`${users.solBalance} - ${price}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId));
+      } else if (currency === "USDC") {
+        await tx.update(users)
+          .set({ 
+            usdcBalance: sql`${users.usdcBalance} - ${price}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId));
+      }
+
+      // Credit seller balance
+      if (currency === "GLORY") {
+        await tx.update(users)
+          .set({ 
+            gloryBalance: sql`${users.gloryBalance} + ${price}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, submission.userId));
+      } else if (currency === "SOL") {
+        await tx.update(users)
+          .set({ 
+            solBalance: sql`${users.solBalance} + ${price}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, submission.userId));
+      } else if (currency === "USDC") {
+        await tx.update(users)
+          .set({ 
+            usdcBalance: sql`${users.usdcBalance} + ${price}`,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, submission.userId));
+      }
+
+      // Create ledger entry for buyer (deduction)
+      await tx.insert(gloryLedger).values({
         userId,
         delta: (-price).toString(),
         currency,
@@ -1802,8 +1853,8 @@ export class DbStorage implements IStorage {
         }
       });
 
-      // Credit seller
-      await this.createGloryTransaction({
+      // Create ledger entry for seller (credit)
+      await tx.insert(gloryLedger).values({
         userId: submission.userId,
         delta: price.toString(),
         currency,
@@ -1817,16 +1868,18 @@ export class DbStorage implements IStorage {
           currency
         }
       });
-    });
 
-    // Create purchased prompt record
-    const [purchase] = await db.insert(purchasedPrompts).values({
-      userId,
-      submissionId,
-      sellerId: submission.userId,
-      price: price.toString(),
-      currency
-    }).returning();
+      // Create purchased prompt record (unique constraint prevents duplicates)
+      const [newPurchase] = await tx.insert(purchasedPrompts).values({
+        userId,
+        submissionId,
+        sellerId: submission.userId,
+        price: price.toString(),
+        currency
+      }).returning();
+
+      return newPurchase;
+    });
 
     return purchase as PurchasedPrompt;
   }
