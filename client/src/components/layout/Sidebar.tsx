@@ -99,15 +99,17 @@ export function Sidebar() {
             </Button>
           </Link>
 
-          <Link href="/explore" data-testid="link-explore">
-            <Button 
-              variant="ghost" 
-              className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
-            >
-              <Compass className="h-4 w-4" />
-              {!isCollapsed && <span className="ml-2">Explore</span>}
-            </Button>
-          </Link>
+          {isAuthenticated(user) && (
+            <Link href="/ai-generator" data-testid="link-ai-generator">
+              <Button 
+                variant="ghost" 
+                className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
+              >
+                <Sparkles className="h-4 w-4" />
+                {!isCollapsed && <span className="ml-2">AI Studio</span>}
+              </Button>
+            </Link>
+          )}
 
           <Link href="/contests" data-testid="link-contests">
             <Button 
@@ -116,6 +118,16 @@ export function Sidebar() {
             >
               <Trophy className="h-4 w-4" />
               {!isCollapsed && <span className="ml-2">Contests</span>}
+            </Button>
+          </Link>
+
+          <Link href="/explore" data-testid="link-explore">
+            <Button 
+              variant="ghost" 
+              className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
+            >
+              <Compass className="h-4 w-4" />
+              {!isCollapsed && <span className="ml-2">Explore</span>}
             </Button>
           </Link>
 
@@ -128,18 +140,6 @@ export function Sidebar() {
               {!isCollapsed && <span className="ml-2">Pricing</span>}
             </Button>
           </Link>
-
-          {isAuthenticated(user) && (
-            <Link href="/ai-generator" data-testid="link-ai-generator">
-              <Button 
-                variant="ghost" 
-                className={`w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start'}`}
-              >
-                <Sparkles className="h-4 w-4" />
-                {!isCollapsed && <span className="ml-2">AI Studio</span>}
-              </Button>
-            </Link>
-          )}
         </nav>
 
         {/* Footer Links Menu */}

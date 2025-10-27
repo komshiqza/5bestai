@@ -41,20 +41,8 @@ export function Navbar() {
 
           {/* Center Navigation - Desktop */}
           <div className="hidden md:flex items-center space-x-3 absolute left-1/2 transform -translate-x-1/2">
-            <Link href="/pricing" data-testid="link-pricing">
-              <Button variant="ghost" className="px-4 py-2">
-                <CreditCard className="w-4 h-4 mr-2" />
-                Pricing
-              </Button>
-            </Link>
-            <Link href="/contests" data-testid="link-contests">
-              <Button variant="ghost" className="px-4 py-2">Contests</Button>
-            </Link>
-            <Link href="/explore" data-testid="link-explore">
-              <Button variant="ghost" className="px-4 py-2">
-                <Compass className="w-4 h-4 mr-2" />
-                Explore
-              </Button>
+            <Link href="/" data-testid="link-home">
+              <Button variant="ghost" className="px-4 py-2">Home</Button>
             </Link>
             {isAuthenticated(user) && (
               <Link href="/ai-generator" data-testid="link-ai-generator">
@@ -64,6 +52,24 @@ export function Navbar() {
                 </Button>
               </Link>
             )}
+            <Link href="/contests" data-testid="link-contests">
+              <Button variant="ghost" className="px-4 py-2">
+                <Trophy className="w-4 h-4 mr-2" />
+                Contests
+              </Button>
+            </Link>
+            <Link href="/explore" data-testid="link-explore">
+              <Button variant="ghost" className="px-4 py-2">
+                <Compass className="w-4 h-4 mr-2" />
+                Explore
+              </Button>
+            </Link>
+            <Link href="/pricing" data-testid="link-pricing">
+              <Button variant="ghost" className="px-4 py-2">
+                <CreditCard className="w-4 h-4 mr-2" />
+                Pricing
+              </Button>
+            </Link>
           </div>
 
           {/* User Actions - Desktop Only */}

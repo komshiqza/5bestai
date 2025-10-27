@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Home, Trophy, LogOut, User, Shield, Image, Sparkles } from "lucide-react";
+import { Home, Trophy, LogOut, User, Shield, Image, Sparkles, Compass } from "lucide-react";
 
 export function BottomNav() {
   const { data: user } = useAuth();
@@ -29,27 +29,16 @@ export function BottomNav() {
   };
 
   return (
-    <nav className={`${isAuthenticated(user) ? 'md:hidden' : ''} fixed bottom-0 left-0 right-0 z-50 glass-effect border-t border-border`} data-testid="bottom-nav">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-effect border-t border-border" data-testid="bottom-nav">
       <div className="flex items-center justify-around h-16 px-2">
         {/* Home */}
         <Link href="/" data-testid="bottom-link-home">
           <Button 
             variant="ghost" 
-            className={`flex flex-col items-center justify-center h-14 px-4 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`}
+            className={`flex flex-col items-center justify-center h-14 px-3 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <Home className="w-5 h-5" />
             <span className="text-xs mt-1">Home</span>
-          </Button>
-        </Link>
-
-        {/* Contests */}
-        <Link href="/contests" data-testid="bottom-link-contests">
-          <Button 
-            variant="ghost" 
-            className={`flex flex-col items-center justify-center h-14 px-4 ${isActive('/contests') ? 'text-primary' : 'text-muted-foreground'}`}
-          >
-            <Trophy className="w-5 h-5" />
-            <span className="text-xs mt-1">Contests</span>
           </Button>
         </Link>
 
@@ -58,13 +47,35 @@ export function BottomNav() {
           <Link href="/ai-generator" data-testid="bottom-link-ai-studio">
             <Button 
               variant="ghost" 
-              className={`flex flex-col items-center justify-center h-14 px-4 ${isAiStudioActive() ? 'text-primary' : 'text-muted-foreground'}`}
+              className={`flex flex-col items-center justify-center h-14 px-3 ${isAiStudioActive() ? 'text-primary' : 'text-muted-foreground'}`}
             >
               <Sparkles className="w-5 h-5" />
               <span className="text-xs mt-1">AI Studio</span>
             </Button>
           </Link>
         )}
+
+        {/* Contests */}
+        <Link href="/contests" data-testid="bottom-link-contests">
+          <Button 
+            variant="ghost" 
+            className={`flex flex-col items-center justify-center h-14 px-3 ${isActive('/contests') ? 'text-primary' : 'text-muted-foreground'}`}
+          >
+            <Trophy className="w-5 h-5" />
+            <span className="text-xs mt-1">Contests</span>
+          </Button>
+        </Link>
+
+        {/* Explore */}
+        <Link href="/explore" data-testid="bottom-link-explore">
+          <Button 
+            variant="ghost" 
+            className={`flex flex-col items-center justify-center h-14 px-3 ${isActive('/explore') ? 'text-primary' : 'text-muted-foreground'}`}
+          >
+            <Compass className="w-5 h-5" />
+            <span className="text-xs mt-1">Explore</span>
+          </Button>
+        </Link>
 
         {/* User Menu or Auth Buttons */}
         {isAuthenticated(user) ? (

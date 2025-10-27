@@ -54,8 +54,11 @@ function Router() {
   // Hide footer on Explore page (infinite scroll) and AI Studio pages
   const hideFooter = hasSidebar;
   
-  // Show Footer and BottomNav when: Private Mode is OFF OR user is logged in, AND not on pages with infinity scroll
-  const showFooterAndBottomNav = (!privateMode || !!user) && !hideFooter;
+  // Footer: Show when Private Mode is OFF OR user is logged in, AND not on pages with infinity scroll
+  const showFooter = (!privateMode || !!user) && !hideFooter;
+  
+  // BottomNav: Always show on mobile when Private Mode is OFF OR user is logged in (ignore hideFooter)
+  const showBottomNav = !privateMode || !!user;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -92,8 +95,8 @@ function Router() {
           </Route>
         </Switch>
       </main>
-      {showFooterAndBottomNav && <Footer />}
-      {showFooterAndBottomNav && <BottomNav />}
+      {showFooter && <Footer />}
+      {showBottomNav && <BottomNav />}
     </div>
   );
 }
