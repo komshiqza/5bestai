@@ -43,6 +43,7 @@ interface UploadWizardModalProps {
     imageUrl: string;
     cloudinaryPublicId: string;
     prompt: string;
+    model?: string;
   };
 }
 
@@ -60,9 +61,16 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [selectedContest, setSelectedContest] = useState<string>("");
   const [agreedToRules, setAgreedToRules] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
+  // Marketplace state
+  const [promptForSale, setPromptForSale] = useState(false);
+  const [promptPrice, setPromptPrice] = useState("");
+  const [promptCurrency, setPromptCurrency] = useState<'SOL' | 'USDC' | 'GLORY'>('USDC');
 
   // Wizard
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -120,6 +128,14 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
       setSelectedContest(preselectedContestId);
     }
   }, [preselectedContestId, activeContests]);
+
+  // Auto-populate prompt and AI model from AI submission mode
+  useEffect(() => {
+    if (aiSubmissionMode) {
+      setPrompt(aiSubmissionMode.prompt || "");
+      setAiModel(aiSubmissionMode.model || "");
+    }
+  }, [aiSubmissionMode]);
 
   // Get optimal payment method based on contest config and user balance
   const getOptimalPaymentMethod = useCallback(() => {
@@ -649,6 +665,11 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
                 setTagInput={setTagInput}
                 onAddTag={handleTagAdd}
                 onRemoveTag={removeTag}
+                aiModel={aiModel}
+                setAiModel={setAiModel}
+                prompt={prompt}
+                setPrompt={setPrompt}
+                isFromAiGenerator={!!aiSubmissionMode}
               />
             )}
 
@@ -888,6 +909,11 @@ function StepDetails({
   setTagInput,
   onAddTag,
   onRemoveTag,
+  aiModel,
+  setAiModel,
+  prompt,
+  setPrompt,
+  isFromAiGenerator,
 }: {
   title: string;
   setTitle: (v: string) => void;
@@ -900,6 +926,11 @@ function StepDetails({
   setTagInput: (v: string) => void;
   onAddTag: (v: string) => void;
   onRemoveTag: (t: string) => void;
+  aiModel: string;
+  setAiModel: (v: string) => void;
+  prompt: string;
+  setPrompt: (v: string) => void;
+  isFromAiGenerator: boolean;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -993,6 +1024,33 @@ function StepDetails({
             ))}
           </div>
         )}
+
+        {/* AI Model */}
+        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mt-6 mb-1">
+          AI Model {isFromAiGenerator && <span className="text-xs text-slate-500">(auto-filled)</span>}
+        </label>
+        <input
+          value={aiModel}
+          onChange={(e) => setAiModel(e.target.value)}
+          placeholder="e.g., DALL-E 3, Midjourney, Stable Diffusion"
+          disabled={isFromAiGenerator}
+          className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          data-testid="input-ai-model"
+        />
+
+        {/* Prompt */}
+        <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mt-4 mb-1">
+          Prompt {isFromAiGenerator && <span className="text-xs text-slate-500">(auto-filled)</span>}
+        </label>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={4}
+          placeholder="Enter the prompt used to create this image..."
+          disabled={isFromAiGenerator}
+          className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          data-testid="input-prompt"
+        />
       </div>
     </div>
   );
