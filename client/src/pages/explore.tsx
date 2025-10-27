@@ -31,7 +31,7 @@ function ExploreContent() {
     queryClient.removeQueries({ queryKey: ["/api/submissions"] });
     setAllSubmissions([]);
     setPage(1);
-  }, [queryClient]);
+  }, []);
 
   // Reset pagination when search tag changes
   useEffect(() => {
@@ -59,7 +59,7 @@ function ExploreContent() {
 
   // Update submissions when new data arrives
   useEffect(() => {
-    if (submissions) {
+    if (submissions && submissions.length >= 0) {
       if (page === 1) {
         setAllSubmissions(submissions);
       } else if (submissions.length > 0) {
@@ -69,7 +69,7 @@ function ExploreContent() {
       setHasMore(submissions.length === 12);
       setIsLoadingMore(false);
     }
-  }, [submissions, page]);
+  }, [submissions]);
 
   // Infinite scroll logic
   const handleScroll = useCallback(() => {
