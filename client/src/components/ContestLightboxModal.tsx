@@ -151,13 +151,11 @@ export function ContestLightboxModal({
           </button>
 
           {/* Animated scroll arrow - mobile only */}
-          <button
+          <ChevronDown
             onClick={scrollToInfo}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white border border-white/20 animate-bounce lg:hidden"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 h-8 w-8 text-white/80 animate-bounce cursor-pointer lg:hidden"
             data-testid="button-scroll-to-info"
-          >
-            <ChevronDown className="h-6 w-6" />
-          </button>
+          />
         </div>
 
         {/* Info Panel - Right on desktop, Bottom on mobile */}
