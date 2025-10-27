@@ -96,6 +96,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (October 2025)
 
+### Featured Contest System (October 27, 2025)
+**Problem:** No way to highlight important contests on the home page to drive engagement.
+
+**Solution:**
+- **Added `isFeatured` boolean field** to `contests` table (defaults to false)
+- **Admin control**: "Featured Contest" checkbox in Edit Contest modal
+- **API endpoint**: `GET /api/contests/featured` returns active featured contest
+- **Home page display**: Featured contest card shown below hero section when available
+- **Smart handling**: 
+  - Automatically hides if no featured contest exists (returns 404)
+  - Auto-ends expired featured contests
+  - Uses existing ContestCard component for consistent design
+- **Data flow**: Admin form → PATCH /api/admin/contests/:id → database → GET /api/contests/featured → Home page
+
+**Impact:** Platform can now promote specific contests on the home page by simply checking the "Featured Contest" box in the admin panel, increasing visibility and participation for highlighted competitions.
+
 ### Automatic Thumbnail Generation for AI Images (October 26, 2025)
 **Problem:** Loading full-resolution AI-generated images in grid displays (AI Generator history panel, admin dashboard) caused slow page load times and excessive bandwidth usage.
 
