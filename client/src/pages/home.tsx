@@ -5,12 +5,17 @@ import { Trophy, ArrowRight, Search } from "lucide-react";
 import { useAuth, isAuthenticated } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { ContestCard } from "@/components/contest-card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const { data: user } = useAuth();
   const [, setLocation] = useLocation();
   const [prompt, setPrompt] = useState("");
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   // Fetch featured contest
   const { data: featuredContest } = useQuery({
@@ -35,59 +40,55 @@ export default function Home() {
   return (
     <div className="min-h-screen pb-32 md:pb-0" data-testid="home-page">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 md:py-32">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600 rounded-full blur-3xl"></div>
-        </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex max-w-4xl mx-auto flex-col items-center gap-8 text-center">
-            <div className="flex flex-col gap-4">
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter gradient-text" data-testid="hero-title">
-                Where Prompts Become Glory
-              </h1>
-              <h2 className="text-lg md:text-xl text-muted-foreground" data-testid="hero-description">
-                The world's first AI Art Contest platform powered by the $GLORY token.
-              </h2>
-              <p className="text-lg md:text-xl text-muted-foreground" data-testid="text-hero-subline">
-                Upload your AI creations. Vote. Win crypto rewards.
-              </p>
-            </div>
-
-            {/* Prompt Search Bar */}
-            <div className="w-full max-w-2xl">
-              <form onSubmit={handlePromptSubmit}>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    className="w-full rounded-full border border-primary/30 bg-background-dark/50 py-4 pl-12 pr-4 text-white placeholder-gray-400 backdrop-blur-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    placeholder="Describe your vision..."
-                    data-testid="input-prompt-search"
-                  />
-                </div>
-              </form>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/contests" data-testid="hero-button-contests">
-                <GlassButton className="text-lg px-8 py-3">
-                  <Trophy className="mr-2 h-5 w-5" />
-                  Browse Contests
-                </GlassButton>
-              </Link>
-              <Link href="/explore" data-testid="hero-button-explore">
-                <Button size="lg" variant="outline" className="text-lg px-8 py-3">
-                  Explore Submissions
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
+      <section className="container mx-auto flex flex-1 flex-col items-center justify-center px-4 sm:px-6 text-center py-20 md:py-32">
+        <div className="flex max-w-4xl flex-col items-center gap-8 relative">
+          <div className={`flex flex-col gap-4 ${isVisible ? 'animate-fade-in-up animation-delay-100' : 'opacity-0'}`}>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter gradient-text animate-pulse-slow" data-testid="hero-title">
+              Where Prompts Become Glory
+            </h1>
+            <h2 className="text-base sm:text-lg lg:text-xl text-muted-foreground" data-testid="hero-description">
+              The world's first AI Art Contest platform powered by the $GLORY token.
+            </h2>
+            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground" data-testid="text-hero-subline">
+              Upload your AI creations. Vote. Win crypto rewards.
+            </p>
           </div>
+
+          {/* Prompt Search Bar */}
+          <div className={`w-full max-w-2xl px-4 sm:px-0 ${isVisible ? 'animate-fade-in-scale animation-delay-300' : 'opacity-0'}`}>
+            <form onSubmit={handlePromptSubmit} className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <Search className="h-5 w-5 text-gray-400 transition-colors duration-300" />
+              </div>
+              <input
+                type="text"
+                placeholder="Describe your vision..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="w-full rounded-full border border-primary/30 bg-background-dark/50 backdrop-blur-sm py-3 sm:py-4 pl-10 sm:pl-12 pr-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/60 focus:border-primary focus:rounded-none transition-all duration-300 hover:border-primary/50 text-sm sm:text-base"
+                data-testid="input-prompt-search"
+              />
+            </form>
+          </div>
+
+          {/* CTAs */}
+          <div className={`flex flex-col gap-3 sm:gap-4 sm:flex-row w-full sm:w-auto px-4 sm:px-0 ${isVisible ? 'animate-fade-in-up animation-delay-400' : 'opacity-0'}`}>
+            <Link href="/explore" data-testid="hero-button-explore">
+              <GlassButton className="px-4 sm:px-6 py-3 text-sm sm:text-base w-full sm:w-auto">
+                Explore
+              </GlassButton>
+            </Link>
+            <Link href="/contests" data-testid="hero-button-contests">
+              <GlassButton className="px-4 sm:px-6 py-3 text-sm sm:text-base w-full sm:w-auto">
+                Contests
+              </GlassButton>
+            </Link>
+          </div>
+
+          {/* Floating Elements */}
+          <div className="absolute -top-10 -left-10 w-20 h-20 bg-primary/10 rounded-full blur-xl animate-pulse-slow animation-delay-200"></div>
+          <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-cyan-400/10 rounded-full blur-xl animate-pulse-slow animation-delay-500"></div>
+          <div className="absolute top-1/2 -right-20 w-16 h-16 bg-pink-400/10 rounded-full blur-xl animate-pulse-slow animation-delay-300"></div>
         </div>
       </section>
 
