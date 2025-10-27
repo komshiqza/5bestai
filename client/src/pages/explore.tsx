@@ -5,7 +5,7 @@ import { SubmissionCard } from "@/components/submission-card";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { Image as ImageIcon, Play, Search, Loader2 } from "lucide-react";
 import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,13 +24,16 @@ function ExploreContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTag, setSearchTag] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const hasInitialized = useRef(false);
 
-  // Clear submissions cache on mount to ensure fresh data
+  // Clear submissions cache on mount to ensure fresh data (runs once)
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
-    queryClient.removeQueries({ queryKey: ["/api/submissions"] });
-    setAllSubmissions([]);
-    setPage(1);
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.removeQueries({ queryKey: ["/api/submissions"] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reset pagination when search tag changes
