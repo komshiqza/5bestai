@@ -1472,7 +1472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Save AI-generated image to permanent storage and create submission
   app.post("/api/submissions/save-from-ai", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
     try {
-      const { imageUrl, title, description } = req.body;
+      const { imageUrl, title, description, sellPrompt, promptPrice, promptCurrency } = req.body;
       
       if (!imageUrl || !title) {
         return res.status(400).json({ error: "imageUrl and title are required" });
@@ -1552,7 +1552,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cloudinaryResourceType,
         status: "approved", // Auto-approve since it's user's own gallery
         entryFeeAmount: null,
-        entryFeeCurrency: null
+        entryFeeCurrency: null,
+        sellPrompt: sellPrompt === "true" || sellPrompt === true,
+        promptPrice: promptPrice || null,
+        promptCurrency: promptCurrency || null
       });
 
       res.status(201).json({ 
