@@ -63,6 +63,13 @@ export const submissions = pgTable("submissions", {
   isEnhanced: boolean("is_enhanced").notNull().default(false), // True if edited or upscaled via built-in editor
   entryFeeAmount: text("entry_fee_amount"), // Entry fee amount paid at submission time (stored as string for precision)
   entryFeeCurrency: varchar("entry_fee_currency", { length: 20 }), // Currency of entry fee (GLORY, SOL, USDC)
+  category: varchar("category", { length: 100 }), // Category (Art, Portrait, Landscape, etc.)
+  aiModel: varchar("ai_model", { length: 255 }), // AI model used to generate the image
+  prompt: text("prompt"), // Prompt used to generate the image
+  generationId: varchar("generation_id").references(() => aiGenerations.id, { onDelete: "set null" }), // Reference to AI generation
+  promptForSale: boolean("prompt_for_sale").notNull().default(false), // Whether the prompt is for sale
+  promptPrice: numeric("prompt_price", { precision: 18, scale: 6 }), // Price for the prompt (supports decimals for crypto)
+  promptCurrency: varchar("prompt_currency", { length: 20 }), // Currency for prompt sale (SOL, USDC, GLORY)
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userContestIdx: index("submissions_user_contest_idx").on(table.userId, table.contestId),
