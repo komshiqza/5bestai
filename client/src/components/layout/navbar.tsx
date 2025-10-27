@@ -68,7 +68,7 @@ export function Navbar() {
 
           {/* User Actions - Desktop Only */}
           <div className="hidden md:flex items-center space-x-3">
-            {isAuthenticated(user) && (
+            {isAuthenticated(user) && location === "/pricing" && (
               <div className="wallet-adapter-button-trigger" data-testid="wallet-button">
                 <WalletMultiButton />
               </div>
