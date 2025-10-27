@@ -1492,7 +1492,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sellPrompt: sellPrompt === "true" || sellPrompt === true, // Convert string to boolean if needed
         promptPrice: promptPrice || null,
         promptCurrency: promptCurrency || null,
-        generationId: generationId || null // Link to AI generation if available
+        generationId: generationId || null, // Link to AI generation if available
+        aiTool: aiTool || null // AI model/tool used to generate the image
       });
 
       // Deduct entry fee AFTER submission is successfully created
