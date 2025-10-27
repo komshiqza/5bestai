@@ -172,6 +172,17 @@ export const cashoutEvents = pgTable("cashout_events", {
 }));
 
 // Relations
+export const submissionsRelations = relations(submissions, ({ one }) => ({
+  user: one(users, {
+    fields: [submissions.userId],
+    references: [users.id],
+  }),
+  contest: one(contests, {
+    fields: [submissions.contestId],
+    references: [contests.id],
+  }),
+}));
+
 export const cashoutRequestsRelations = relations(cashoutRequests, ({ one }) => ({
   user: one(users, {
     fields: [cashoutRequests.userId],
