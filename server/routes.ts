@@ -1130,12 +1130,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let isUserAdmin = false;
       let currentUserId: string | undefined;
       
+      console.log(`[Auth Debug] authToken exists: ${!!authToken}`);
+      
       if (authToken) {
         try {
           const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
           isUserAdmin = decoded.role === "admin";
           currentUserId = decoded.userId;
+          console.log(`[Auth Debug] Decoded userId: ${currentUserId}, isAdmin: ${isUserAdmin}`);
         } catch (error) {
+          console.log(`[Auth Debug] Token verification failed:`, error);
           // Token invalid, treat as unauthenticated
         }
       }
