@@ -1612,7 +1612,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let hasPromptAccess = false;
       if (submission.sellPrompt) {
         // User has access if they own it or purchased it
-        hasPromptAccess = isOwnSubmission || (currentUserId ? await storage.hasUserPurchasedPrompt(currentUserId, submission.id) : false);
+        const hasPurchased = currentUserId ? await storage.hasUserPurchasedPrompt(currentUserId, submission.id) : false;
+        console.log(`[Prompt Access Check] submissionId: ${submission.id}, userId: ${currentUserId}, isOwn: ${isOwnSubmission}, hasPurchased: ${hasPurchased}`);
+        hasPromptAccess = isOwnSubmission || hasPurchased;
       } else {
         // Free prompts are accessible to everyone
         hasPromptAccess = true;
