@@ -5,7 +5,7 @@ import { SubmissionCard } from "@/components/submission-card";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { Image as ImageIcon, Play, Search, Loader2 } from "lucide-react";
 import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,17 +24,13 @@ function ExploreContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTag, setSearchTag] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const hasInitialized = useRef(false);
-  const lastProcessedPage = useRef<{page: number, tag: string} | null>(null);
 
-  // Clear submissions cache on mount to ensure fresh data (runs once)
+  // Clear submissions cache on mount to ensure fresh data
   useEffect(() => {
-    if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
-      queryClient.removeQueries({ queryKey: ["/api/submissions"] });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+    queryClient.removeQueries({ queryKey: ["/api/submissions"] });
+    setAllSubmissions([]);
+    setPage(1);
   }, []);
 
   // Reset pagination when search tag changes
@@ -63,17 +59,7 @@ function ExploreContent() {
 
   // Update submissions when new data arrives
   useEffect(() => {
-    // Only process if we haven't already processed this page/tag combination
-    const currentKey = { page, tag: searchTag };
-    const lastKey = lastProcessedPage.current;
-    
-    if (lastKey && lastKey.page === currentKey.page && lastKey.tag === currentKey.tag) {
-      return; // Already processed this exact page
-    }
-    
     if (submissions && submissions.length >= 0) {
-      lastProcessedPage.current = currentKey;
-      
       if (page === 1) {
         setAllSubmissions(submissions);
       } else if (submissions.length > 0) {
@@ -83,7 +69,7 @@ function ExploreContent() {
       setHasMore(submissions.length === 12);
       setIsLoadingMore(false);
     }
-  }, [submissions, page, searchTag]);
+  }, [submissions, page]);
 
   // Infinite scroll logic
   const handleScroll = useCallback(() => {

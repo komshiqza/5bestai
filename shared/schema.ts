@@ -17,7 +17,6 @@ export const users = pgTable("users", {
   usdcBalance: numeric("usdc_balance", { precision: 18, scale: 6 }).notNull().default("0"), // USDC with 6 decimals
   imageCredits: integer("image_credits").notNull().default(100), // Credits for AI image generation and upscaling
   withdrawalAddress: varchar("withdrawal_address", { length: 255 }), // Solana withdrawal address
-  customCommission: integer("custom_commission"), // Custom commission % for this user (null = use default)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 }, (table) => ({
@@ -64,13 +63,6 @@ export const submissions = pgTable("submissions", {
   isEnhanced: boolean("is_enhanced").notNull().default(false), // True if edited or upscaled via built-in editor
   entryFeeAmount: text("entry_fee_amount"), // Entry fee amount paid at submission time (stored as string for precision)
   entryFeeCurrency: varchar("entry_fee_currency", { length: 20 }), // Currency of entry fee (GLORY, SOL, USDC)
-  sellPrompt: boolean("sell_prompt").notNull().default(false), // Whether the prompt is for sale
-  promptPrice: numeric("prompt_price", { precision: 18, scale: 9 }), // Prompt price (supports SOL 9 decimals)
-  promptCurrency: varchar("prompt_currency", { length: 20 }), // USDC, SOL, GLORY
-  promptSoldCount: integer("prompt_sold_count").notNull().default(0), // Number of times prompt was sold
-  generationId: varchar("generation_id").references(() => aiGenerations.id, { onDelete: "set null" }), // Link to AI generation
-  aiTool: varchar("ai_tool", { length: 255 }), // AI model/tool used to generate the image (e.g., "Ideogram v3", "Nano Banana")
-  prompt: text("prompt"), // AI generation prompt (user-provided or from AI generation)
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userContestIdx: index("submissions_user_contest_idx").on(table.userId, table.contestId),
@@ -172,30 +164,6 @@ export const cashoutEvents = pgTable("cashout_events", {
   createdAtIdx: index("cashout_events_created_at_idx").on(table.createdAt)
 }));
 
-// Prompt Purchases table (marketplace transactions)
-export const promptPurchases = pgTable("prompt_purchases", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  buyerId: varchar("buyer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  submissionId: varchar("submission_id").references(() => submissions.id, { onDelete: "set null" }), // Link to submission (if bought from submission)
-  generationId: varchar("generation_id").references(() => aiGenerations.id, { onDelete: "set null" }), // Link to AI generation (if bought from generation)
-  price: numeric("price", { precision: 18, scale: 9 }).notNull(), // Purchase price (supports SOL 9 decimals)
-  currency: varchar("currency", { length: 20 }).notNull(), // USDC, SOL, GLORY
-  platformCommission: numeric("platform_commission", { precision: 18, scale: 9 }).notNull(), // Platform commission amount
-  sellerPayout: numeric("seller_payout", { precision: 18, scale: 9 }).notNull(), // Seller payout amount after commission
-  commissionPercentage: integer("commission_percentage").notNull(), // Commission % used (for historical tracking)
-  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // wallet, balance
-  txHash: varchar("tx_hash", { length: 255 }), // Blockchain transaction hash (for wallet payments)
-  prompt: text("prompt").notNull(), // The prompt that was purchased
-  createdAt: timestamp("created_at").notNull().defaultNow()
-}, (table) => ({
-  buyerIdx: index("prompt_purchases_buyer_idx").on(table.buyerId),
-  sellerIdx: index("prompt_purchases_seller_idx").on(table.sellerId),
-  createdAtIdx: index("prompt_purchases_created_at_idx").on(table.createdAt),
-  submissionIdx: index("prompt_purchases_submission_idx").on(table.submissionId),
-  generationIdx: index("prompt_purchases_generation_idx").on(table.generationId)
-}));
-
 // Relations
 export const cashoutRequestsRelations = relations(cashoutRequests, ({ one }) => ({
   user: one(users, {
@@ -263,11 +231,6 @@ export const insertCashoutRequestSchema = createInsertSchema(cashoutRequests).om
 });
 
 export const insertCashoutEventSchema = createInsertSchema(cashoutEvents).omit({
-  id: true,
-  createdAt: true
-});
-
-export const insertPromptPurchaseSchema = createInsertSchema(promptPurchases).omit({
   id: true,
   createdAt: true
 });
@@ -407,40 +370,6 @@ export const bulkRejectCashoutSchema = z.object({
   rejectionReason: z.string().optional()
 });
 
-// Prompt marketplace schemas
-export const listPromptForSaleSchema = z.object({
-  sellPrompt: z.boolean(),
-  promptPrice: z.number().positive().optional(),
-  promptCurrency: z.enum(["USDC", "SOL", "GLORY"]).optional()
-}).refine(data => {
-  if (data.sellPrompt) {
-    return data.promptPrice && data.promptCurrency;
-  }
-  return true;
-}, {
-  message: "Price and currency are required when selling prompt"
-});
-
-export const purchasePromptSchema = z.object({
-  paymentMethod: z.enum(["wallet", "balance"]),
-  txHash: z.string().nullable().optional() // Required for wallet payments
-}).refine(data => {
-  if (data.paymentMethod === "wallet") {
-    return !!data.txHash;
-  }
-  return true;
-}, {
-  message: "Transaction hash required for wallet payments"
-});
-
-export const updateDefaultCommissionSchema = z.object({
-  commission: z.number().int().min(0).max(100)
-});
-
-export const updateUserCommissionSchema = z.object({
-  commission: z.number().int().min(0).max(100).nullable()
-});
-
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -460,8 +389,6 @@ export type InsertCashoutRequest = z.infer<typeof insertCashoutRequestSchema>;
 export type CashoutRequest = typeof cashoutRequests.$inferSelect;
 export type InsertCashoutEvent = z.infer<typeof insertCashoutEventSchema>;
 export type CashoutEvent = typeof cashoutEvents.$inferSelect;
-export type InsertPromptPurchase = z.infer<typeof insertPromptPurchaseSchema>;
-export type PromptPurchase = typeof promptPurchases.$inferSelect;
 export type InsertAiGeneration = z.infer<typeof insertAiGenerationSchema>;
 export type AiGeneration = typeof aiGenerations.$inferSelect;
 
@@ -504,10 +431,6 @@ export const aiGenerations = pgTable("ai_generations", {
   isEdited: boolean("is_edited").notNull().default(false), // True if edited via built-in editor
   isUpscaled: boolean("is_upscaled").notNull().default(false), // True if upscaled via AI upscaling
   creditsUsed: integer("credits_used").notNull().default(0), // Credits deducted for this generation
-  sellPrompt: boolean("sell_prompt").notNull().default(false), // Whether the prompt is for sale
-  promptPrice: numeric("prompt_price", { precision: 18, scale: 9 }), // Prompt price (supports SOL 9 decimals)
-  promptCurrency: varchar("prompt_currency", { length: 20 }), // USDC, SOL, GLORY
-  promptSoldCount: integer("prompt_sold_count").notNull().default(0), // Number of times prompt was sold
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userIdx: index("ai_generations_user_idx").on(table.userId),
@@ -519,7 +442,6 @@ export const siteSettings = pgTable("site_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   privateMode: boolean("private_mode").notNull().default(false), // When true, only logged-in users can access the site
   platformWalletAddress: varchar("platform_wallet_address", { length: 255 }), // Solana wallet address for receiving entry fees
-  defaultPromptCommission: integer("default_prompt_commission").notNull().default(20), // Default commission % (20 = 20%)
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 

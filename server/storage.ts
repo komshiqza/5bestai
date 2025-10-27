@@ -37,8 +37,6 @@ import {
   type InsertImageVersion,
   type EditJob,
   type InsertEditJob,
-  type PromptPurchase,
-  type InsertPromptPurchase,
   type SubmissionWithUser,
   type ContestWithStats,
   type UserWithStats,
@@ -59,8 +57,7 @@ import {
   subscriptionTransactions,
   images,
   imageVersions,
-  editJobs,
-  promptPurchases
+  editJobs
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
@@ -144,7 +141,6 @@ export interface IStorage {
   createAiGeneration(generation: InsertAiGeneration): Promise<AiGeneration>;
   getAiGeneration(id: string): Promise<AiGeneration | undefined>;
   getAiGenerations(userId: string, limit?: number): Promise<AiGeneration[]>;
-  getAiGenerationsByIds(ids: string[]): Promise<AiGeneration[]>;
   deleteAiGeneration(id: string): Promise<void>;
   updateAiGeneration(id: string, updates: Partial<AiGeneration>): Promise<AiGeneration | undefined>;
   
@@ -207,27 +203,6 @@ export interface IStorage {
   
   // Pro Edit: Credit Management
   refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean>;
-  
-  // Prompt Marketplace
-  createPromptPurchase(purchase: InsertPromptPurchase): Promise<PromptPurchase>;
-  getPromptPurchase(id: string): Promise<PromptPurchase | undefined>;
-  getPromptPurchasesByBuyer(buyerId: string): Promise<PromptPurchase[]>;
-  getPromptPurchasesBySeller(sellerId: string): Promise<PromptPurchase[]>;
-  hasUserPurchasedPrompt(userId: string, submissionId?: string, generationId?: string): Promise<boolean>;
-  
-  // Commission Management
-  getUserCommission(userId: string): Promise<number>; // Returns commission % (custom or default)
-  updateUserCommission(userId: string, commission: number | null): Promise<User | undefined>;
-  getDefaultCommission(): Promise<number>;
-  updateDefaultCommission(commission: number): Promise<void>;
-  
-  // Commission Insights
-  getCommissionInsights(): Promise<{
-    totalCommission: { GLORY: number; SOL: string; USDC: string };
-    totalSales: { GLORY: number; SOL: string; USDC: string };
-    promptSalesCount: number;
-    topSellers: Array<{ userId: string; username: string; totalSales: number; totalCommission: number }>;
-  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -258,7 +233,6 @@ export class MemStorage implements IStorage {
       usdcBalance: "0",
       imageCredits: 100,
       withdrawalAddress: null,
-      customCommission: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -289,7 +263,6 @@ export class MemStorage implements IStorage {
         usdcBalance: "0",
         imageCredits: 100,
         withdrawalAddress: null,
-        customCommission: null,
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
         updatedAt: new Date()
       };
@@ -313,7 +286,6 @@ export class MemStorage implements IStorage {
         periodDurationHours: 24,
         totalVotesPerUser: 0
       },
-      isFeatured: false,
       createdAt: new Date()
     };
     this.contests.set(contest.id, contest);
@@ -345,7 +317,6 @@ export class MemStorage implements IStorage {
       usdcBalance: "0",
       imageCredits: 100,
       withdrawalAddress: insertUser.withdrawalAddress || null,
-      customCommission: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -498,7 +469,6 @@ export class MemStorage implements IStorage {
       coverImageUrl: insertContest.coverImageUrl || null,
       prizeGlory: insertContest.prizeGlory || "0",
       config: insertContest.config || null,
-      isFeatured: false,
       createdAt: new Date()
     };
     this.contests.set(id, contest);
@@ -575,15 +545,6 @@ export class MemStorage implements IStorage {
       cloudinaryResourceType: insertSubmission.cloudinaryResourceType || null,
       votesCount: 0,
       isEnhanced: false,
-      entryFeeAmount: insertSubmission.entryFeeAmount || null,
-      entryFeeCurrency: insertSubmission.entryFeeCurrency || null,
-      sellPrompt: false,
-      promptPrice: null,
-      promptCurrency: null,
-      promptSoldCount: 0,
-      generationId: insertSubmission.generationId || null,
-      aiTool: insertSubmission.aiTool || null,
-      prompt: insertSubmission.prompt || null,
       createdAt: new Date()
     };
     this.submissions.set(id, submission);
@@ -876,10 +837,6 @@ export class MemStorage implements IStorage {
     throw new Error("MemStorage AI generation methods not implemented");
   }
 
-  async getAiGenerationsByIds(ids: string[]): Promise<AiGeneration[]> {
-    throw new Error("MemStorage AI generation methods not implemented");
-  }
-
   async deleteAiGeneration(id: string): Promise<void> {
     throw new Error("MemStorage AI generation methods not implemented");
   }
@@ -1053,51 +1010,6 @@ export class MemStorage implements IStorage {
 
   async refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean> {
     throw new Error("MemStorage does not support Pro Edit - use DbStorage");
-  }
-  
-  async createPromptPurchase(purchase: InsertPromptPurchase): Promise<PromptPurchase> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
-  }
-  
-  async getPromptPurchase(id: string): Promise<PromptPurchase | undefined> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
-  }
-  
-  async getPromptPurchasesByBuyer(buyerId: string): Promise<PromptPurchase[]> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
-  }
-  
-  async getPromptPurchasesBySeller(sellerId: string): Promise<PromptPurchase[]> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
-  }
-  
-  async hasUserPurchasedPrompt(userId: string, submissionId?: string, generationId?: string): Promise<boolean> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
-  }
-  
-  async getUserCommission(userId: string): Promise<number> {
-    return 20; // Default commission
-  }
-  
-  async updateUserCommission(userId: string, commission: number | null): Promise<User | undefined> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
-  }
-  
-  async getDefaultCommission(): Promise<number> {
-    return 20;
-  }
-  
-  async updateDefaultCommission(commission: number): Promise<void> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
-  }
-  
-  async getCommissionInsights(): Promise<{
-    totalCommission: { GLORY: number; SOL: string; USDC: string };
-    totalSales: { GLORY: number; SOL: string; USDC: string };
-    promptSalesCount: number;
-    topSellers: Array<{ userId: string; username: string; totalSales: number; totalCommission: number }>;
-  }> {
-    throw new Error("MemStorage does not support Prompt Marketplace - use DbStorage");
   }
 }
 
@@ -1890,14 +1802,6 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getAiGenerationsByIds(ids: string[]): Promise<AiGeneration[]> {
-    if (ids.length === 0) return [];
-    const result = await db.query.aiGenerations.findMany({
-      where: inArray(aiGenerations.id, ids)
-    });
-    return result;
-  }
-
   async deleteAiGeneration(id: string): Promise<void> {
     await db.delete(aiGenerations).where(eq(aiGenerations.id, id));
   }
@@ -2387,168 +2291,6 @@ export class DbStorage implements IStorage {
     });
     
     return true;
-  }
-
-  // Prompt Marketplace Methods
-
-  async createPromptPurchase(purchase: InsertPromptPurchase): Promise<PromptPurchase> {
-    const [created] = await db.insert(promptPurchases).values(purchase).returning();
-    return created;
-  }
-
-  async getPromptPurchase(id: string): Promise<PromptPurchase | undefined> {
-    const [purchase] = await db.select()
-      .from(promptPurchases)
-      .where(eq(promptPurchases.id, id));
-    return purchase;
-  }
-
-  async getPromptPurchasesByBuyer(buyerId: string): Promise<PromptPurchase[]> {
-    return await db.select()
-      .from(promptPurchases)
-      .where(eq(promptPurchases.buyerId, buyerId))
-      .orderBy(desc(promptPurchases.createdAt));
-  }
-
-  async getPromptPurchasesBySeller(sellerId: string): Promise<PromptPurchase[]> {
-    return await db.select()
-      .from(promptPurchases)
-      .where(eq(promptPurchases.sellerId, sellerId))
-      .orderBy(desc(promptPurchases.createdAt));
-  }
-
-  async hasUserPurchasedPrompt(userId: string, submissionId?: string, generationId?: string): Promise<boolean> {
-    if (!submissionId && !generationId) {
-      return false;
-    }
-
-    const conditions = [eq(promptPurchases.buyerId, userId)];
-    
-    if (submissionId) {
-      conditions.push(eq(promptPurchases.submissionId, submissionId));
-    }
-    
-    if (generationId) {
-      conditions.push(eq(promptPurchases.generationId, generationId));
-    }
-
-    const [purchase] = await db.select()
-      .from(promptPurchases)
-      .where(and(...conditions))
-      .limit(1);
-
-    return !!purchase;
-  }
-
-  async getUserCommission(userId: string): Promise<number> {
-    const user = await this.getUser(userId);
-    if (!user) {
-      return 20; // Default fallback
-    }
-
-    if (user.customCommission !== null && user.customCommission !== undefined) {
-      return user.customCommission;
-    }
-
-    return await this.getDefaultCommission();
-  }
-
-  async updateUserCommission(userId: string, commission: number | null): Promise<User | undefined> {
-    const [updated] = await db.update(users)
-      .set({ 
-        customCommission: commission,
-        updatedAt: new Date() 
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return updated;
-  }
-
-  async getDefaultCommission(): Promise<number> {
-    const settings = await this.getSiteSettings();
-    return settings.defaultPromptCommission;
-  }
-
-  async updateDefaultCommission(commission: number): Promise<void> {
-    await db.update(siteSettings)
-      .set({ 
-        defaultPromptCommission: commission,
-        updatedAt: new Date() 
-      });
-  }
-
-  async getCommissionInsights(): Promise<{
-    totalCommission: { GLORY: number; SOL: string; USDC: string };
-    totalSales: { GLORY: number; SOL: string; USDC: string };
-    promptSalesCount: number;
-    topSellers: Array<{ userId: string; username: string; totalSales: number; totalCommission: number }>;
-  }> {
-    // Calculate total commission and sales by currency
-    const gloryStats = await db.select({
-      totalCommission: sql<string>`COALESCE(SUM(${promptPurchases.platformCommission}), 0)`,
-      totalSales: sql<string>`COALESCE(SUM(${promptPurchases.price}), 0)`,
-      count: sql<string>`COALESCE(COUNT(*), 0)`
-    })
-    .from(promptPurchases)
-    .where(eq(promptPurchases.currency, 'GLORY'));
-
-    const solStats = await db.select({
-      totalCommission: sql<string>`COALESCE(SUM(${promptPurchases.platformCommission}), 0)`,
-      totalSales: sql<string>`COALESCE(SUM(${promptPurchases.price}), 0)`,
-      count: sql<string>`COALESCE(COUNT(*), 0)`
-    })
-    .from(promptPurchases)
-    .where(eq(promptPurchases.currency, 'SOL'));
-
-    const usdcStats = await db.select({
-      totalCommission: sql<string>`COALESCE(SUM(${promptPurchases.platformCommission}), 0)`,
-      totalSales: sql<string>`COALESCE(SUM(${promptPurchases.price}), 0)`,
-      count: sql<string>`COALESCE(COUNT(*), 0)`
-    })
-    .from(promptPurchases)
-    .where(eq(promptPurchases.currency, 'USDC'));
-
-    // Get total prompt sales count
-    const totalCountResult = await db.select({
-      count: sql<string>`COALESCE(COUNT(*), 0)`
-    })
-    .from(promptPurchases);
-
-    // Get top sellers (top 10 by total sales amount in GLORY equivalent)
-    // For simplicity, we'll rank by number of sales, but could be enhanced to convert all currencies
-    const topSellersData = await db.select({
-      userId: promptPurchases.sellerId,
-      username: users.username,
-      salesCount: sql<string>`COUNT(*)`,
-      totalCommission: sql<string>`SUM(${promptPurchases.platformCommission})`
-    })
-    .from(promptPurchases)
-    .innerJoin(users, eq(promptPurchases.sellerId, users.id))
-    .groupBy(promptPurchases.sellerId, users.username)
-    .orderBy(desc(sql`COUNT(*)`))
-    .limit(10);
-
-    const topSellers = topSellersData.map(seller => ({
-      userId: seller.userId,
-      username: seller.username,
-      totalSales: Number(seller.salesCount),
-      totalCommission: Number(seller.totalCommission)
-    }));
-
-    return {
-      totalCommission: {
-        GLORY: Number(gloryStats[0]?.totalCommission || 0),
-        SOL: solStats[0]?.totalCommission || '0',
-        USDC: usdcStats[0]?.totalCommission || '0'
-      },
-      totalSales: {
-        GLORY: Number(gloryStats[0]?.totalSales || 0),
-        SOL: solStats[0]?.totalSales || '0',
-        USDC: usdcStats[0]?.totalSales || '0'
-      },
-      promptSalesCount: Number(totalCountResult[0]?.count || 0),
-      topSellers
-    };
   }
 }
 

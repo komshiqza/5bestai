@@ -6,8 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import { ProEditModal } from "@/components/pro-edit/ProEditModal";
-import { BlurredPrompt } from "@/components/BlurredPrompt";
-import { PromptPurchaseModal } from "@/components/PromptPurchaseModal";
 
 export default function SubmissionDetailPage() {
   const [match, params] = useRoute("/submission/:id");
@@ -16,7 +14,6 @@ export default function SubmissionDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [proEditModalOpen, setProEditModalOpen] = useState(false);
-  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
 
   // Fetch submission
   const { data: submission, isLoading } = useQuery({
@@ -186,45 +183,10 @@ export default function SubmissionDetailPage() {
                 </div>
               )}
 
-              {/* Description or Prompt Section */}
               {submission.description && (
-                <div className="mt-4">
-                  {submission.sellPrompt || submission.hasPromptAccess ? (
-                    <div className="space-y-3">
-                      <BlurredPrompt
-                        prompt={submission.description}
-                        isBlurred={submission.sellPrompt && !submission.hasPromptAccess}
-                      />
-                      
-                      {submission.sellPrompt && !submission.hasPromptAccess && user && submission.promptPrice && submission.promptCurrency && (
-                        <button
-                          onClick={() => setPurchaseModalOpen(true)}
-                          className="w-full py-3 px-4 rounded-lg font-semibold bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-violet-500/50"
-                          data-testid="button-buy-prompt"
-                        >
-                          <Sparkles className="h-5 w-5" />
-                          Buy Prompt for {submission.promptPrice} {submission.promptCurrency}
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-white/80" data-testid="text-description">
-                      {submission.description}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* AI Tool Info */}
-              {submission.aiTool && (
-                <div className="mt-4 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-violet-400" />
-                    <span className="text-sm font-medium text-violet-300">
-                      Generated with {submission.aiTool}
-                    </span>
-                  </div>
-                </div>
+                <p className="text-white/80 mt-4" data-testid="text-description">
+                  {submission.description}
+                </p>
               )}
             </div>
 
@@ -305,22 +267,6 @@ export default function SubmissionDetailPage() {
           </div>
         </div>
       </div>
-
-      {/* Prompt Purchase Modal */}
-      {purchaseModalOpen && user && submission?.promptPrice && submission?.promptCurrency && (
-        <PromptPurchaseModal
-          isOpen={purchaseModalOpen}
-          onClose={() => setPurchaseModalOpen(false)}
-          submissionId={submission.id}
-          promptPrice={submission.promptPrice}
-          promptCurrency={submission.promptCurrency}
-          userBalance={{
-            glory: user.gloryBalance || 0,
-            sol: parseFloat(String(user.solBalance)) || 0,
-            usdc: parseFloat(String(user.usdcBalance)) || 0
-          }}
-        />
-      )}
 
       {/* Pro Edit Modal */}
       {submission && (
