@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
+import { PromptSolanaPayment } from "./payment/PromptSolanaPayment";
 
 interface PromptPurchaseModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function PromptPurchaseModal({
   userBalance
 }: PromptPurchaseModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<'balance' | 'wallet'>('balance');
+  const [showSolanaPayment, setShowSolanaPayment] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -76,16 +78,39 @@ export function PromptPurchaseModal({
   });
 
   const handlePurchase = () => {
-    if (paymentMethod === 'balance' && hasInsufficientBalance) {
-      toast({
-        title: "Insufficient balance",
-        description: `You need ${price} ${currency} to purchase this prompt`,
-        variant: "destructive"
-      });
-      return;
+    if (paymentMethod === 'balance') {
+      if (hasInsufficientBalance) {
+        toast({
+          title: "Insufficient balance",
+          description: `You need ${formatCurrency(price, currency)} to purchase this prompt`,
+          variant: "destructive"
+        });
+        return;
+      }
+      purchaseMutation.mutate();
+    } else if (paymentMethod === 'wallet') {
+      // Show Solana payment interface
+      if (currency === 'GLORY') {
+        toast({
+          title: "Not supported",
+          description: "Wallet payments are only available for SOL and USDC",
+          variant: "destructive"
+        });
+        return;
+      }
+      setShowSolanaPayment(true);
     }
+  };
 
-    purchaseMutation.mutate();
+  const handleSolanaSuccess = (txHash: string) => {
+    // Transaction verified on backend, invalidate caches
+    queryClient.invalidateQueries({ queryKey: ["/api/submissions", submissionId] });
+    queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+    toast({
+      title: "Purchase successful!",
+      description: "You now have access to this prompt"
+    });
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -122,6 +147,16 @@ export function PromptPurchaseModal({
 
         {/* Content */}
         <div className="p-6 space-y-6">
+          {showSolanaPayment && currency !== 'GLORY' ? (
+            <PromptSolanaPayment
+              submissionId={submissionId}
+              amount={price}
+              currency={currency as 'SOL' | 'USDC'}
+              onSuccess={handleSolanaSuccess}
+              onCancel={() => setShowSolanaPayment(false)}
+            />
+          ) : (
+            <>
           {/* Price Display */}
           <div className="flex items-center justify-center py-6">
             <div className="text-center">
@@ -162,27 +197,30 @@ export function PromptPurchaseModal({
                 </label>
               )}
               
-              <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors opacity-50 cursor-not-allowed">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="wallet"
-                  disabled
-                  className="h-4 w-4 text-violet-600 focus:ring-violet-500"
-                  data-testid="radio-payment-wallet"
-                />
-                <div className="flex-1 flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                  <div>
-                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                      Pay with Solana Wallet
-                    </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400">
-                      Coming soon
+              {currency !== 'GLORY' && (
+                <label className={`flex items-center gap-3 p-3 rounded-lg border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${hasInsufficientBalance ? '' : 'opacity-75'}`}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="wallet"
+                    checked={paymentMethod === 'wallet'}
+                    onChange={() => setPaymentMethod('wallet')}
+                    className="h-4 w-4 text-violet-600 focus:ring-violet-500"
+                    data-testid="radio-payment-wallet"
+                  />
+                  <div className="flex-1 flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    <div>
+                      <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                        Pay with Solana Wallet
+                      </div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                        {currency} payment via wallet extension
+                      </div>
                     </div>
                   </div>
-                </div>
-              </label>
+                </label>
+              )}
 
               {hasInsufficientBalance && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300/60 dark:border-red-700/60">
@@ -211,9 +249,12 @@ export function PromptPurchaseModal({
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* Footer */}
+        {!showSolanaPayment && (
         <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-300/60 dark:border-slate-700/60 bg-white/60 dark:bg-slate-900/60">
           <button
             onClick={onClose}
@@ -231,6 +272,7 @@ export function PromptPurchaseModal({
             {purchaseMutation.isPending ? "Processing..." : `Purchase for ${formatCurrency(price, currency)}`}
           </button>
         </div>
+        )}
       </div>
     </div>
   );
