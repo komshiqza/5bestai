@@ -1130,16 +1130,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let isUserAdmin = false;
       let currentUserId: string | undefined;
       
-      console.log(`[Auth Debug] authToken exists: ${!!authToken}`);
-      
       if (authToken) {
         try {
           const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
           isUserAdmin = decoded.role === "admin";
           currentUserId = decoded.userId;
-          console.log(`[Auth Debug] Decoded userId: ${currentUserId}, isAdmin: ${isUserAdmin}`);
         } catch (error) {
-          console.log(`[Auth Debug] Token verification failed:`, error);
           // Token invalid, treat as unauthenticated
         }
       }
@@ -1154,16 +1150,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validPage = Math.max(1, pageNum);
       const validLimit = Math.min(Math.max(1, limitNum), 100); // Max 100 items per page
       
-      // Helper function to enrich submissions with hasPromptAccess
-      // Batch-fetch all purchased submission IDs for performance
+      // Helper function to enrich submissions with hasPromptAccess and prompt
+      // Batch-fetch all purchased submission IDs and AI generation prompts for performance
       const enrichSubmissionsWithPromptAccess = async (submissions: any[]) => {
         // Batch-fetch all purchased submission IDs if user is authenticated
         let purchasedSubmissionIds = new Set<string>();
         if (currentUserId) {
           const purchases = await storage.getPromptPurchasesByBuyer(currentUserId);
-          console.log(`[Prompt Access] User ${currentUserId} has ${purchases.length} purchases`);
           purchases.forEach((p: any) => {
             if (p.submissionId) purchasedSubmissionIds.add(p.submissionId);
+          });
+        }
+
+        // Batch-fetch AI generation prompts for all submissions with generationId
+        const generationIds = submissions
+          .filter(sub => sub.generationId)
+          .map(sub => sub.generationId);
+        
+        const generationPromptsMap = new Map<string, string>();
+        if (generationIds.length > 0) {
+          const generations = await storage.getAiGenerationsByIds(generationIds);
+          generations.forEach((gen: any) => {
+            if (gen.prompt) {
+              generationPromptsMap.set(gen.id, gen.prompt);
+            }
           });
         }
 
@@ -1174,14 +1184,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const isOwn = currentUserId === sub.userId;
             const hasPurchased = purchasedSubmissionIds.has(sub.id);
             hasPromptAccess = isUserAdmin || isOwn || hasPurchased;
-            if (sub.id === '15558a4a-4812-47e5-b5b6-ac2f0237bbc3') {
-              console.log(`[Prompt Access Debug] submission ${sub.id}: isAdmin=${isUserAdmin}, isOwn=${isOwn}, hasPurchased=${hasPurchased}, hasAccess=${hasPromptAccess}`);
-            }
           } else {
             // Free prompts are accessible to everyone
             hasPromptAccess = true;
           }
-          return { ...sub, hasPromptAccess };
+          
+          // Include full prompt from AI generation if user has access
+          let prompt = null;
+          if (hasPromptAccess && sub.generationId) {
+            prompt = generationPromptsMap.get(sub.generationId) || null;
+          }
+          
+          return { ...sub, hasPromptAccess, prompt };
         });
       };
 

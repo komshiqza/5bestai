@@ -144,6 +144,7 @@ export interface IStorage {
   createAiGeneration(generation: InsertAiGeneration): Promise<AiGeneration>;
   getAiGeneration(id: string): Promise<AiGeneration | undefined>;
   getAiGenerations(userId: string, limit?: number): Promise<AiGeneration[]>;
+  getAiGenerationsByIds(ids: string[]): Promise<AiGeneration[]>;
   deleteAiGeneration(id: string): Promise<void>;
   updateAiGeneration(id: string, updates: Partial<AiGeneration>): Promise<AiGeneration | undefined>;
   
@@ -870,6 +871,10 @@ export class MemStorage implements IStorage {
   }
 
   async getAiGenerations(userId: string, limit?: number): Promise<AiGeneration[]> {
+    throw new Error("MemStorage AI generation methods not implemented");
+  }
+
+  async getAiGenerationsByIds(ids: string[]): Promise<AiGeneration[]> {
     throw new Error("MemStorage AI generation methods not implemented");
   }
 
@@ -1879,6 +1884,14 @@ export class DbStorage implements IStorage {
       where: eq(aiGenerations.userId, userId),
       orderBy: [desc(aiGenerations.createdAt)],
       limit
+    });
+    return result;
+  }
+
+  async getAiGenerationsByIds(ids: string[]): Promise<AiGeneration[]> {
+    if (ids.length === 0) return [];
+    const result = await db.query.aiGenerations.findMany({
+      where: inArray(aiGenerations.id, ids)
     });
     return result;
   }

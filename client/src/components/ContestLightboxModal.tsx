@@ -25,6 +25,7 @@ interface ContestLightboxModalProps {
     promptPrice?: string;
     promptCurrency?: string;
     hasPromptAccess?: boolean;
+    prompt?: string | null;
     aiTool?: string;
   } | null;
   onClose: () => void;
@@ -105,7 +106,7 @@ export function ContestLightboxModal({
     }
   };
 
-  const showPromptSection = submission.description && (submission.sellPrompt || submission.hasPromptAccess);
+  const showPromptSection = submission.prompt && (submission.sellPrompt || submission.hasPromptAccess);
   const needsPurchase = submission.sellPrompt && !submission.hasPromptAccess;
 
   return (
@@ -200,7 +201,7 @@ export function ContestLightboxModal({
               {showPromptSection && (
                 <div className="space-y-2.5">
                   <BlurredPrompt
-                    prompt={submission.description || ""}
+                    prompt={submission.prompt || ""}
                     isBlurred={!!needsPurchase}
                   />
                   
