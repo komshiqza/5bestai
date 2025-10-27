@@ -12,8 +12,8 @@ export function GlassButton({
   ...props 
 }: GlassButtonProps) {
   const baseClasses = variant === 'primary' 
-    ? 'glass btn-primary rounded-lg text-white font-bold px-6 py-3 text-base focus-ring'
-    : 'glass btn-secondary rounded-lg text-white font-bold px-6 py-3 text-base focus-ring';
+    ? 'glass glow-border btn-primary rounded-lg text-white font-bold px-6 py-3 text-base focus-ring'
+    : 'glass glow-border btn-secondary rounded-lg text-white font-bold px-6 py-3 text-base focus-ring';
 
   return (
     <button
