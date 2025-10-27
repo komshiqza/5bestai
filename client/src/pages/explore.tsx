@@ -69,7 +69,7 @@ function ExploreContent() {
       setHasMore(submissions.length === 12);
       setIsLoadingMore(false);
     }
-  }, [submissions]);
+  }, [submissions, page]);
 
   // Infinite scroll logic
   const handleScroll = useCallback(() => {
