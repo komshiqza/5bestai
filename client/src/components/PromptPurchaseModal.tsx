@@ -62,7 +62,10 @@ export function PromptPurchaseModal({
     },
     onSuccess: () => {
       setIsProcessing(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions", submissionId] });
+      // Invalidate all submission queries (with any params) to refresh hasPromptAccess
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey?.[0] === "/api/submissions" 
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       toast({
         title: "Purchase successful!",
@@ -113,7 +116,9 @@ export function PromptPurchaseModal({
 
   const handleSolanaSuccess = (txHash: string) => {
     // Transaction verified on backend, invalidate caches
-    queryClient.invalidateQueries({ queryKey: ["/api/submissions", submissionId] });
+    queryClient.invalidateQueries({ 
+      predicate: (query) => query.queryKey?.[0] === "/api/submissions" 
+    });
     queryClient.invalidateQueries({ queryKey: ["/api/me"] });
     toast({
       title: "Purchase successful!",
