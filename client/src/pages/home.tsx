@@ -32,12 +32,14 @@ export default function Home() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight mb-4 md:mb-6 leading-tight gradient-text" data-testid="hero-title">
-              Create, Compete, <br/>
-              Win GLORY
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight mb-4 md:mb-6 leading-tight gradient-text" data-testid="hero-title">
+              Where Prompts Become Glory
             </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground mb-6 md:mb-8" data-testid="hero-description">
-              Join creative contests, showcase your talent, and win rewards. Top 5 submissions win GLORY rewards.
+            <p className="text-lg sm:text-xl text-muted-foreground mb-2" data-testid="hero-description">
+              The world's first AI Art Contest platform powered by the $GLORY token.
+            </p>
+            <p className="text-lg sm:text-xl text-muted-foreground mb-6 md:mb-8" data-testid="text-hero-subline">
+              Upload your AI creations. Vote. Win crypto rewards.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/contests" data-testid="hero-button-contests">
