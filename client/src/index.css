@@ -307,6 +307,45 @@
       inset 0 0 20px rgba(124, 60, 236, 0.1);
   }
 
+  /* Wallet Button Glass Style */
+  .wallet-adapter-button-trigger .wallet-adapter-button {
+    background: rgba(23, 17, 33, 0.6) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(124, 60, 236, 0.25) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.75rem 1.5rem !important;
+    font-weight: 700 !important;
+    color: white !important;
+    box-shadow: 0 0 5px var(--pg-primary), 0 0 10px var(--pg-primary), 0 0 15px var(--pg-primary) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transform: translateY(0) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .wallet-adapter-button-trigger .wallet-adapter-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow:
+      0 10px 25px rgba(124, 60, 236, 0.4),
+      0 0 20px rgba(124, 60, 236, 0.3) !important;
+  }
+
+  .wallet-adapter-button-trigger .wallet-adapter-button::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
+    transition: left 0.5s !important;
+  }
+
+  .wallet-adapter-button-trigger .wallet-adapter-button:hover::before {
+    left: 100% !important;
+  }
+
   /* Group Hover Effects */
   .group .group-hover\:scale-110 {
     transform: scale(1);
