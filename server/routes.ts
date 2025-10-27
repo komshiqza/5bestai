@@ -1157,6 +1157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let purchasedSubmissionIds = new Set<string>();
         if (currentUserId) {
           const purchases = await storage.getPromptPurchasesByBuyer(currentUserId);
+          console.log(`[Prompt Access] User ${currentUserId} has ${purchases.length} purchases`);
           purchases.forEach((p: any) => {
             if (p.submissionId) purchasedSubmissionIds.add(p.submissionId);
           });
@@ -1169,6 +1170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const isOwn = currentUserId === sub.userId;
             const hasPurchased = purchasedSubmissionIds.has(sub.id);
             hasPromptAccess = isUserAdmin || isOwn || hasPurchased;
+            if (sub.id === '15558a4a-4812-47e5-b5b6-ac2f0237bbc3') {
+              console.log(`[Prompt Access Debug] submission ${sub.id}: isAdmin=${isUserAdmin}, isOwn=${isOwn}, hasPurchased=${hasPurchased}, hasAccess=${hasPromptAccess}`);
+            }
           } else {
             // Free prompts are accessible to everyone
             hasPromptAccess = true;
