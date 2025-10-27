@@ -107,7 +107,7 @@ export function ContestCard({ contest }: ContestCardProps) {
   const coverImage = contest.topSubmissionImageUrl || contest.coverImageUrl || defaultImage;
   
   return (
-    <div className="relative min-h-[700px] lg:min-h-[800px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group border border-transparent hover:border-primary/50 hover:shadow-[0_0_30px_rgba(124,60,236,0.3)]">
+    <div className="relative min-h-[600px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group border border-transparent hover:border-primary/50 hover:shadow-[0_0_30px_rgba(124,60,236,0.3)]">
       {/* Background image with smooth zoom on hover */}
       <img
         src={coverImage}
@@ -122,7 +122,7 @@ export function ContestCard({ contest }: ContestCardProps) {
       <div className="absolute inset-0 bg-gradient-to-t from-[#171121] via-[#171121]/70 to-transparent pointer-events-none" />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col justify-end h-full p-4 sm:p-6 text-center">
+      <div className="relative z-10 flex flex-col justify-between h-full p-4 sm:p-6 text-center">
         {/* Status */}
         <div className="absolute top-4 left-4">
           <div
@@ -144,8 +144,8 @@ export function ContestCard({ contest }: ContestCardProps) {
           </div>
         </div>
 
-        {/* Title + Desc */}
-        <div className="mb-4">
+        {/* Title + Desc (top section) */}
+        <div className="mt-16">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white drop-shadow mb-2">
             {contest.title}
           </h1>
@@ -154,86 +154,89 @@ export function ContestCard({ contest }: ContestCardProps) {
           </p>
         </div>
 
-        {/* Countdown */}
-        <div className="mb-4 flex justify-center gap-1 sm:gap-2 lg:gap-3">
-          {[
-            { label: "Days", val: String(timeLeft.days).padStart(2, "0") },
-            { label: "Hours", val: String(timeLeft.hours).padStart(2, "0") },
-            { label: "Min", val: String(timeLeft.minutes).padStart(2, "0") },
-            {
-              label: "Sec",
-              val: String(timeLeft.seconds).padStart(2, "0"),
-              pulse: true,
-            },
-          ].map(({ label, val, pulse }) => (
-            <div key={label} className="flex flex-col items-center">
-              <div className="glassmorphism flex h-10 w-10 sm:h-12 sm:w-12 lg:h-16 lg:w-16 items-center justify-center rounded-lg">
-                <p
-                  className={`text-sm sm:text-lg lg:text-2xl font-bold text-white ${pulse ? "animate-pulse" : ""}`}
-                >
-                  {val}
+        {/* Bottom section: Countdown, Info, Actions, Share */}
+        <div className="space-y-4">
+          {/* Countdown */}
+          <div className="flex justify-center gap-1 sm:gap-2 lg:gap-3">
+            {[
+              { label: "Days", val: String(timeLeft.days).padStart(2, "0") },
+              { label: "Hours", val: String(timeLeft.hours).padStart(2, "0") },
+              { label: "Min", val: String(timeLeft.minutes).padStart(2, "0") },
+              {
+                label: "Sec",
+                val: String(timeLeft.seconds).padStart(2, "0"),
+                pulse: true,
+              },
+            ].map(({ label, val, pulse }) => (
+              <div key={label} className="flex flex-col items-center">
+                <div className="glassmorphism flex h-10 w-10 sm:h-12 sm:w-12 lg:h-16 lg:w-16 items-center justify-center rounded-lg">
+                  <p
+                    className={`text-sm sm:text-lg lg:text-2xl font-bold text-white ${pulse ? "animate-pulse" : ""}`}
+                  >
+                    {val}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs font-medium text-white/75 uppercase tracking-widest">
+                  {label}
                 </p>
               </div>
-              <p className="mt-1 text-xs font-medium text-white/75 uppercase tracking-widest">
-                {label}
+            ))}
+          </div>
+
+          {/* Info: Status | Prize | Participants */}
+          <div className="flex flex-wrap justify-center gap-2">
+            <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
+              <p className="text-xs font-medium text-white/80">Status</p>
+              <p className="text-xs sm:text-sm lg:text-lg font-bold text-primary mt-1 capitalize">
+                {contest.status}
               </p>
             </div>
-          ))}
-        </div>
 
-        {/* Info: Status | Prize | Participants */}
-        <div className="mb-4 flex flex-wrap justify-center gap-2">
-          <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
-            <p className="text-xs font-medium text-white/80">Status</p>
-            <p className="text-xs sm:text-sm lg:text-lg font-bold text-primary mt-1 capitalize">
-              {contest.status}
-            </p>
+            {/* Prize tile removed */}
+
+            <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
+              <p className="text-xs font-medium text-white/80">Participants</p>
+              <p className="text-xs sm:text-sm lg:text-lg font-bold text-white mt-1">
+                {typeof (contest as any).submissionCount === 'number'
+                  ? (contest as any).submissionCount.toLocaleString()
+                  : ((contest as any).submissions ? (contest as any).submissions.length : 0)}
+              </p>
+            </div>
           </div>
 
-          {/* Prize tile removed */}
-
-          <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
-            <p className="text-xs font-medium text-white/80">Participants</p>
-            <p className="text-xs sm:text-sm lg:text-lg font-bold text-white mt-1">
-              {typeof (contest as any).submissionCount === 'number'
-                ? (contest as any).submissionCount.toLocaleString()
-                : ((contest as any).submissions ? (contest as any).submissions.length : 0)}
-            </p>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-center items-center">
-          <GlassButton
-            onClick={() => setLocation(`/contest/${contest.slug}`)}
-            className="rounded-lg bg-background-dark/80 backdrop-blur-sm border border-primary/30 text-white font-bold transition-all duration-300 focus-ring hover:border-primary/50 glow-border px-6 py-3 text-base hover:bg-primary/20 w-full sm:w-auto min-w-[140px] sm:min-w-[160px] h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm tracking-wide hover:scale-105 flex items-center justify-center"
-            data-testid={`button-join-contest-${contest.id}`}
-          >
-            {contest.status === "ended" ? (
-              <>
-                <Trophy size={16} className="mr-2" />
-                <span className="truncate">View Results</span>
-              </>
-            ) : (
-              <>
-                <Calendar size={16} className="mr-2" />
-                <span className="truncate">Join Contest</span>
-              </>
-            )}
-          </GlassButton>
-        </div>
-
-        {/* Share */}
-        <div className="mt-3 flex justify-center items-center gap-3">
-          <p className="text-xs font-medium text-white/75">Share:</p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleShare}
-              className="group flex items-center justify-center rounded-full size-8 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors"
-              aria-label="Share contest"
+          {/* Actions */}
+          <div className="flex justify-center items-center">
+            <GlassButton
+              onClick={() => setLocation(`/contest/${contest.slug}`)}
+              className="rounded-lg bg-background-dark/80 backdrop-blur-sm border border-primary/30 text-white font-bold transition-all duration-300 focus-ring hover:border-primary/50 glow-border px-6 py-3 text-base hover:bg-primary/20 w-full sm:w-auto min-w-[140px] sm:min-w-[160px] h-10 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm tracking-wide hover:scale-105 flex items-center justify-center"
+              data-testid={`button-join-contest-${contest.id}`}
             >
-              <Share2 className="text-white" size={14} />
-            </button>
+              {contest.status === "ended" ? (
+                <>
+                  <Trophy size={16} className="mr-2" />
+                  <span className="truncate">View Results</span>
+                </>
+              ) : (
+                <>
+                  <Calendar size={16} className="mr-2" />
+                  <span className="truncate">Join Contest</span>
+                </>
+              )}
+            </GlassButton>
+          </div>
+
+          {/* Share */}
+          <div className="flex justify-center items-center gap-3">
+            <p className="text-xs font-medium text-white/75">Share:</p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleShare}
+                className="group flex items-center justify-center rounded-full size-8 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors"
+                aria-label="Share contest"
+              >
+                <Share2 className="text-white" size={14} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
