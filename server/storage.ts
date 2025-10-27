@@ -31,6 +31,8 @@ import {
   type UserSubscriptionWithTier,
   type SubscriptionTransaction,
   type InsertSubscriptionTransaction,
+  type PurchasedPrompt,
+  type InsertPurchasedPrompt,
   type Image,
   type InsertImage,
   type ImageVersion,
@@ -55,6 +57,7 @@ import {
   subscriptionTiers,
   userSubscriptions,
   subscriptionTransactions,
+  purchasedPrompts,
   images,
   imageVersions,
   editJobs
@@ -122,6 +125,11 @@ export interface IStorage {
   getUserWalletByAddress(address: string): Promise<UserWallet | undefined>;
   createUserWallet(wallet: InsertUserWallet): Promise<UserWallet>;
   updateUserWallet(id: string, updates: Partial<UserWallet>): Promise<UserWallet | undefined>;
+  
+  // Purchased Prompts
+  purchasePrompt(userId: string, submissionId: string): Promise<PurchasedPrompt>;
+  getPurchasedPrompts(userId: string): Promise<PurchasedPrompt[]>;
+  checkIfPromptPurchased(userId: string, submissionId: string): Promise<boolean>;
   
   // Cashout Requests
   getCashoutRequest(id: string): Promise<CashoutRequest | undefined>;
@@ -796,6 +804,19 @@ export class MemStorage implements IStorage {
 
   async updateUserWallet(id: string, updates: Partial<UserWallet>): Promise<UserWallet | undefined> {
     throw new Error("MemStorage wallet methods not implemented");
+  }
+
+  // Purchased Prompts (MemStorage - not used in production)
+  async purchasePrompt(userId: string, submissionId: string): Promise<PurchasedPrompt> {
+    throw new Error("MemStorage purchased prompts methods not implemented");
+  }
+
+  async getPurchasedPrompts(userId: string): Promise<PurchasedPrompt[]> {
+    throw new Error("MemStorage purchased prompts methods not implemented");
+  }
+
+  async checkIfPromptPurchased(userId: string, submissionId: string): Promise<boolean> {
+    throw new Error("MemStorage purchased prompts methods not implemented");
   }
 
   // Cashout Requests (MemStorage - not used in production)
@@ -1700,6 +1721,132 @@ export class DbStorage implements IStorage {
       .where(eq(userWallets.id, id))
       .returning();
     return wallet;
+  }
+
+  // Purchased Prompts
+  async purchasePrompt(userId: string, submissionId: string): Promise<PurchasedPrompt> {
+    // Get submission with prompt details
+    const submission = await db.query.submissions.findFirst({
+      where: eq(submissions.id, submissionId),
+      with: {
+        user: true
+      }
+    });
+
+    if (!submission) {
+      throw new Error("Submission not found");
+    }
+
+    if (!submission.promptForSale) {
+      throw new Error("This prompt is not for sale");
+    }
+
+    if (!submission.promptPrice || !submission.promptCurrency) {
+      throw new Error("Prompt price not set");
+    }
+
+    if (submission.userId === userId) {
+      throw new Error("Cannot purchase your own prompt");
+    }
+
+    // Check if already purchased
+    const existing = await db.query.purchasedPrompts.findFirst({
+      where: and(
+        eq(purchasedPrompts.userId, userId),
+        eq(purchasedPrompts.submissionId, submissionId)
+      )
+    });
+
+    if (existing) {
+      throw new Error("You have already purchased this prompt");
+    }
+
+    // Get buyer details
+    const buyer = await this.getUser(userId);
+    if (!buyer) {
+      throw new Error("Buyer not found");
+    }
+
+    const price = parseFloat(submission.promptPrice);
+    const currency = submission.promptCurrency;
+
+    // Check buyer balance
+    let hasSufficientBalance = false;
+    if (currency === "GLORY") {
+      hasSufficientBalance = buyer.gloryBalance >= price;
+    } else if (currency === "SOL") {
+      hasSufficientBalance = parseFloat(buyer.solBalance) >= price;
+    } else if (currency === "USDC") {
+      hasSufficientBalance = parseFloat(buyer.usdcBalance) >= price;
+    }
+
+    if (!hasSufficientBalance) {
+      throw new Error(`Insufficient ${currency} balance`);
+    }
+
+    // Perform transaction atomically
+    await db.transaction(async (tx) => {
+      // Deduct from buyer
+      await this.createGloryTransaction({
+        userId,
+        delta: (-price).toString(),
+        currency,
+        reason: `Purchased prompt for submission "${submission.title}"`,
+        submissionId,
+        contestId: submission.contestId || null,
+        txHash: null,
+        metadata: {
+          sellerId: submission.userId,
+          price,
+          currency
+        }
+      });
+
+      // Credit seller
+      await this.createGloryTransaction({
+        userId: submission.userId,
+        delta: price.toString(),
+        currency,
+        reason: `Sold prompt for submission "${submission.title}"`,
+        submissionId,
+        contestId: submission.contestId || null,
+        txHash: null,
+        metadata: {
+          buyerId: userId,
+          price,
+          currency
+        }
+      });
+    });
+
+    // Create purchased prompt record
+    const [purchase] = await db.insert(purchasedPrompts).values({
+      userId,
+      submissionId,
+      sellerId: submission.userId,
+      price: price.toString(),
+      currency
+    }).returning();
+
+    return purchase as PurchasedPrompt;
+  }
+
+  async getPurchasedPrompts(userId: string): Promise<PurchasedPrompt[]> {
+    const results = await db.query.purchasedPrompts.findMany({
+      where: eq(purchasedPrompts.userId, userId),
+      orderBy: [desc(purchasedPrompts.createdAt)]
+    });
+    return results as PurchasedPrompt[];
+  }
+
+  async checkIfPromptPurchased(userId: string, submissionId: string): Promise<boolean> {
+    const result = await db.query.purchasedPrompts.findFirst({
+      where: and(
+        eq(purchasedPrompts.userId, userId),
+        eq(purchasedPrompts.submissionId, submissionId)
+      )
+    });
+    return !!result;
   }
 
   // Cashout Requests

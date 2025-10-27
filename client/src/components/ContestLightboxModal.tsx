@@ -16,6 +16,7 @@ interface ContestLightboxModalProps {
     createdAt: string;
     voteCount?: number;
     hasVoted?: boolean;
+    hasPurchasedPrompt?: boolean;
     category?: string | null;
     aiModel?: string | null;
     prompt?: string | null;
@@ -244,7 +245,7 @@ export function ContestLightboxModal({
                       <div className="relative">
                         <p 
                           className={`text-white text-sm leading-relaxed ${
-                            submission.promptForSale ? 'filter blur-sm select-none pointer-events-none' : ''
+                            submission.promptForSale && !submission.hasPurchasedPrompt ? 'filter blur-sm select-none pointer-events-none' : ''
                           }`}
                           data-testid="text-prompt-content"
                         >
@@ -254,8 +255,8 @@ export function ContestLightboxModal({
                     </div>
                   </div>
                   
-                  {/* Buy Prompt Button */}
-                  {submission.promptForSale && (
+                  {/* Buy Prompt Button - show only if for sale and not purchased */}
+                  {submission.promptForSale && !submission.hasPurchasedPrompt && (
                     <GlassButton
                       onClick={(e) => {
                         e.stopPropagation();

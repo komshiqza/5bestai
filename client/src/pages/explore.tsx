@@ -137,6 +137,56 @@ function ExploreContent() {
     voteMutation.mutate(submissionId);
   };
 
+  // Buy prompt mutation for modal
+  const buyPromptMutation = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const response = await apiRequest("POST", `/api/prompts/purchase/${submissionId}`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      toast({
+        title: "Prompt purchased!",
+        description: "The prompt is now visible to you.",
+      });
+      // Refresh modal to show unlocked prompt
+      if (selectedSubmission) {
+        setIsModalOpen(false);
+        setTimeout(() => setIsModalOpen(true), 100);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Purchase failed",
+        description: error.message || "Failed to purchase prompt. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle buying prompt from modal
+  const handleBuyPromptFromModal = (submissionId: string) => {
+    if (!isAuthenticated(user)) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to purchase prompts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isApproved(user)) {
+      toast({
+        title: "Account approval required",
+        description: "Your account must be approved to make purchases.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    buyPromptMutation.mutate(submissionId);
+  };
+
   const handleOpenSubmissionModal = (submission: any) => {
     setSelectedSubmission(submission);
     setIsModalOpen(true);
@@ -252,6 +302,7 @@ function ExploreContent() {
           isOpen={isModalOpen}
           onClose={handleCloseSubmissionModal}
           onVote={handleVoteFromModal}
+          onBuyPrompt={handleBuyPromptFromModal}
         />
       )}
     </div>

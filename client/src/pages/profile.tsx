@@ -5,7 +5,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy, Camera, Save, X as XIcon, Search } from "lucide-react";
+import { Trophy, User, Calendar, Eye, EyeOff, Upload, Settings, Clock, CheckCircle, XCircle, Edit2, Share2, Trash2, Medal, DollarSign, Copy, Camera, Save, X as XIcon, Search, ShoppingCart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -110,6 +110,16 @@ export default function Profile() {
         : `/api/glory-ledger?currency=${currencyFilter}`;
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch transaction history");
+      return response.json();
+    },
+  });
+
+  // Fetch purchased prompts with submission details
+  const { data: purchasedPrompts = [] } = useQuery({
+    queryKey: ["/api/prompts/purchased/submissions"],
+    queryFn: async () => {
+      const response = await fetch("/api/prompts/purchased/submissions", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch purchased prompts");
       return response.json();
     },
   });
@@ -466,10 +476,14 @@ export default function Profile() {
           {/* Profile Content */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="submissions" className="space-y-4" data-testid="profile-tabs">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                 <TabsTrigger value="submissions" className="gap-2" data-testid="tab-submissions">
                   <Upload className="w-4 h-4" />
                   <span className="hidden md:inline">My Submissions</span>
+                </TabsTrigger>
+                <TabsTrigger value="purchased" className="gap-2" data-testid="tab-purchased">
+                  <ShoppingCart className="w-4 h-4" />
+                  <span className="hidden md:inline">Purchased Prompts</span>
                 </TabsTrigger>
                 <TabsTrigger value="glory" className="gap-2" data-testid="tab-transactions">
                   <Medal className="w-4 h-4" />
@@ -639,6 +653,75 @@ export default function Profile() {
                         </GlassButton>
                       </Link>
                     )}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Purchased Prompts Tab */}
+              <TabsContent value="purchased" className="space-y-4" data-testid="purchased-tab">
+                {purchasedPrompts.length > 0 ? (
+                  <div className="masonry-grid">
+                    {purchasedPrompts.map((submission: any) => (
+                      <Card 
+                        key={submission.id} 
+                        className="group overflow-hidden hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-300 cursor-pointer"
+                        onClick={() => {
+                          setSelectedSubmission(submission);
+                          setEditModalOpen(false);
+                        }}
+                        data-testid={`purchased-submission-${submission.id}`}
+                      >
+                        <div className="relative aspect-square">
+                          <img
+                            src={submission.thumbnailUrl || submission.mediaUrl}
+                            alt={submission.title}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          
+                          {/* Purchased Badge */}
+                          <div className="absolute top-3 right-3">
+                            <Badge className="bg-green-600 hover:bg-green-600">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Owned
+                            </Badge>
+                          </div>
+
+                          {/* Info on hover */}
+                          <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                            <h3 className="text-white font-semibold mb-1 line-clamp-1">
+                              {submission.title}
+                            </h3>
+                            <div className="flex items-center justify-between text-xs text-gray-300">
+                              <span>by @{submission.user?.username || 'Unknown'}</span>
+                              {submission.purchasePrice && submission.purchaseCurrency && (
+                                <span className="bg-white/20 px-2 py-0.5 rounded">
+                                  {parseFloat(submission.purchasePrice).toString()} {submission.purchaseCurrency}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12" data-testid="no-purchased-prompts">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+                      <ShoppingCart className="w-12 h-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      No purchased prompts yet
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      Browse the Explore page to find amazing AI prompts for sale!
+                    </p>
+                    <Link href="/explore" data-testid="browse-explore-button">
+                      <GlassButton>
+                        Explore Marketplace
+                        <ShoppingCart className="w-4 h-4 ml-2" />
+                      </GlassButton>
+                    </Link>
                   </div>
                 )}
               </TabsContent>

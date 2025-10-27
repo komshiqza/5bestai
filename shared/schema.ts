@@ -582,6 +582,23 @@ export const subscriptionTransactions = pgTable("subscription_transactions", {
   txHashIdx: index("subscription_transactions_tx_hash_idx").on(table.txHash)
 }));
 
+// Purchased Prompts table (marketplace transactions)
+export const purchasedPrompts = pgTable("purchased_prompts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  submissionId: varchar("submission_id").notNull().references(() => submissions.id, { onDelete: "cascade" }),
+  sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Creator of the prompt
+  price: numeric("price", { precision: 18, scale: 9 }).notNull(), // Price paid (supports decimals for SOL/USDC)
+  currency: varchar("currency", { length: 20 }).notNull(), // GLORY, SOL, USDC
+  createdAt: timestamp("created_at").notNull().defaultNow()
+}, (table) => ({
+  userIdx: index("purchased_prompts_user_idx").on(table.userId),
+  submissionIdx: index("purchased_prompts_submission_idx").on(table.submissionId),
+  sellerIdx: index("purchased_prompts_seller_idx").on(table.sellerId),
+  createdAtIdx: index("purchased_prompts_created_at_idx").on(table.createdAt),
+  userSubmissionUnique: unique("purchased_prompts_user_submission_unique").on(table.userId, table.submissionId)
+}));
+
 // Pro Edit: Images table (master image records)
 export const images = pgTable("images", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -679,6 +696,11 @@ export const insertSubscriptionTransactionSchema = createInsertSchema(subscripti
   createdAt: true
 });
 
+export const insertPurchasedPromptSchema = createInsertSchema(purchasedPrompts).omit({
+  id: true,
+  createdAt: true
+});
+
 export const insertImageSchema = createInsertSchema(images).omit({
   id: true,
   createdAt: true,
@@ -703,6 +725,8 @@ export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema
 export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export type InsertSubscriptionTransaction = z.infer<typeof insertSubscriptionTransactionSchema>;
 export type SubscriptionTransaction = typeof subscriptionTransactions.$inferSelect;
+export type InsertPurchasedPrompt = z.infer<typeof insertPurchasedPromptSchema>;
+export type PurchasedPrompt = typeof purchasedPrompts.$inferSelect;
 
 export type InsertImage = z.infer<typeof insertImageSchema>;
 export type Image = typeof images.$inferSelect;

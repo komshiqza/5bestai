@@ -89,6 +89,33 @@ export default function ContestDetailPage() {
     }
   });
 
+  // Buy prompt mutation
+  const buyPromptMutation = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const response = await apiRequest("POST", `/api/prompts/purchase/${submissionId}`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest?.id] });
+      toast({
+        title: "Prompt purchased!",
+        description: "The prompt is now visible to you.",
+      });
+      // Refresh modal to show unlocked prompt
+      if (selectedSubmission) {
+        setIsLightboxOpen(false);
+        setTimeout(() => setIsLightboxOpen(true), 100);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Purchase failed",
+        description: error.message || "Failed to purchase prompt. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Share functionality
   const handleShare = (submission: any) => {
     const shareUrl = `${window.location.origin}/submission/${submission.id}`;
@@ -303,6 +330,18 @@ export default function ContestDetailPage() {
       return;
     }
     voteMutation.mutate(submissionId);
+  };
+
+  const handleBuyPrompt = (submissionId: string) => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to purchase prompts",
+        variant: "destructive"
+      });
+      return;
+    }
+    buyPromptMutation.mutate(submissionId);
   };
 
   const handleShowUpload = () => {
@@ -869,6 +908,7 @@ export default function ContestDetailPage() {
         onClose={() => setIsLightboxOpen(false)}
         submission={selectedSubmission}
         onVote={(submissionId: string) => handleVote(submissionId)}
+        onBuyPrompt={(submissionId: string) => handleBuyPrompt(submissionId)}
         onShare={() => selectedSubmission && handleShare(selectedSubmission)}
       />
 

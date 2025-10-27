@@ -1631,9 +1631,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user votes if authenticated
       let hasVoted = false;
+      let hasPurchasedPrompt = false;
       if (currentUserId) {
         const vote = await storage.getVote(currentUserId, submission.id);
         hasVoted = !!vote;
+        
+        // Check if user has purchased this prompt
+        if (submission.promptForSale) {
+          hasPurchasedPrompt = await storage.checkIfPromptPurchased(currentUserId, submission.id);
+        }
       }
 
       // Get user and contest info
@@ -1646,6 +1652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const enrichedSubmission = {
         ...submission,
         hasVoted,
+        hasPurchasedPrompt,
         voteCount: submission.votesCount,
         user: user ? {
           id: user.id,
@@ -2940,6 +2947,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error clearing glory history:", error);
       res.status(500).json({ error: "Failed to clear GLORY history" });
+    }
+  });
+
+  // Prompt Marketplace routes
+  app.post("/api/prompts/purchase/:submissionId", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { submissionId } = req.params;
+      const userId = req.user!.id;
+
+      const purchase = await storage.purchasePrompt(userId, submissionId);
+      
+      res.json({ 
+        success: true,
+        purchase 
+      });
+    } catch (error) {
+      console.error("Prompt purchase error:", error);
+      res.status(400).json({ 
+        error: error instanceof Error ? error.message : "Failed to purchase prompt" 
+      });
+    }
+  });
+
+  app.get("/api/prompts/purchased", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const purchases = await storage.getPurchasedPrompts(userId);
+      
+      res.json(purchases);
+    } catch (error) {
+      console.error("Get purchased prompts error:", error);
+      res.status(500).json({ error: "Failed to fetch purchased prompts" });
+    }
+  });
+
+  app.get("/api/prompts/purchased/submissions", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const purchases = await storage.getPurchasedPrompts(userId);
+      
+      // Fetch full submission details for each purchase
+      const submissionsPromises = purchases.map(async (purchase) => {
+        const submission = await storage.getSubmission(purchase.submissionId);
+        if (!submission) return null;
+        
+        // Get user details
+        const submitter = await storage.getUser(submission.userId);
+        
+        return {
+          ...submission,
+          user: submitter ? {
+            id: submitter.id,
+            username: submitter.username
+          } : null,
+          hasPurchasedPrompt: true, // Always true for purchased prompts
+          purchaseDate: purchase.createdAt,
+          purchasePrice: purchase.price,
+          purchaseCurrency: purchase.currency
+        };
+      });
+      
+      const submissions = (await Promise.all(submissionsPromises)).filter(Boolean);
+      
+      res.json(submissions);
+    } catch (error) {
+      console.error("Get purchased submissions error:", error);
+      res.status(500).json({ error: "Failed to fetch purchased submissions" });
     }
   });
 
