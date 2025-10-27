@@ -107,7 +107,7 @@ export function ContestCard({ contest }: ContestCardProps) {
   const coverImage = contest.topSubmissionImageUrl || contest.coverImageUrl || defaultImage;
   
   return (
-    <div className="relative min-h-[600px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group border border-transparent hover:border-primary/50 hover:shadow-[0_0_30px_rgba(124,60,236,0.3)]">
+    <div className="relative min-h-[700px] lg:min-h-[800px] w-full overflow-hidden rounded-xl shadow-lg transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1 group border border-transparent hover:border-primary/50 hover:shadow-[0_0_30px_rgba(124,60,236,0.3)]">
       {/* Background image with smooth zoom on hover */}
       <img
         src={coverImage}
