@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useWallet } from "@/lib/wallet-provider";
-import { Button } from "@/components/ui/button";
+import { GlassButton } from "@/components/GlassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -131,7 +131,7 @@ export function WalletConnect() {
             <p className="text-sm text-muted-foreground">
               Connect your Phantom wallet to enable cashouts. Make sure you have the Phantom browser extension installed.
             </p>
-            <Button
+            <GlassButton
               onClick={handleConnect}
               disabled={isConnecting || connecting}
               className="w-full"
@@ -148,7 +148,7 @@ export function WalletConnect() {
                   Connect Phantom Wallet
                 </>
               )}
-            </Button>
+            </GlassButton>
           </div>
         ) : (
           <div className="space-y-4">
@@ -174,14 +174,14 @@ export function WalletConnect() {
               </div>
             )}
 
-            <Button
-              variant="outline"
+            <GlassButton
+              variant="secondary"
               onClick={handleDisconnect}
               className="w-full"
               data-testid="button-disconnect-wallet"
             >
               Disconnect Wallet
-            </Button>
+            </GlassButton>
           </div>
         )}
       </CardContent>
