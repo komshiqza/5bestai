@@ -236,14 +236,6 @@ export function ContestLightboxModal({
                         >
                           {submission.prompt}
                         </p>
-                        {submission.promptForSale && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/20 to-black/40 backdrop-blur-[2px] rounded-lg">
-                            <div className="text-center">
-                              <ShoppingCart className="h-6 w-6 text-violet-400 mx-auto mb-2" />
-                              <p className="text-xs text-gray-300">Prompt available for purchase</p>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
