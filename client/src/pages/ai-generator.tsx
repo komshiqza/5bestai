@@ -317,6 +317,15 @@ function AiGeneratorPageContent() {
     document.title = "AI Studio - 5best";
   }, []);
 
+  // Read prompt from URL query parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPrompt = urlParams.get('prompt');
+    if (urlPrompt) {
+      setPrompt(decodeURIComponent(urlPrompt));
+    }
+  }, []);
+
   const { data: modelConfigs, isLoading: loadingModels } = useQuery<ModelConfig[]>({
     queryKey: ["/api/ai/models"],
   });
