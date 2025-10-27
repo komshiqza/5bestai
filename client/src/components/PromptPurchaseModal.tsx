@@ -3,6 +3,7 @@ import { X, Wallet, Lock, Sparkles } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/currency";
 
 interface PromptPurchaseModalProps {
   isOpen: boolean;
@@ -128,7 +129,7 @@ export function PromptPurchaseModal({
                 Price
               </div>
               <div className="text-4xl font-bold text-violet-600 dark:text-violet-400">
-                {price} {currency}
+                {formatCurrency(price, currency)}
               </div>
             </div>
           </div>
@@ -155,7 +156,7 @@ export function PromptPurchaseModal({
                       Pay from Balance
                     </div>
                     <div className="text-xs text-slate-600 dark:text-slate-400">
-                      Your {currency} balance: {balance.toFixed(currency === 'SOL' ? 9 : currency === 'USDC' ? 6 : 0)}
+                      Your balance: {formatCurrency(balance, currency)}
                     </div>
                   </div>
                 </label>
@@ -189,7 +190,7 @@ export function PromptPurchaseModal({
                     Insufficient Balance
                   </div>
                   <div className="text-xs text-red-700 dark:text-red-300 mt-1">
-                    You need {price} {currency} but only have {balance.toFixed(currency === 'SOL' ? 9 : currency === 'USDC' ? 6 : 0)} {currency}
+                    You need {formatCurrency(price, currency)} but only have {formatCurrency(balance, currency)}
                   </div>
                 </div>
               )}
@@ -227,7 +228,7 @@ export function PromptPurchaseModal({
             className="px-6 py-2 rounded-lg font-semibold bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             data-testid="button-purchase"
           >
-            {purchaseMutation.isPending ? "Processing..." : `Purchase for ${price} ${currency}`}
+            {purchaseMutation.isPending ? "Processing..." : `Purchase for ${formatCurrency(price, currency)}`}
           </button>
         </div>
       </div>
