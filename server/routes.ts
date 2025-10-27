@@ -1219,7 +1219,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", authenticateToken, requireApproved, upload.single("file"), async (req: AuthRequest, res) => {
     try {
-      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash } = req.body;
+      const { 
+        contestId, 
+        title, 
+        description, 
+        type, 
+        mediaUrl, 
+        thumbnailUrl, 
+        paymentTxHash,
+        category,
+        aiModel,
+        prompt,
+        tags,
+        generationId,
+        promptForSale,
+        promptPrice,
+        promptCurrency
+      } = req.body;
       
       // Check if either file or mediaUrl is provided (gallery selection)
       if (!req.file && !mediaUrl) {
@@ -1419,6 +1435,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryFeeAmount = config?.entryFee && config?.entryFeeAmount ? String(config.entryFeeAmount) : null;
       const entryFeeCurrency = entryFeeAmount ? (config?.entryFeeCurrency || "GLORY") : null;
 
+      // Parse tags if they're a JSON string (from FormData)
+      let parsedTags: string[] = [];
+      if (tags) {
+        try {
+          parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
+        } catch {
+          parsedTags = [];
+        }
+      }
+
+      // Normalize promptForSale to boolean
+      const isPromptForSale = promptForSale === 'true' || promptForSale === true;
+
       // Create submission
       const submission = await storage.createSubmission({
         userId: req.user!.id,
@@ -1433,7 +1462,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cloudinaryResourceType,
         status: "pending", // Requires admin approval
         entryFeeAmount, // Store entry fee amount at submission time
-        entryFeeCurrency // Store entry fee currency at submission time
+        entryFeeCurrency, // Store entry fee currency at submission time
+        category: category || null,
+        aiModel: aiModel || null,
+        prompt: prompt || null,
+        generationId: generationId || null,
+        tags: parsedTags,
+        promptForSale: isPromptForSale,
+        promptPrice: isPromptForSale ? (promptPrice || null) : null,
+        promptCurrency: isPromptForSale ? (promptCurrency || 'GLORY') : null
       });
 
       // Deduct entry fee AFTER submission is successfully created
