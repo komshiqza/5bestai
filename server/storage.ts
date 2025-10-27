@@ -1840,13 +1840,14 @@ export class DbStorage implements IStorage {
       }
 
       // Create ledger entry for buyer (deduction)
+      // Note: contestId is null for marketplace transactions to avoid unique constraint conflicts
       await tx.insert(gloryLedger).values({
         userId,
         delta: (-price).toString(),
         currency,
         reason: `Purchased prompt for submission "${submission.title}"`,
         submissionId,
-        contestId: submission.contestId || null,
+        contestId: null,
         txHash: null,
         metadata: {
           sellerId: submission.userId,
@@ -1856,13 +1857,14 @@ export class DbStorage implements IStorage {
       });
 
       // Create ledger entry for seller (credit)
+      // Note: contestId is null for marketplace transactions to avoid unique constraint conflicts
       await tx.insert(gloryLedger).values({
         userId: submission.userId,
         delta: price.toString(),
         currency,
         reason: `Sold prompt for submission "${submission.title}"`,
         submissionId,
-        contestId: submission.contestId || null,
+        contestId: null,
         txHash: null,
         metadata: {
           buyerId: userId,
