@@ -83,6 +83,21 @@ export function ContestLightboxModal({
 
   if (!isOpen || !submission) return null;
 
+  // Debug blur logic
+  const isCreator = currentUser?.id === submission.userId;
+  const hasPurchased = submission.hasPurchasedPrompt;
+  const shouldBlur = submission.promptForSale && !hasPurchased && !isCreator;
+  
+  console.log('[DEBUG Blur Logic]', {
+    submissionId: submission.id,
+    currentUserId: currentUser?.id,
+    submissionUserId: submission.userId,
+    isCreator,
+    promptForSale: submission.promptForSale,
+    hasPurchasedPrompt: hasPurchased,
+    shouldBlur
+  });
+
   const handleVote = () => {
     if (onVote) {
       onVote(submission.id);
