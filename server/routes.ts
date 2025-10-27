@@ -1222,7 +1222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", authenticateToken, requireApproved, upload.single("file"), async (req: AuthRequest, res) => {
     try {
-      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash } = req.body;
+      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash, sellPrompt, promptPrice, promptCurrency } = req.body;
       
       // Check if either file or mediaUrl is provided (gallery selection)
       if (!req.file && !mediaUrl) {
@@ -1436,7 +1436,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cloudinaryResourceType,
         status: "pending", // Requires admin approval
         entryFeeAmount, // Store entry fee amount at submission time
-        entryFeeCurrency // Store entry fee currency at submission time
+        entryFeeCurrency, // Store entry fee currency at submission time
+        sellPrompt: sellPrompt === "true" || sellPrompt === true, // Convert string to boolean if needed
+        promptPrice: promptPrice || null,
+        promptCurrency: promptCurrency || null
       });
 
       // Deduct entry fee AFTER submission is successfully created
