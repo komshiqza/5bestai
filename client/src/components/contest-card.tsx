@@ -145,7 +145,7 @@ export function ContestCard({ contest }: ContestCardProps) {
         </div>
 
         {/* Title + Desc */}
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white drop-shadow mb-2">
             {contest.title}
           </h1>
@@ -155,7 +155,7 @@ export function ContestCard({ contest }: ContestCardProps) {
         </div>
 
         {/* Countdown */}
-        <div className="mb-6 flex justify-center gap-1 sm:gap-2 lg:gap-3">
+        <div className="mb-4 flex justify-center gap-1 sm:gap-2 lg:gap-3">
           {[
             { label: "Days", val: String(timeLeft.days).padStart(2, "0") },
             { label: "Hours", val: String(timeLeft.hours).padStart(2, "0") },
@@ -182,7 +182,7 @@ export function ContestCard({ contest }: ContestCardProps) {
         </div>
 
         {/* Info: Status | Prize | Participants */}
-        <div className="mb-6 flex flex-wrap justify-center gap-2">
+        <div className="mb-4 flex flex-wrap justify-center gap-2">
           <div className="glassmorphism flex-grow rounded-lg p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] max-w-[140px] sm:max-w-[160px]">
             <p className="text-xs font-medium text-white/80">Status</p>
             <p className="text-xs sm:text-sm lg:text-lg font-bold text-primary mt-1 capitalize">
@@ -224,7 +224,7 @@ export function ContestCard({ contest }: ContestCardProps) {
         </div>
 
         {/* Share */}
-        <div className="mt-4 flex justify-center items-center gap-3">
+        <div className="mt-3 flex justify-center items-center gap-3">
           <p className="text-xs font-medium text-white/75">Share:</p>
           <div className="flex items-center gap-2">
             <button
