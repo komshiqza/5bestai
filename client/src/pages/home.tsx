@@ -56,8 +56,8 @@ export default function Home() {
 
           {/* Prompt Search Bar */}
           <div className={`w-full max-w-2xl px-4 sm:px-0 ${isVisible ? 'animate-fade-in-scale animation-delay-300' : 'opacity-0'}`}>
-            <form onSubmit={handlePromptSubmit} className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+            <form onSubmit={handlePromptSubmit} className="prompt-bar">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 z-10">
                 <Search className="h-5 w-5 text-gray-400 transition-colors duration-300" />
               </div>
               <input
@@ -65,7 +65,7 @@ export default function Home() {
                 placeholder="Describe your vision..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="w-full rounded-full border border-primary/30 bg-background-dark/50 backdrop-blur-sm py-3 sm:py-4 pl-10 sm:pl-12 pr-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary/60 focus:border-primary focus:rounded-none transition-all duration-300 hover:border-primary/50 text-sm sm:text-base"
+                className="glass w-full rounded-full py-3 sm:py-4 pl-10 sm:pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:rounded-none transition-all duration-300 text-sm sm:text-base relative"
                 data-testid="input-prompt-search"
               />
             </form>
