@@ -324,6 +324,23 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
+  /* Remove all default Solana pseudo-elements */
+  .wallet-adapter-button-trigger .wallet-adapter-button::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  .wallet-adapter-button-trigger::before,
+  .wallet-adapter-button-trigger::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* Hide any nested default backgrounds */
+  .wallet-adapter-button-trigger > *:not(.wallet-adapter-button) {
+    display: none !important;
+  }
+
   .wallet-adapter-button-trigger .wallet-adapter-button:hover {
     transform: translateY(-2px) !important;
     box-shadow:
@@ -340,10 +357,17 @@
     height: 100% !important;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
     transition: left 0.5s !important;
+    z-index: 1 !important;
   }
 
   .wallet-adapter-button-trigger .wallet-adapter-button:hover::before {
     left: 100% !important;
+  }
+
+  /* Ensure button content is above shimmer */
+  .wallet-adapter-button-trigger .wallet-adapter-button > * {
+    position: relative !important;
+    z-index: 2 !important;
   }
 
   /* Group Hover Effects */
