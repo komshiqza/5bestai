@@ -17,7 +17,6 @@ export const users = pgTable("users", {
   usdcBalance: numeric("usdc_balance", { precision: 18, scale: 6 }).notNull().default("0"), // USDC with 6 decimals
   imageCredits: integer("image_credits").notNull().default(100), // Credits for AI image generation and upscaling
   withdrawalAddress: varchar("withdrawal_address", { length: 255 }), // Solana withdrawal address
-  customCommission: integer("custom_commission"), // Custom commission % for this user (null = use default)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 }, (table) => ({
@@ -64,10 +63,6 @@ export const submissions = pgTable("submissions", {
   isEnhanced: boolean("is_enhanced").notNull().default(false), // True if edited or upscaled via built-in editor
   entryFeeAmount: text("entry_fee_amount"), // Entry fee amount paid at submission time (stored as string for precision)
   entryFeeCurrency: varchar("entry_fee_currency", { length: 20 }), // Currency of entry fee (GLORY, SOL, USDC)
-  sellPrompt: boolean("sell_prompt").notNull().default(false), // True if prompt is for sale
-  promptPrice: numeric("prompt_price", { precision: 18, scale: 6 }), // Price of the prompt (nullable)
-  promptCurrency: varchar("prompt_currency", { length: 20 }), // Currency for prompt (USDC, SOL, GLORY)
-  promptSoldCount: integer("prompt_sold_count").notNull().default(0), // Number of times prompt was sold
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userContestIdx: index("submissions_user_contest_idx").on(table.userId, table.contestId),
@@ -436,36 +431,10 @@ export const aiGenerations = pgTable("ai_generations", {
   isEdited: boolean("is_edited").notNull().default(false), // True if edited via built-in editor
   isUpscaled: boolean("is_upscaled").notNull().default(false), // True if upscaled via AI upscaling
   creditsUsed: integer("credits_used").notNull().default(0), // Credits deducted for this generation
-  sellPrompt: boolean("sell_prompt").notNull().default(false), // True if prompt is for sale
-  promptPrice: numeric("prompt_price", { precision: 18, scale: 6 }), // Price of the prompt (nullable)
-  promptCurrency: varchar("prompt_currency", { length: 20 }), // Currency for prompt (USDC, SOL, GLORY)
-  promptSoldCount: integer("prompt_sold_count").notNull().default(0), // Number of times prompt was sold
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userIdx: index("ai_generations_user_idx").on(table.userId),
   createdAtIdx: index("ai_generations_created_at_idx").on(table.createdAt)
-}));
-
-// Prompt Purchases table (transaction history for prompt sales)
-export const promptPurchases = pgTable("prompt_purchases", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  buyerId: varchar("buyer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  submissionId: varchar("submission_id").references(() => submissions.id, { onDelete: "set null" }),
-  generationId: varchar("generation_id").references(() => aiGenerations.id, { onDelete: "set null" }),
-  prompt: text("prompt").notNull(), // Copy of the prompt at time of purchase
-  price: numeric("price", { precision: 18, scale: 6 }).notNull(), // Price paid
-  currency: varchar("currency", { length: 20 }).notNull(), // USDC, SOL, GLORY
-  commissionPercent: integer("commission_percent").notNull(), // Commission % at time of purchase
-  commissionAmount: numeric("commission_amount", { precision: 18, scale: 6 }).notNull(), // Actual commission amount
-  sellerPayout: numeric("seller_payout", { precision: 18, scale: 6 }).notNull(), // Amount seller received
-  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // wallet, balance
-  txHash: varchar("tx_hash", { length: 255 }), // Blockchain transaction hash (for wallet payments)
-  createdAt: timestamp("created_at").notNull().defaultNow()
-}, (table) => ({
-  buyerIdx: index("prompt_purchases_buyer_idx").on(table.buyerId),
-  sellerIdx: index("prompt_purchases_seller_idx").on(table.sellerId),
-  createdAtIdx: index("prompt_purchases_created_at_idx").on(table.createdAt)
 }));
 
 // Site Settings table (global settings - should have only one row)
@@ -473,7 +442,6 @@ export const siteSettings = pgTable("site_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   privateMode: boolean("private_mode").notNull().default(false), // When true, only logged-in users can access the site
   platformWalletAddress: varchar("platform_wallet_address", { length: 255 }), // Solana wallet address for receiving entry fees
-  defaultPromptCommission: integer("default_prompt_commission").notNull().default(20), // Default commission % for prompt sales (20% = platform keeps 20%)
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
 
