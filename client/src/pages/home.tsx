@@ -65,7 +65,7 @@ export default function Home() {
               <h2 className="text-3xl font-bold mb-2 gradient-text">Featured Contest</h2>
               <p className="text-muted-foreground">Don't miss out on this exclusive competition</p>
             </div>
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <ContestCard contest={featuredContest} />
             </div>
           </div>
