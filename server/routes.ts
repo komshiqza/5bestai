@@ -1150,6 +1150,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validPage = Math.max(1, pageNum);
       const validLimit = Math.min(Math.max(1, limitNum), 100); // Max 100 items per page
       
+      // Helper function to enrich submissions with hasPromptAccess
+      // Batch-fetch all purchased submission IDs for performance
+      const enrichSubmissionsWithPromptAccess = async (submissions: any[]) => {
+        // Batch-fetch all purchased submission IDs if user is authenticated
+        let purchasedSubmissionIds = new Set<string>();
+        if (currentUserId) {
+          const purchases = await storage.getPromptPurchasesByBuyer(currentUserId);
+          purchases.forEach((p: any) => {
+            if (p.submissionId) purchasedSubmissionIds.add(p.submissionId);
+          });
+        }
+
+        return submissions.map((sub) => {
+          let hasPromptAccess = false;
+          if (sub.sellPrompt) {
+            // Admins and owners have automatic access
+            const isOwn = currentUserId === sub.userId;
+            const hasPurchased = purchasedSubmissionIds.has(sub.id);
+            hasPromptAccess = isUserAdmin || isOwn || hasPurchased;
+          } else {
+            // Free prompts are accessible to everyone
+            hasPromptAccess = true;
+          }
+          return { ...sub, hasPromptAccess };
+        });
+      };
+
       // Admins can see all submissions with any status filter
       if (isUserAdmin) {
         const submissions = await storage.getSubmissions({
@@ -1160,7 +1187,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           page: validPage,
           limit: validLimit
         });
-        return res.json(submissions);
+        const enriched = await enrichSubmissionsWithPromptAccess(submissions);
+        return res.json(enriched);
       }
       
       // Regular users see approved submissions + their own submissions (any status)
@@ -1190,12 +1218,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           submissionMap.set(sub.id, sub);
         });
         
-        // Return merged submissions without additional slicing
-        return res.json(Array.from(submissionMap.values()));
+        // Enrich with prompt access and return
+        const enriched = await enrichSubmissionsWithPromptAccess(Array.from(submissionMap.values()));
+        return res.json(enriched);
       }
       
       // Unauthenticated users only see approved
-      res.json(approvedSubmissions);
+      const enriched = await enrichSubmissionsWithPromptAccess(approvedSubmissions);
+      res.json(enriched);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch submissions" });
     }
