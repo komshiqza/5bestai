@@ -122,7 +122,7 @@ export function ContestCard({ contest }: ContestCardProps) {
       <div className="absolute inset-0 bg-gradient-to-t from-[#171121] via-[#171121]/70 to-transparent pointer-events-none" />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col justify-end h-full p-4 sm:p-6 text-center">
+      <div className="relative z-10 flex flex-col justify-end h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-2 text-center">
         {/* Status */}
         <div className="absolute top-4 left-4">
           <div
