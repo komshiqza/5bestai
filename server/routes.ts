@@ -244,6 +244,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Set Cache-Control header to prevent HTTP caching of dynamic user data
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
     res.json({
       id: user.id,
       username: user.username,
@@ -1165,6 +1168,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }));
       };
+      
+      // Set Cache-Control header to prevent HTTP caching of dynamic content
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       
       // Admins can see all submissions with any status filter
       if (isUserAdmin) {
@@ -3032,6 +3038,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const submissions = (await Promise.all(submissionsPromises)).filter(Boolean);
+      
+      // Set Cache-Control header to prevent HTTP caching of purchased prompts
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       
       res.json(submissions);
     } catch (error) {
