@@ -44,6 +44,7 @@ interface UploadWizardModalProps {
     cloudinaryPublicId: string;
     prompt: string;
     model?: string;
+    generationId?: string;
   };
 }
 
@@ -63,6 +64,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
   const [tagInput, setTagInput] = useState("");
   const [aiModel, setAiModel] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [generationId, setGenerationId] = useState<string | null>(null);
   const [selectedContest, setSelectedContest] = useState<string>("");
   const [agreedToRules, setAgreedToRules] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -134,6 +136,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
     if (aiSubmissionMode) {
       setPrompt(aiSubmissionMode.prompt || "");
       setAiModel(aiSubmissionMode.model || "");
+      setGenerationId(aiSubmissionMode.generationId || null);
     }
   }, [aiSubmissionMode]);
 
@@ -400,6 +403,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         if (category) formData.append("category", category);
         if (aiModel) formData.append("aiModel", aiModel);
         if (prompt) formData.append("prompt", prompt);
+        if (generationId) formData.append("generationId", generationId);
         if (tags.length > 0) formData.append("tags", JSON.stringify(tags));
         if (promptForSale) {
           formData.append("promptForSale", "true");
@@ -442,6 +446,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         if (category) submissionData.category = category;
         if (aiModel) submissionData.aiModel = aiModel;
         if (prompt) submissionData.prompt = prompt;
+        if (generationId) submissionData.generationId = generationId;
         if (tags.length > 0) submissionData.tags = tags;
         if (promptForSale) {
           submissionData.promptForSale = true;

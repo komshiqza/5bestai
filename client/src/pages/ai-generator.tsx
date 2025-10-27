@@ -2797,6 +2797,8 @@ function AiGeneratorPageContent() {
                   : selectedGeneration.imageUrl,
                 cloudinaryPublicId: selectedGeneration.cloudinaryPublicId!,
                 prompt: selectedGeneration.prompt,
+                model: selectedGeneration.model,
+                generationId: selectedGeneration.id,
               }
             : undefined
         }

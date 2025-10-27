@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { X, Heart, User, Calendar, Share2, Tag, Sparkles, MessageSquare, ShoppingCart } from "lucide-react";
+import { GlassButton } from "./GlassButton";
 
 interface ContestLightboxModalProps {
   isOpen: boolean;
@@ -106,6 +107,13 @@ export function ContestLightboxModal({
     }
   };
 
+  const formatPrice = (price: string | null | undefined): string => {
+    if (!price) return "0";
+    const num = parseFloat(price);
+    if (isNaN(num)) return price || "0";
+    return num.toString();
+  };
+
   return (
     <div 
       className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm"
@@ -113,7 +121,7 @@ export function ContestLightboxModal({
       data-testid="lightbox-overlay"
     >
       {/* Desktop: Grid layout | Mobile: Stack layout */}
-      <div className="h-full flex flex-col lg:grid lg:grid-cols-[1fr,400px] xl:grid-cols-[1fr,480px] gap-0">
+      <div className="h-full flex flex-col lg:grid lg:grid-cols-[1fr,350px] gap-0">
         
         {/* Image Section */}
         <div 
@@ -242,17 +250,22 @@ export function ContestLightboxModal({
                   
                   {/* Buy Prompt Button */}
                   {submission.promptForSale && (
-                    <button
+                    <GlassButton
                       onClick={(e) => {
                         e.stopPropagation();
                         handleBuyPrompt();
                       }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold transition-all duration-300 shadow-lg shadow-emerald-500/20"
+                      className="w-full flex items-center justify-center gap-2"
                       data-testid="button-buy-prompt"
                     >
                       <ShoppingCart className="h-5 w-5" />
-                      <span>Buy Prompt{submission.promptPrice && submission.promptCurrency ? ` for ${submission.promptPrice} ${submission.promptCurrency}` : ''}</span>
-                    </button>
+                      <span className="font-semibold">Buy Prompt</span>
+                      {submission.promptPrice && submission.promptCurrency && (
+                        <span className="ml-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-sm">
+                          {formatPrice(submission.promptPrice)} {submission.promptCurrency}
+                        </span>
+                      )}
+                    </GlassButton>
                   )}
                 </div>
               )}
