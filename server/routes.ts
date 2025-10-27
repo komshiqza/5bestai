@@ -1147,6 +1147,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validPage = Math.max(1, pageNum);
       const validLimit = Math.min(Math.max(1, limitNum), 100); // Max 100 items per page
       
+      // Helper function to enrich submissions with hasPurchasedPrompt
+      const enrichSubmissions = async (submissions: any[]) => {
+        if (!currentUserId) return submissions;
+        
+        return Promise.all(submissions.map(async (submission) => {
+          let hasPurchasedPrompt = false;
+          
+          // Check if user has purchased this prompt
+          if (submission.promptForSale) {
+            hasPurchasedPrompt = await storage.checkIfPromptPurchased(currentUserId, submission.id);
+          }
+          
+          return {
+            ...submission,
+            hasPurchasedPrompt
+          };
+        }));
+      };
+      
       // Admins can see all submissions with any status filter
       if (isUserAdmin) {
         const submissions = await storage.getSubmissions({
@@ -1157,7 +1176,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           page: validPage,
           limit: validLimit
         });
-        return res.json(submissions);
+        const enrichedSubmissions = await enrichSubmissions(submissions);
+        return res.json(enrichedSubmissions);
       }
       
       // Regular users see approved submissions + their own submissions (any status)
@@ -1187,11 +1207,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           submissionMap.set(sub.id, sub);
         });
         
-        // Return merged submissions without additional slicing
-        return res.json(Array.from(submissionMap.values()));
+        const mergedSubmissions = Array.from(submissionMap.values());
+        const enrichedSubmissions = await enrichSubmissions(mergedSubmissions);
+        
+        // Return enriched submissions
+        return res.json(enrichedSubmissions);
       }
       
-      // Unauthenticated users only see approved
+      // Unauthenticated users only see approved (no enrichment needed)
       res.json(approvedSubmissions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch submissions" });

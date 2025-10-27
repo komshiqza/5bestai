@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { X, Heart, User, Calendar, Share2, Tag, Sparkles, MessageSquare, ShoppingCart, ChevronDown } from "lucide-react";
 import { GlassButton } from "./GlassButton";
+import { useAuth } from "@/lib/auth";
 
 interface ContestLightboxModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export function ContestLightboxModal({
   onShare,
   onBuyPrompt
 }: ContestLightboxModalProps) {
+  const { data: currentUser } = useAuth();
   const infoPanelRef = useRef<HTMLDivElement>(null);
 
   const scrollToInfo = () => {
@@ -245,7 +247,7 @@ export function ContestLightboxModal({
                       <div className="relative">
                         <p 
                           className={`text-white text-sm leading-relaxed ${
-                            submission.promptForSale && !submission.hasPurchasedPrompt ? 'filter blur-sm select-none pointer-events-none' : ''
+                            submission.promptForSale && !submission.hasPurchasedPrompt && currentUser?.id !== submission.userId ? 'filter blur-sm select-none pointer-events-none' : ''
                           }`}
                           data-testid="text-prompt-content"
                         >
@@ -255,8 +257,8 @@ export function ContestLightboxModal({
                     </div>
                   </div>
                   
-                  {/* Buy Prompt Button - show only if for sale and not purchased */}
-                  {submission.promptForSale && !submission.hasPurchasedPrompt && (
+                  {/* Buy Prompt Button - show only if for sale, not purchased, and not the creator */}
+                  {submission.promptForSale && !submission.hasPurchasedPrompt && currentUser?.id !== submission.userId && (
                     <GlassButton
                       onClick={(e) => {
                         e.stopPropagation();
