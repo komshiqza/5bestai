@@ -1274,7 +1274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", authenticateToken, requireApproved, upload.single("file"), async (req: AuthRequest, res) => {
     try {
-      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash, sellPrompt, promptPrice, promptCurrency, generationId, prompt, aiTool } = req.body;
+      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash, sellPrompt, promptPrice, promptCurrency, generationId, prompt, aiTool, tags } = req.body;
       
       // Check if either file or mediaUrl is provided (gallery selection)
       if (!req.file && !mediaUrl) {
@@ -1474,6 +1474,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entryFeeAmount = config?.entryFee && config?.entryFeeAmount ? String(config.entryFeeAmount) : null;
       const entryFeeCurrency = entryFeeAmount ? (config?.entryFeeCurrency || "GLORY") : null;
 
+      // Parse tags if sent as JSON string
+      let parsedTags = null;
+      if (tags) {
+        parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
+      }
+
       // Create submission
       const submission = await storage.createSubmission({
         userId: req.user!.id,
@@ -1493,7 +1499,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         promptPrice: promptPrice || null,
         promptCurrency: promptCurrency || null,
         generationId: generationId || null, // Link to AI generation if available
-        aiTool: aiTool || null // AI model/tool used to generate the image
+        aiTool: aiTool || null, // AI model/tool used to generate the image
+        prompt: prompt || null, // AI generation prompt
+        tags: parsedTags // Tags array
       });
 
       // Deduct entry fee AFTER submission is successfully created

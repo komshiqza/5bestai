@@ -70,6 +70,7 @@ export const submissions = pgTable("submissions", {
   promptSoldCount: integer("prompt_sold_count").notNull().default(0), // Number of times prompt was sold
   generationId: varchar("generation_id").references(() => aiGenerations.id, { onDelete: "set null" }), // Link to AI generation
   aiTool: varchar("ai_tool", { length: 255 }), // AI model/tool used to generate the image (e.g., "Ideogram v3", "Nano Banana")
+  prompt: text("prompt"), // AI generation prompt (user-provided or from AI generation)
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userContestIdx: index("submissions_user_contest_idx").on(table.userId, table.contestId),

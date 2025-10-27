@@ -419,6 +419,11 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         formData.append("description", description);
         formData.append("type", file.type.startsWith("video/") ? "video" : "image");
         
+        // Add tags if available
+        if (tags && tags.length > 0) {
+          formData.append("tags", JSON.stringify(tags));
+        }
+        
         // Add prompt and AI tool if available
         if (prompt) {
           formData.append("prompt", prompt);
@@ -462,6 +467,11 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         // Add contestId if submitting to contest
         if (submissionTypes.includes('contest') && selectedContest) {
           submissionData.contestId = selectedContest;
+        }
+        
+        // Add tags if available
+        if (tags && tags.length > 0) {
+          submissionData.tags = tags;
         }
         
         // Add prompt, AI tool, and generationId if available

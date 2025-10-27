@@ -583,6 +583,7 @@ export class MemStorage implements IStorage {
       promptSoldCount: 0,
       generationId: insertSubmission.generationId || null,
       aiTool: insertSubmission.aiTool || null,
+      prompt: insertSubmission.prompt || null,
       createdAt: new Date()
     };
     this.submissions.set(id, submission);
