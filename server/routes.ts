@@ -1274,7 +1274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/submissions", authenticateToken, requireApproved, upload.single("file"), async (req: AuthRequest, res) => {
     try {
-      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash, sellPrompt, promptPrice, promptCurrency } = req.body;
+      const { contestId, title, description, type, mediaUrl, thumbnailUrl, paymentTxHash, sellPrompt, promptPrice, promptCurrency, generationId, prompt, aiTool } = req.body;
       
       // Check if either file or mediaUrl is provided (gallery selection)
       if (!req.file && !mediaUrl) {
@@ -1491,7 +1491,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entryFeeCurrency, // Store entry fee currency at submission time
         sellPrompt: sellPrompt === "true" || sellPrompt === true, // Convert string to boolean if needed
         promptPrice: promptPrice || null,
-        promptCurrency: promptCurrency || null
+        promptCurrency: promptCurrency || null,
+        generationId: generationId || null // Link to AI generation if available
       });
 
       // Deduct entry fee AFTER submission is successfully created

@@ -45,6 +45,7 @@ interface UploadWizardModalProps {
     imageUrl: string;
     cloudinaryPublicId: string;
     prompt: string;
+    generationId: string;
     aiModel?: string;
   };
 }
@@ -65,6 +66,8 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
   const [tagInput, setTagInput] = useState("");
   const [prompt, setPrompt] = useState("");
   const [aiTool, setAiTool] = useState("");
+  const [generationId, setGenerationId] = useState<string | null>(null);
+  const [isAiGenerated, setIsAiGenerated] = useState(false);
   
   // Submission options
   const [submissionTypes, setSubmissionTypes] = useState<SubmissionType[]>(["general"]);
@@ -260,6 +263,8 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         setDescription(""); // Let user fill in description
         setPrompt(aiSubmissionMode.prompt || ""); // Auto-populate prompt from AI generation
         setAiTool(aiSubmissionMode.aiModel || ""); // Auto-populate AI model/tool
+        setGenerationId(aiSubmissionMode.generationId); // Store generationId
+        setIsAiGenerated(true); // Mark as AI-generated (prompt is read-only)
         appliedAiModeRef.current = aiSubmissionMode.cloudinaryPublicId;
       }
     }
@@ -278,6 +283,8 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
       setTagInput("");
       setPrompt("");
       setAiTool("");
+      setGenerationId(null);
+      setIsAiGenerated(false);
       setSubmissionTypes(["general"]);
       setSelectedContest(preselectedContestId || "");
       setAgreedToRules(false);
@@ -457,12 +464,15 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
           submissionData.contestId = selectedContest;
         }
         
-        // Add prompt and AI tool if available
+        // Add prompt, AI tool, and generationId if available
         if (prompt) {
           submissionData.prompt = prompt;
         }
         if (aiTool) {
           submissionData.aiTool = aiTool;
+        }
+        if (generationId) {
+          submissionData.generationId = generationId;
         }
         
         if (txHash) {
@@ -713,6 +723,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
                 setPrompt={setPrompt}
                 aiTool={aiTool}
                 setAiTool={setAiTool}
+                isAiGenerated={isAiGenerated}
               />
             )}
 
@@ -964,6 +975,7 @@ function StepDetails({
   setPrompt,
   aiTool,
   setAiTool,
+  isAiGenerated,
 }: {
   title: string;
   setTitle: (v: string) => void;
@@ -980,6 +992,7 @@ function StepDetails({
   setPrompt: (v: string) => void;
   aiTool: string;
   setAiTool: (v: string) => void;
+  isAiGenerated: boolean;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -1008,14 +1021,19 @@ function StepDetails({
         />
         
         <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mt-4 mb-1">
-          Prompt {aiTool && "(Auto-populated from AI generation)"}
+          Prompt {aiTool && "(Auto-populated from AI generation - Read only)"}
         </label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           rows={3}
           placeholder="Enter the AI prompt or describe the image concept..."
-          className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
+          disabled={isAiGenerated}
+          className={`w-full rounded-xl border px-3 py-2 outline-none ${
+            isAiGenerated 
+              ? 'border-slate-300/40 dark:border-slate-700/40 bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 cursor-not-allowed' 
+              : 'border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 focus:ring-2 focus:ring-violet-500'
+          }`}
           data-testid="input-prompt"
         />
         
