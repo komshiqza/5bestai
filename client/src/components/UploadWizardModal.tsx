@@ -396,6 +396,17 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         formData.append("description", description);
         formData.append("type", file.type.startsWith("video/") ? "video" : "image");
         
+        // New fields
+        if (category) formData.append("category", category);
+        if (aiModel) formData.append("aiModel", aiModel);
+        if (prompt) formData.append("prompt", prompt);
+        if (tags.length > 0) formData.append("tags", JSON.stringify(tags));
+        if (promptForSale) {
+          formData.append("promptForSale", "true");
+          if (promptPrice) formData.append("promptPrice", promptPrice);
+          formData.append("promptCurrency", promptCurrency);
+        }
+        
         if (txHash) {
           formData.append("paymentTxHash", txHash);
         }
@@ -425,6 +436,17 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         // Only add contestId if not uploading to My Gallery
         if (selectedContest !== "my-gallery") {
           submissionData.contestId = selectedContest;
+        }
+        
+        // New fields
+        if (category) submissionData.category = category;
+        if (aiModel) submissionData.aiModel = aiModel;
+        if (prompt) submissionData.prompt = prompt;
+        if (tags.length > 0) submissionData.tags = tags;
+        if (promptForSale) {
+          submissionData.promptForSale = true;
+          if (promptPrice) submissionData.promptPrice = promptPrice;
+          submissionData.promptCurrency = promptCurrency;
         }
         
         if (txHash) {
@@ -685,6 +707,12 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
                 user={user}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
+                promptForSale={promptForSale}
+                setPromptForSale={setPromptForSale}
+                promptPrice={promptPrice}
+                setPromptPrice={setPromptPrice}
+                promptCurrency={promptCurrency}
+                setPromptCurrency={setPromptCurrency}
               />
             )}
           </div>
@@ -1067,6 +1095,12 @@ function StepContest({
   user,
   paymentMethod,
   setPaymentMethod,
+  promptForSale,
+  setPromptForSale,
+  promptPrice,
+  setPromptPrice,
+  promptCurrency,
+  setPromptCurrency,
 }: {
   contests: any[];
   selectedContest: string;
@@ -1078,6 +1112,12 @@ function StepContest({
   user: any;
   paymentMethod: 'balance' | 'wallet';
   setPaymentMethod: (method: 'balance' | 'wallet') => void;
+  promptForSale: boolean;
+  setPromptForSale: (b: boolean) => void;
+  promptPrice: string;
+  setPromptPrice: (v: string) => void;
+  promptCurrency: 'SOL' | 'USDC' | 'GLORY';
+  setPromptCurrency: (c: 'SOL' | 'USDC' | 'GLORY') => void;
 }) {
   const selectedContestData = contests.find((c) => c.id === selectedContest);
   const contestConfig = selectedContestData?.config || {};
@@ -1205,6 +1245,67 @@ function StepContest({
           </div>
         ) : null
       )}
+
+      {/* Marketplace Section */}
+      <div className="space-y-4 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
+        <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200">
+          Marketplace
+        </h3>
+        
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={promptForSale}
+            onChange={(e) => setPromptForSale(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 mt-0.5"
+            data-testid="checkbox-prompt-for-sale"
+          />
+          <div className="text-sm">
+            <span className="text-slate-800 dark:text-slate-200">
+              Sell this prompt
+            </span>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+              Allow others to purchase the prompt used to create this image
+            </p>
+          </div>
+        </label>
+
+        {promptForSale && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+            <div>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                Price *
+              </label>
+              <input
+                type="number"
+                step="0.000001"
+                min="0"
+                value={promptPrice}
+                onChange={(e) => setPromptPrice(e.target.value)}
+                placeholder="0.00"
+                className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
+                data-testid="input-prompt-price"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                Currency *
+              </label>
+              <select
+                value={promptCurrency}
+                onChange={(e) => setPromptCurrency(e.target.value as 'SOL' | 'USDC' | 'GLORY')}
+                className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
+                data-testid="select-prompt-currency"
+              >
+                <option value="USDC">USDC</option>
+                <option value="SOL">SOL</option>
+                <option value="GLORY">GLORY</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="space-y-4 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
         <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200">
