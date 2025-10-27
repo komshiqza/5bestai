@@ -121,28 +121,29 @@ export function ContestCard({ contest }: ContestCardProps) {
       {/* Gradient from bottom for text contrast */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#171121] via-[#171121]/70 to-transparent pointer-events-none" />
 
-      {/* Content */}
-      <div className="relative z-10 flex flex-col justify-end h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-2 text-center">
-        {/* Status */}
-        <div className="absolute top-4 left-4">
-          <div
-            className={`px-2 sm:px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-sm ${getStatusColor(contest.status)}`}
-          >
-            {contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}
-          </div>
+      {/* Status */}
+      <div className="absolute top-4 left-4 z-10">
+        <div
+          className={`px-2 sm:px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-sm ${getStatusColor(contest.status)}`}
+        >
+          {contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}
         </div>
+      </div>
 
-        {/* Prize */}
-        <div className="absolute top-4 right-4">
-          <div className="glassmorphism px-3 py-1 rounded-lg">
-            <div className="flex items-center gap-1 text-yellow-400">
-              <Trophy size={14} />
-              <span className="text-xs sm:text-sm font-bold text-white">
-                {formatPrizeAmount(contest.prizeGlory)} {((contest as any).config?.currency) || 'GLORY'}
-              </span>
-            </div>
+      {/* Prize */}
+      <div className="absolute top-4 right-4 z-10">
+        <div className="glassmorphism px-3 py-1 rounded-lg">
+          <div className="flex items-center gap-1 text-yellow-400">
+            <Trophy size={14} />
+            <span className="text-xs sm:text-sm font-bold text-white">
+              {formatPrizeAmount(contest.prizeGlory)} {((contest as any).config?.currency) || 'GLORY'}
+            </span>
           </div>
         </div>
+      </div>
+
+      {/* Content */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 sm:px-6 pb-4 sm:pb-6 text-center">
 
         {/* Title + Desc */}
         <div className="mb-4">
