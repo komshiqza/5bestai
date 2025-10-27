@@ -25,6 +25,7 @@ function ExploreContent() {
   const [searchTag, setSearchTag] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const hasInitialized = useRef(false);
+  const lastProcessedPage = useRef<{page: number, tag: string} | null>(null);
 
   // Clear submissions cache on mount to ensure fresh data (runs once)
   useEffect(() => {
@@ -62,7 +63,17 @@ function ExploreContent() {
 
   // Update submissions when new data arrives
   useEffect(() => {
+    // Only process if we haven't already processed this page/tag combination
+    const currentKey = { page, tag: searchTag };
+    const lastKey = lastProcessedPage.current;
+    
+    if (lastKey && lastKey.page === currentKey.page && lastKey.tag === currentKey.tag) {
+      return; // Already processed this exact page
+    }
+    
     if (submissions && submissions.length >= 0) {
+      lastProcessedPage.current = currentKey;
+      
       if (page === 1) {
         setAllSubmissions(submissions);
       } else if (submissions.length > 0) {
@@ -72,7 +83,7 @@ function ExploreContent() {
       setHasMore(submissions.length === 12);
       setIsLoadingMore(false);
     }
-  }, [submissions, page]);
+  }, [submissions, page, searchTag]);
 
   // Infinite scroll logic
   const handleScroll = useCallback(() => {
