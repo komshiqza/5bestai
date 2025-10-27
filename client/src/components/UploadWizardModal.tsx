@@ -63,6 +63,9 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
   const [selectedContest, setSelectedContest] = useState<string>("");
   const [agreedToRules, setAgreedToRules] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [sellPrompt, setSellPrompt] = useState(false);
+  const [promptPrice, setPromptPrice] = useState("");
+  const [promptCurrency, setPromptCurrency] = useState<'GLORY' | 'SOL' | 'USDC'>('GLORY');
 
   // Wizard
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -265,6 +268,9 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
       setPaymentMethod('balance');
       setShowPayment(false);
       setPaymentTxHash(null);
+      setSellPrompt(false);
+      setPromptPrice("");
+      setPromptCurrency('GLORY');
       appliedAiModeRef.current = null; // Reset AI mode tracking
     }
   }, [isOpen, preselectedContestId]);
@@ -384,6 +390,12 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
           formData.append("paymentTxHash", txHash);
         }
 
+        if (sellPrompt && promptPrice) {
+          formData.append("sellPrompt", "true");
+          formData.append("promptPrice", promptPrice);
+          formData.append("promptCurrency", promptCurrency);
+        }
+
         const response = await fetch("/api/submissions", {
           method: "POST",
           credentials: "include",
@@ -413,6 +425,12 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         
         if (txHash) {
           submissionData.paymentTxHash = txHash;
+        }
+
+        if (sellPrompt && promptPrice) {
+          submissionData.sellPrompt = true;
+          submissionData.promptPrice = promptPrice;
+          submissionData.promptCurrency = promptCurrency;
         }
 
         const response = await fetch("/api/submissions", {
@@ -664,6 +682,12 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
                 user={user}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
+                sellPrompt={sellPrompt}
+                setSellPrompt={setSellPrompt}
+                promptPrice={promptPrice}
+                setPromptPrice={setPromptPrice}
+                promptCurrency={promptCurrency}
+                setPromptCurrency={setPromptCurrency}
               />
             )}
           </div>
@@ -1009,6 +1033,12 @@ function StepContest({
   user,
   paymentMethod,
   setPaymentMethod,
+  sellPrompt,
+  setSellPrompt,
+  promptPrice,
+  setPromptPrice,
+  promptCurrency,
+  setPromptCurrency,
 }: {
   contests: any[];
   selectedContest: string;
@@ -1020,6 +1050,12 @@ function StepContest({
   user: any;
   paymentMethod: 'balance' | 'wallet';
   setPaymentMethod: (method: 'balance' | 'wallet') => void;
+  sellPrompt: boolean;
+  setSellPrompt: (b: boolean) => void;
+  promptPrice: string;
+  setPromptPrice: (v: string) => void;
+  promptCurrency: 'GLORY' | 'SOL' | 'USDC';
+  setPromptCurrency: (c: 'GLORY' | 'SOL' | 'USDC') => void;
 }) {
   const selectedContestData = contests.find((c) => c.id === selectedContest);
   const contestConfig = selectedContestData?.config || {};
@@ -1076,6 +1112,65 @@ function StepContest({
           ))}
         </select>
       </div>
+
+      {/* Prompt Selling Section - показвай само ако е AI submission с prompt */}
+      {selectedContest && (
+        <div className="space-y-3 p-4 rounded-xl border border-blue-300/60 dark:border-blue-700/60 bg-blue-50/50 dark:bg-blue-950/20">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={sellPrompt}
+              onChange={(e) => setSellPrompt(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+              data-testid="checkbox-sell-prompt"
+            />
+            <div className="flex-1">
+              <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                Продавай prompt-а на това изображение
+              </div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                Позволи на други потребители да купят AI prompt-а за това изображение
+              </div>
+            </div>
+          </label>
+
+          {sellPrompt && (
+            <div className="pl-7 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                  Цена *
+                </label>
+                <input
+                  type="number"
+                  value={promptPrice}
+                  onChange={(e) => setPromptPrice(e.target.value)}
+                  step="0.000000001"
+                  min="0"
+                  placeholder="0.00"
+                  className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                  data-testid="input-prompt-price"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">
+                  Валута *
+                </label>
+                <select
+                  value={promptCurrency}
+                  onChange={(e) => setPromptCurrency(e.target.value as 'GLORY' | 'SOL' | 'USDC')}
+                  className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                  data-testid="select-prompt-currency"
+                >
+                  <option value="GLORY">GLORY</option>
+                  <option value="SOL">SOL</option>
+                  <option value="USDC">USDC</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Entry Fee Display */}
       {hasEntryFee && selectedContest && selectedContest !== "my-gallery" && (

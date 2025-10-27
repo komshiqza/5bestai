@@ -6,7 +6,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles, CreditCard, Compass } from "lucide-react";
+import { Trophy, Upload, LogOut, User, Shield, Image, ChevronDown, Wallet, Sparkles, CreditCard, Compass, DollarSign } from "lucide-react";
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { formatDecimalBalance } from "@/lib/utils";
 
@@ -142,6 +142,12 @@ export function Navbar() {
                         <DropdownMenuItem>
                           <CreditCard className="w-4 h-4 mr-2" />
                           Subscription Tiers
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/admin/commission" data-testid="link-admin-commission">
+                        <DropdownMenuItem>
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          Commission Management
                         </DropdownMenuItem>
                       </Link>
                     </>
