@@ -96,6 +96,21 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (October 2025)
 
+### Navigation Architecture Reorganization (October 27, 2025)
+**Problem:** Navigation ordering was inconsistent across components, making the user experience confusing.
+
+**Solution:**
+- **Standardized navigation order** across all components: Home → AI Studio → Contests → Explore → Pricing
+- **Sidebar** (AI Studio and Explore pages): Shows all 5 navigation items in the standard order
+- **Navbar** (other pages): Shows all 5 navigation items in the standard order with Home link added
+- **BottomNav** (mobile): Shows 5 icons - Home, AI Studio (auth-gated), Contests, Explore, Profile menu
+- **App.tsx logic refinement:**
+  - Footer: Hidden on sidebar pages (Explore, AI Studio) to prevent scrolling conflicts with infinite scroll
+  - BottomNav: Always visible on mobile (`md:hidden`) when user is logged in or private mode is OFF
+  - Separated footer and bottom nav visibility logic for independent control
+
+**Impact:** Users now have a consistent navigation experience across desktop and mobile, with the BottomNav always accessible on mobile devices regardless of page type.
+
 ### Featured Contest System (October 27, 2025)
 **Problem:** No way to highlight important contests on the home page to drive engagement.
 
