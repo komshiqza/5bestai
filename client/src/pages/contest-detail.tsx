@@ -95,12 +95,18 @@ export default function ContestDetailPage() {
       const response = await apiRequest("POST", `/api/prompts/purchase/${submissionId}`, {});
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, submissionId) => {
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions", submissionId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] }); // Update user balance
+      
       toast({
         title: "Prompt purchased!",
         description: "The prompt is now visible to you.",
       });
+      
       // Refresh modal to show unlocked prompt
       if (selectedSubmission) {
         setIsLightboxOpen(false);
