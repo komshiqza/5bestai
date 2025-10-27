@@ -599,6 +599,22 @@ export const purchasedPrompts = pgTable("purchased_prompts", {
   userSubmissionUnique: unique("purchased_prompts_user_submission_unique").on(table.userId, table.submissionId)
 }));
 
+// Purchased Prompts Relations
+export const purchasedPromptsRelations = relations(purchasedPrompts, ({ one }) => ({
+  user: one(users, {
+    fields: [purchasedPrompts.userId],
+    references: [users.id],
+  }),
+  submission: one(submissions, {
+    fields: [purchasedPrompts.submissionId],
+    references: [submissions.id],
+  }),
+  seller: one(users, {
+    fields: [purchasedPrompts.sellerId],
+    references: [users.id],
+  }),
+}));
+
 // Pro Edit: Images table (master image records)
 export const images = pgTable("images", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
