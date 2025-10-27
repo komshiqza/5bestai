@@ -4901,6 +4901,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/prompts/verify-payment/:id - Verify Solana payment for prompt purchase
+  app.post("/api/prompts/verify-payment/:id", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const promptId = req.params.id;
+      const buyerId = req.user!.id;
+      const { reference, currency } = req.body;
+
+      // Step 1: Find prompt
+      let prompt: string | null = null;
+      let sellerId: string | null = null;
+      let price: string | null = null;
+      let promptCurrency: string | null = null;
+      let sellPrompt = false;
+      let submissionId: string | null = null;
+      let generationId: string | null = null;
+
+      const submission = await storage.getSubmission(promptId);
+      if (submission) {
+        prompt = submission.description || null;
+        sellerId = submission.userId;
+        price = submission.promptPrice;
+        promptCurrency = submission.promptCurrency;
+        sellPrompt = submission.sellPrompt;
+        submissionId = submission.id;
+      } else {
+        const generation = await storage.getAiGeneration(promptId);
+        if (generation) {
+          prompt = generation.prompt;
+          sellerId = generation.userId;
+          price = generation.promptPrice;
+          promptCurrency = generation.promptCurrency;
+          sellPrompt = generation.sellPrompt;
+          generationId = generation.id;
+        }
+      }
+
+      if (!prompt || !sellerId || !sellPrompt || !price || !promptCurrency) {
+        return res.status(404).json({ error: "Prompt not found or not for sale" });
+      }
+
+      if (sellerId === buyerId) {
+        return res.status(400).json({ error: "Cannot purchase your own prompt" });
+      }
+
+      // Check if already purchased
+      const alreadyPurchased = await storage.hasUserPurchasedPrompt(buyerId, submissionId || undefined, generationId || undefined);
+      if (alreadyPurchased) {
+        return res.json({ 
+          found: true, 
+          alreadyProcessed: true,
+          success: true,
+          message: "Already purchased" 
+        });
+      }
+
+      // Get platform wallet
+      const siteSettings = await storage.getSiteSettings();
+      if (!siteSettings?.platformWalletAddress) {
+        return res.status(500).json({ error: "Platform wallet not configured" });
+      }
+
+      const recipientAddress = siteSettings.platformWalletAddress;
+      const expectedAmount = parseFloat(price);
+
+      // Convert reference to PublicKey
+      const referenceKey = new PublicKey(reference);
+
+      // Find transaction
+      let signatureInfo;
+      try {
+        signatureInfo = await findReference(solanaConnection, referenceKey);
+      } catch (error: any) {
+        if (error.name === 'FindReferenceError' || error.message?.includes('not found')) {
+          return res.json({ found: false, message: "Payment not found yet" });
+        }
+        throw error;
+      }
+
+      if (!signatureInfo?.signature) {
+        return res.json({ found: false, message: "Payment not found yet" });
+      }
+
+      const signature = signatureInfo.signature;
+
+      // Check if transaction already processed
+      const existingTx = await storage.getGloryTransactionByHash(signature);
+      if (existingTx) {
+        return res.json({ 
+          found: true, 
+          alreadyProcessed: true,
+          success: true,
+          txHash: signature,
+          message: "Payment already verified" 
+        });
+      }
+
+      // Verify transaction
+      const { verifyUSDCTransaction } = await import('./solana.js');
+      const txResult = await verifyUSDCTransaction(signature, recipientAddress);
+
+      if (!txResult.confirmed) {
+        return res.json({ found: false, message: "Transaction not yet confirmed" });
+      }
+
+      // Verify amount and recipient
+      if (!txResult.amount || txResult.amount < expectedAmount) {
+        return res.status(400).json({ 
+          error: `Insufficient payment. Expected ${expectedAmount} ${currency}, received ${txResult.amount || 0}` 
+        });
+      }
+
+      if (txResult.to !== recipientAddress) {
+        return res.status(400).json({ error: "Invalid payment recipient" });
+      }
+
+      // Calculate commission
+      const commissionPercentage = await storage.getUserCommission(sellerId);
+      const platformCommission = expectedAmount * (commissionPercentage / 100);
+      const sellerPayout = expectedAmount - platformCommission;
+
+      // Record purchase
+      await storage.createGloryTransaction({
+        userId: buyerId,
+        delta: String(-expectedAmount),
+        currency: currency,
+        reason: `Prompt purchase (wallet payment)`,
+        txHash: signature,
+        metadata: {
+          promptPurchase: true,
+          sellerId,
+          submissionId,
+          generationId,
+          price: expectedAmount,
+          commission: platformCommission
+        }
+      });
+
+      await storage.updateUserBalance(sellerId, sellerPayout, currency);
+      await storage.createGloryTransaction({
+        userId: sellerId,
+        delta: String(sellerPayout),
+        currency: currency,
+        reason: `Prompt sale (wallet payment)`,
+        metadata: {
+          promptSale: true,
+          buyerId,
+          submissionId,
+          generationId,
+          grossAmount: expectedAmount,
+          commission: platformCommission,
+          commissionPercentage
+        }
+      });
+
+      const purchase = await storage.createPromptPurchase({
+        buyerId,
+        sellerId,
+        submissionId: submissionId || null,
+        generationId: generationId || null,
+        price: String(expectedAmount),
+        currency: currency,
+        platformCommission: String(platformCommission),
+        sellerPayout: String(sellerPayout),
+        commissionPercentage,
+        paymentMethod: "wallet",
+        txHash: signature,
+        prompt: prompt
+      });
+
+      // Update sold count
+      if (submissionId) {
+        const currentSubmission = await storage.getSubmission(submissionId);
+        if (currentSubmission) {
+          await storage.updateSubmission(submissionId, {
+            promptSoldCount: (currentSubmission.promptSoldCount || 0) + 1
+          });
+        }
+      } else if (generationId) {
+        const currentGeneration = await storage.getAiGeneration(generationId);
+        if (currentGeneration) {
+          await storage.updateAiGeneration(generationId, {
+            promptSoldCount: (currentGeneration.promptSoldCount || 0) + 1
+          });
+        }
+      }
+
+      res.json({
+        found: true,
+        success: true,
+        txHash: signature,
+        message: "Prompt purchased successfully"
+      });
+    } catch (error) {
+      console.error("[Prompt Payment Verification] Error:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Payment verification failed" 
+      });
+    }
+  });
+
   // =============================================================================
   // ADMIN ROUTES - Commission Management
   // =============================================================================
