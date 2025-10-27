@@ -166,6 +166,22 @@ export function PromptSolanaPayment({
     pollingIntervalRef.current = interval;
   }, [reference, submissionId, currency, onSuccess, toast]);
 
+  // Start polling automatically when payment URL is ready
+  useEffect(() => {
+    if (!paymentUrl) return;
+    
+    // Start polling for payment verification (for QR code scans and manual transfers)
+    startPolling();
+    
+    // Cleanup on unmount or when paymentUrl changes
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [paymentUrl, startPolling]);
+
   // Open in wallet
   const openInWallet = useCallback(async () => {
     if (!paymentUrl) {
