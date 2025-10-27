@@ -122,7 +122,7 @@ export function ContestCard({ contest }: ContestCardProps) {
       <div className="absolute inset-0 bg-gradient-to-t from-[#171121] via-[#171121]/70 to-transparent pointer-events-none" />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col h-full p-4 sm:p-6 text-center">
+      <div className="relative z-10 flex flex-col justify-end h-full p-4 sm:p-6 text-center">
         {/* Status */}
         <div className="absolute top-4 left-4">
           <div
@@ -144,8 +144,8 @@ export function ContestCard({ contest }: ContestCardProps) {
           </div>
         </div>
 
-        {/* Title + Desc (top section) */}
-        <div className="mt-12">
+        {/* Title + Desc */}
+        <div className="mb-6">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white drop-shadow mb-2">
             {contest.title}
           </h1>
@@ -155,7 +155,7 @@ export function ContestCard({ contest }: ContestCardProps) {
         </div>
 
         {/* Bottom section: Countdown, Info, Actions, Share */}
-        <div className="mt-auto space-y-4">
+        <div className="space-y-4">
           {/* Countdown */}
           <div className="flex justify-center gap-1 sm:gap-2 lg:gap-3">
             {[
