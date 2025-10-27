@@ -702,6 +702,25 @@ export default function Profile() {
                             </div>
                           </div>
                         </div>
+                        
+                        {/* Prompt Text */}
+                        {submission.prompt && (
+                          <CardContent className="p-4 space-y-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                              <span>Prompt:</span>
+                            </div>
+                            <p className="text-sm text-foreground/90 bg-muted/30 p-3 rounded-md border border-border/50">
+                              {submission.prompt}
+                            </p>
+                            {submission.aiModel && (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Badge variant="outline" className="text-xs">
+                                  {submission.aiModel}
+                                </Badge>
+                              </div>
+                            )}
+                          </CardContent>
+                        )}
                       </Card>
                     ))}
                   </div>
