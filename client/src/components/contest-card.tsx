@@ -155,7 +155,7 @@ export function ContestCard({ contest }: ContestCardProps) {
         </div>
 
         {/* Bottom section: Countdown, Info, Actions, Share */}
-        <div className="mt-auto mb-4 space-y-4">
+        <div className="mt-auto space-y-4">
           {/* Countdown */}
           <div className="flex justify-center gap-1 sm:gap-2 lg:gap-3">
             {[
