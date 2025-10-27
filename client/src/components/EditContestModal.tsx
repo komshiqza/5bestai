@@ -52,7 +52,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
     periodDurationHours: 24,
     totalVotesPerUser: 0,
     status: 'draft',
-    featured: false
+    isFeatured: false
   });
 
   const [errors, setErrors] = useState<string[]>([]);
@@ -135,7 +135,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
         periodDurationHours: config.periodDurationHours || 24,
         totalVotesPerUser: config.totalVotesPerUser || 0,
         status: contest.status || 'draft',
-        featured: config.featured || false
+        isFeatured: contest.isFeatured || false
       });
       
       if (contest.coverImageUrl) {
@@ -413,8 +413,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       
       // Contest metadata
       contestType: dataToSubmit.contestType,
-      category: dataToSubmit.category,
-      featured: dataToSubmit.featured
+      category: dataToSubmit.category
     };
     
     // Create clean form data object for submission
@@ -428,7 +427,8 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
       startAt,
       endAt,
       config: contestConfig,
-      coverImageUrl: typeof dataToSubmit.coverImage === 'string' ? dataToSubmit.coverImage : ''
+      coverImageUrl: typeof dataToSubmit.coverImage === 'string' ? dataToSubmit.coverImage : '',
+      isFeatured: dataToSubmit.isFeatured || false
     };
     
     // If coverImage is a File, upload it first
@@ -1153,8 +1153,8 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={formData.featured}
-                      onChange={(e) => handleInputChange('featured', e.target.checked)}
+                      checked={formData.isFeatured}
+                      onChange={(e) => handleInputChange('isFeatured', e.target.checked)}
                       className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       data-testid="checkbox-featured"
                     />

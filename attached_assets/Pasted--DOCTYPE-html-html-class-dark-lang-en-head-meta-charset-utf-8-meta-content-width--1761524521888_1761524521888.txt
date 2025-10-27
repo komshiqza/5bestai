@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PromptGlory - Neon Dreams Contest</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#7c3cec",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#171121",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .glow {
+            box-shadow: 0 0 5px theme('colors.primary'), 0 0 10px theme('colors.primary / 0.8'), 0 0 20px theme('colors.primary / 0.6');
+        }
+        .glassmorphism {
+            background: rgba(23, 17, 33, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .dark .glassmorphism {
+             background: rgba(23, 17, 33, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white antialiased">
+<div class="relative min-h-screen w-full overflow-x-hidden">
+<header class="absolute top-0 left-0 right-0 z-20 flex items-center justify-between whitespace-nowrap px-6 sm:px-10 py-4 bg-transparent">
+<div class="flex items-center gap-4">
+<svg class="text-primary size-7" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H17.3334V17.3334H30.6666V30.6666H44V44H4V4Z" fill="currentColor"></path></svg>
+<h2 class="text-white text-xl font-bold">PromptGlory</h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-white/80 hover:text-white transition-colors text-sm font-medium" href="#">Explore</a>
+<a class="text-white/80 hover:text-white transition-colors text-sm font-medium" href="#">Create</a>
+<a class="text-white/80 hover:text-white transition-colors text-sm font-medium" href="#">My Prompts</a>
+<a class="text-white/80 hover:text-white transition-colors text-sm font-medium" href="#">My Submissions</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="hidden sm:flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-6 bg-primary/20 dark:bg-primary/30 text-white text-sm font-bold tracking-wide hover:bg-primary/40 transition-colors">
+<span class="truncate">Connect Wallet</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/50" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA8sh6pJiTX1cxKmIcuT7EUTiSY3m-2RGc2EWeSOn1j57cstegsMzlbVy-cIbiusqB1p9JM9C9R0cOCGHy9pV9b9EuuJt4UEHU1r72JEokzRhlgT_Q0ceWijeloR5lcKzV_NtQ2SQzrGjuWqKxn0NlI7Ox0oFw4_LcnoALuQV1GQARn2Ls5O36YUlCw0ssbXBlUCsyOZaffFnCF6uWNCzYIAdEEUrgpaH56-GYh7TXuRbWJlElqtbrjxNTVARD_RMEkB8F3_i4t1fE");'></div>
+</div>
+</header>
+<main class="relative isolate pt-24 sm:pt-32 pb-16">
+<div class="absolute inset-0 -z-10 h-full w-full bg-cover bg-center" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA-h6kj8G2jIyt56BRRqZpJfV5XroaUfuOUpA_Cp0B8jMMvs_coDzANEAQppE0qX6JchqQjcRdaI_kq8K_Tch48K3uDlx3gUlpAKEzn-LEASODl0BUZKc_hcPgovN92cpwVWWQrnWV2fd3yOte3hnPwkRjL1vij11kzrZ14DJuuaj1AJXkMvvT7lDUn-sjmIWxRLGH1w-x49p-VQUfnhjafqL3P6B2oB8w0fnoDwiotzLESXn6_DOzqaD0cHB7dFeucirlDstctYLQ");'>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/80 to-transparent"></div>
+</div>
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+<h1 class="text-4xl sm:text-5xl lg:text-7xl font-black text-white drop-shadow-lg">AI Artistry Challenge</h1>
+<p class="mt-2 text-xl sm:text-2xl font-bold text-primary">"Neon Dreams"</p>
+<p class="mt-4 max-w-3xl mx-auto text-base sm:text-lg text-white/80">
+                    Dive into a futuristic cityscape and craft AI-generated art that captures the vibrant essence of neon-lit nights.
+                </p>
+<div class="mt-10 sm:mt-12 flex justify-center gap-3 sm:gap-6">
+<div class="flex flex-col items-center">
+<div class="glassmorphism flex h-20 w-20 sm:h-28 sm:w-28 items-center justify-center rounded-lg sm:rounded-xl">
+<p class="text-4xl sm:text-5xl font-bold text-white">12</p>
+</div>
+<p class="mt-2 sm:mt-3 text-xs sm:text-sm font-medium text-white/70 uppercase tracking-widest">Days</p>
+</div>
+<div class="flex flex-col items-center">
+<div class="glassmorphism flex h-20 w-20 sm:h-28 sm:w-28 items-center justify-center rounded-lg sm:rounded-xl">
+<p class="text-4xl sm:text-5xl font-bold text-white">05</p>
+</div>
+<p class="mt-2 sm:mt-3 text-xs sm:text-sm font-medium text-white/70 uppercase tracking-widest">Hours</p>
+</div>
+<div class="flex flex-col items-center">
+<div class="glassmorphism flex h-20 w-20 sm:h-28 sm:w-28 items-center justify-center rounded-lg sm:rounded-xl">
+<p class="text-4xl sm:text-5xl font-bold text-white">32</p>
+</div>
+<p class="mt-2 sm:mt-3 text-xs sm:text-sm font-medium text-white/70 uppercase tracking-widest">Minutes</p>
+</div>
+<div class="flex flex-col items-center">
+<div class="glassmorphism flex h-20 w-20 sm:h-28 sm:w-28 items-center justify-center rounded-lg sm:rounded-xl">
+<p class="text-4xl sm:text-5xl font-bold text-white">18</p>
+</div>
+<p class="mt-2 sm:mt-3 text-xs sm:text-sm font-medium text-white/70 uppercase tracking-widest">Seconds</p>
+</div>
+</div>
+<div class="mt-10 sm:mt-12 flex flex-wrap justify-center gap-4 sm:gap-6">
+<div class="glassmorphism flex-grow rounded-lg p-4 sm:p-5 text-center min-w-[200px]">
+<p class="text-sm font-medium text-white/80">Prize Pool</p>
+<p class="text-2xl sm:text-3xl font-bold text-white mt-1">$5,000</p>
+</div>
+<div class="glassmorphism flex-grow rounded-lg p-4 sm:p-5 text-center min-w-[200px]">
+<p class="text-sm font-medium text-white/80">Token Rewards</p>
+<p class="text-2xl sm:text-3xl font-bold text-white mt-1">1000 Tokens</p>
+</div>
+<div class="glassmorphism flex-grow rounded-lg p-4 sm:p-5 text-center min-w-[200px]">
+<p class="text-sm font-medium text-white/80">Top 5 Badges</p>
+<p class="text-2xl sm:text-3xl font-bold text-primary mt-1">Exclusive</p>
+</div>
+</div>
+<div class="mt-10 sm:mt-12 flex flex-wrap justify-center items-center gap-4">
+<button class="flex-grow sm:flex-grow-0 min-w-[200px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-8 bg-primary text-white text-lg font-bold tracking-wide transition-all duration-300 hover:scale-105 glow">
+<span class="truncate">Join &amp; Submit</span>
+</button>
+<button class="flex-grow sm:flex-grow-0 min-w-[200px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-8 bg-primary/20 dark:bg-primary/30 text-white text-base font-bold tracking-wide hover:bg-primary/40 transition-colors">
+<span class="truncate">Contest Rules</span>
+</button>
+</div>
+<div class="mt-12 sm:mt-16 flex flex-wrap justify-center items-center gap-4 sm:gap-6">
+<p class="text-sm font-medium text-white/70">Share:</p>
+<div class="flex items-center gap-3 sm:gap-4">
+<a class="group flex items-center justify-center rounded-full size-12 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors" href="#">
+<svg class="text-white" fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M247.39,68.94A8,8,0,0,0,240,64H209.57A48.66,48.66,0,0,0,168.1,40a46.91,46.91,0,0,0-33.75,13.7A47.9,47.9,0,0,0,120,88v6.09C79.74,83.47,46.81,50.72,46.46,50.37a8,8,0,0,0-13.65,4.92c-4.31,47.79,9.57,79.77,22,98.18a110.93,110.93,0,0,0,21.88,24.2c-15.23,17.53-39.21,26.74-39.47,26.84a8,8,0,0,0-3.85,11.93c.75,1.12,3.75,5.05,11.08,8.72C53.51,229.7,65.48,232,80,232c70.67,0,129.72-54.42,135.75-124.44l29.91-29.9A8,8,0,0,0,247.39,68.94Zm-45,29.41a8,8,0,0,0-2.32,5.14C196,166.58,143.28,216,80,216c-10.56,0-18-1.4-23.22-3.08,11.51-6.25,27.56-17,37.88-32.48A8,8,0,0,0,92,169.08c-.47-.27-43.91-26.34-44-96,16,13,45.25,33.17,78.67,38.79A8,8,0,0,0,136,104V88a32,32,0,0,1,9.6-22.92A30.94,30.94,0,0,1,167.9,56c12.66.16,24.49,7.88,29.44,19.21A8,8,0,0,0,204.67,80h16Z"></path></svg>
+</a>
+<a class="group flex items-center justify-center rounded-full size-12 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors" href="#">
+<svg class="text-white" fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm8,191.63V152h24a8,8,0,0,0,0-16H136V112a16,16,0,0,1,16-16h16a8,8,0,0,0,0-16H152a32,32,0,0,0-32,32v24H96a8,8,0,0,0,0,16h24v63.63a88,88,0,1,1,16,0Z"></path></svg>
+</a>
+<a class="group flex items-center justify-center rounded-full size-12 bg-primary/20 dark:bg-primary/30 hover:bg-primary/40 transition-colors" href="#">
+<svg class="text-white" fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M229.66,109.66l-48,48a8,8,0,0,1-11.32-11.32L204.69,112H165a88,88,0,0,0-85.23,66,8,8,0,0,1-15.5-4A103.94,103.94,0,0,1,165,96h39.71L170.34,61.66a8,8,0,0,1,11.32-11.32l48,48A8,8,0,0,1,229.66,109.66ZM192,208H40V88a8,8,0,0,0-16,0V208a16,16,0,0,0,16,16H192a8,8,0,0,0,0-16Z"></path></svg>
+</a>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

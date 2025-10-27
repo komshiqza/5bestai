@@ -798,6 +798,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/contests/featured", async (req, res) => {
+    try {
+      const contests = await storage.getContests({ status: "active" });
+      const featuredContest = contests.find(contest => contest.isFeatured === true);
+      
+      if (!featuredContest) {
+        return res.status(404).json({ error: "No featured contest found" });
+      }
+
+      // Auto-end if expired
+      const now = new Date();
+      if (new Date(featuredContest.endAt) < now) {
+        const updated = await storage.updateContest(featuredContest.id, { status: "ended" });
+        if (updated) {
+          return res.status(404).json({ error: "Featured contest has ended" });
+        }
+      }
+
+      res.json({
+        ...featuredContest,
+        prizeDistribution: (featuredContest.config as any)?.prizeDistribution || []
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch featured contest" });
+    }
+  });
+
   app.get("/api/contests/:id", async (req, res) => {
     try {
       let contest = await storage.getContest(req.params.id);

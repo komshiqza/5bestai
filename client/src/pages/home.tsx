@@ -3,9 +3,24 @@ import { Button } from "@/components/ui/button";
 import { GlassButton } from "@/components/GlassButton";
 import { Trophy, ArrowRight } from "lucide-react";
 import { useAuth, isAuthenticated } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { ContestCard } from "@/components/contest-card";
 
 export default function Home() {
   const { data: user } = useAuth();
+
+  // Fetch featured contest
+  const { data: featuredContest } = useQuery({
+    queryKey: ["/api/contests/featured"],
+    queryFn: async () => {
+      const response = await fetch("/api/contests/featured");
+      if (!response.ok) {
+        if (response.status === 404) return null; // No featured contest
+        throw new Error("Failed to fetch featured contest");
+      }
+      return response.json();
+    },
+  });
 
   return (
     <div className="min-h-screen pb-32 md:pb-0" data-testid="home-page">
@@ -41,6 +56,21 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Featured Contest */}
+      {featuredContest && (
+        <section className="py-16 md:py-20 border-t border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2 gradient-text">Featured Contest</h2>
+              <p className="text-muted-foreground">Don't miss out on this exclusive competition</p>
+            </div>
+            <div className="max-w-md mx-auto">
+              <ContestCard contest={featuredContest} />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Grid */}
       <section className="py-16 md:py-24 border-t border-border">

@@ -59,7 +59,8 @@ export default function AdminContestDetail() {
         endAt: formData.endAt,
         status: formData.status,
         config: formData.config,
-        coverImageUrl: formData.coverImageUrl || ''
+        coverImageUrl: formData.coverImageUrl || '',
+        isFeatured: formData.isFeatured || false
       };
 
       const response = await apiRequest("PATCH", `/api/admin/contests/${id}`, updateData);

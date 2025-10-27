@@ -37,6 +37,7 @@ export const contests = pgTable("contests", {
   startAt: timestamp("start_at").notNull(),
   endAt: timestamp("end_at").notNull(),
   config: jsonb("config"), // Stores all additional contest configuration (voting rules, prize distribution, etc.)
+  isFeatured: boolean("is_featured").notNull().default(false), // Featured contest shown on home page
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   slugIdx: index("contests_slug_idx").on(table.slug),
