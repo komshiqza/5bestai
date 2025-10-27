@@ -97,17 +97,15 @@ export default function ContestDetailPage() {
     },
     onSuccess: async (data, submissionId) => {
       // Invalidate all relevant queries
-      await queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/me"] }); // Update user balance
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] }); // Update user balance
       
-      // Wait for submissions query to refetch
-      await queryClient.refetchQueries({ queryKey: ["/api/submissions", contest?.id] });
+      // Fetch fresh submissions data directly (this ensures we get the latest data)
+      const updatedSubmissions = await queryClient.fetchQuery({
+        queryKey: ["/api/submissions", contest?.id],
+      }) as any[];
       
-      // Get updated submissions from cache
-      const updatedSubmissions = queryClient.getQueryData(["/api/submissions", contest?.id]) as any[];
-      
-      // Find the updated submission
+      // Find the updated submission with hasPurchasedPrompt: true
       const updatedSubmission = updatedSubmissions?.find((s: any) => s.id === submissionId);
       
       // Update selected submission state with fresh data
@@ -119,12 +117,6 @@ export default function ContestDetailPage() {
         title: "Prompt purchased!",
         description: "The prompt is now visible to you.",
       });
-      
-      // Refresh modal to show unlocked prompt with updated data
-      if (selectedSubmission) {
-        setIsLightboxOpen(false);
-        setTimeout(() => setIsLightboxOpen(true), 100);
-      }
     },
     onError: (error: any) => {
       toast({

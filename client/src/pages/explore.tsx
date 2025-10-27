@@ -143,17 +143,25 @@ function ExploreContent() {
       const response = await apiRequest("POST", `/api/prompts/purchase/${submissionId}`, {});
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (data, submissionId) => {
+      // Invalidate all submissions queries to refresh grids
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] }); // Update user balance
+      
+      // Update selected submission directly with hasPurchasedPrompt flag
+      // This ensures the modal shows the unlocked prompt immediately
+      if (selectedSubmission && selectedSubmission.id === submissionId) {
+        setSelectedSubmission({
+          ...selectedSubmission,
+          hasPurchasedPrompt: true
+        });
+      }
+      
       toast({
         title: "Prompt purchased!",
         description: "The prompt is now visible to you.",
       });
-      // Refresh modal to show unlocked prompt
-      if (selectedSubmission) {
-        setIsModalOpen(false);
-        setTimeout(() => setIsModalOpen(true), 100);
-      }
     },
     onError: (error: any) => {
       toast({
