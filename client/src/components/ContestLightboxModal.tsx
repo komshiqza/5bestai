@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { X, Heart, User, Calendar, Share2, Tag, Sparkles, MessageSquare, ShoppingCart } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { X, Heart, User, Calendar, Share2, Tag, Sparkles, MessageSquare, ShoppingCart, ChevronDown } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 
 interface ContestLightboxModalProps {
@@ -38,6 +38,12 @@ export function ContestLightboxModal({
   onShare,
   onBuyPrompt
 }: ContestLightboxModalProps) {
+  const infoPanelRef = useRef<HTMLDivElement>(null);
+
+  const scrollToInfo = () => {
+    infoPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -116,22 +122,22 @@ export function ContestLightboxModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
       data-testid="lightbox-overlay"
     >
       {/* Desktop: Grid layout | Mobile: Stack layout */}
-      <div className="h-full flex flex-col lg:grid lg:grid-cols-[1fr,350px] gap-0">
+      <div className="min-h-full flex flex-col lg:grid lg:grid-cols-[1fr,350px] lg:h-full gap-0">
         
         {/* Image Section */}
         <div 
-          className="relative flex-1 flex items-center justify-center p-4 lg:p-8"
+          className="relative min-h-screen lg:min-h-0 lg:flex-1 flex items-center justify-center lg:p-8"
           onClick={(e) => e.stopPropagation()}
         >
           <img
             src={submission.mediaUrl}
             alt={submission.title}
-            className="max-w-full max-h-full object-contain rounded-lg"
+            className="w-full h-full lg:max-w-full lg:max-h-full object-cover lg:object-contain lg:rounded-lg"
             data-testid="lightbox-image"
           />
           
@@ -143,11 +149,21 @@ export function ContestLightboxModal({
           >
             <X className="h-6 w-6" />
           </button>
+
+          {/* Animated scroll arrow - mobile only */}
+          <button
+            onClick={scrollToInfo}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white border border-white/20 animate-bounce lg:hidden"
+            data-testid="button-scroll-to-info"
+          >
+            <ChevronDown className="h-6 w-6" />
+          </button>
         </div>
 
         {/* Info Panel - Right on desktop, Bottom on mobile */}
         <div 
-          className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border-l border-white/10 overflow-y-auto max-h-[50vh] lg:max-h-none"
+          ref={infoPanelRef}
+          className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border-l border-white/10 lg:overflow-y-auto lg:max-h-none"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-6 space-y-6">
