@@ -25,6 +25,7 @@ Preferred communication style: Simple, everyday language.
 ### Database Schema & Data Model
 - **Core Entities**: Users, Contests, Submissions, Votes, GloryLedger, AuditLog.
 - **Patterns**: UUID primary keys, composite unique constraints, cascade deletion, indexed columns, timestamp tracking.
+- **Submissions**: Include `generationId` (links to AI generations), `aiTool` (AI model name), `tags` (array), and prompt marketplace fields (`sellPrompt`, `promptPrice`, `promptCurrency`).
 
 ### File Upload & Media Management
 - **Primary**: Cloudinary for image/video uploads, optimization, and CDN.
