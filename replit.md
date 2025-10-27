@@ -60,6 +60,11 @@ Preferred communication style: Simple, everyday language.
 - **Payment**: Supports wallet (blockchain) and balance payments in GLORY, SOL, USDC.
 - **Commissions**: Platform takes a configurable commission (default 20%, customizable per user).
 - **Admin Tools**: Comprehensive admin page for monitoring revenue, adjusting default commission, and managing user-specific commissions.
+- **Buyer Experience**: 
+  - **Access Control**: `hasPromptAccess` flag determines if user can view full prompt (owner, purchased, or free).
+  - **Prompt Display**: `BlurredPrompt` component shows blurred text for paid prompts requiring purchase.
+  - **Purchase Flow**: `PromptPurchaseModal` handles payment with balance validation and method selection.
+  - **UI Integration**: Prompt sections in ContestLightboxModal (2-column layout) and SubmissionDetailPage with buy buttons.
 
 ### Pro Edit System
 - **AI Presets**: Six AI presets for image enhancement (e.g., Clean & Denoise, Upscale 4x, Portrait Pro, Smart Enhance, Remove Background, Relight Scene).
