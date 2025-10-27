@@ -1602,6 +1602,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasVoted = !!vote;
       }
 
+      // Check prompt access
+      let hasPromptAccess = false;
+      if (submission.sellPrompt) {
+        // User has access if they own it or purchased it
+        hasPromptAccess = isOwnSubmission || (currentUserId ? await storage.hasUserPurchasedPrompt(currentUserId, submission.id) : false);
+      } else {
+        // Free prompts are accessible to everyone
+        hasPromptAccess = true;
+      }
+
       // Get user and contest info
       const user = await storage.getUser(submission.userId);
       let contest = null;
@@ -1613,6 +1623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...submission,
         hasVoted,
         voteCount: submission.votesCount,
+        hasPromptAccess,
         user: user ? {
           id: user.id,
           username: user.username
