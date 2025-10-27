@@ -354,8 +354,8 @@
     left: -100% !important;
     width: 100% !important;
     height: 100% !important;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
-    transition: left 0.5s !important;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent) !important;
+    transition: left 0.6s ease !important;
     z-index: 1 !important;
   }
 
@@ -364,7 +364,8 @@
   }
 
   /* Ensure button content is above shimmer */
-  .wallet-adapter-button-trigger .wallet-adapter-button > * {
+  .wallet-adapter-button-trigger .wallet-adapter-button > *,
+  .wallet-adapter-button-trigger .wallet-adapter-button span {
     position: relative !important;
     z-index: 2 !important;
   }
