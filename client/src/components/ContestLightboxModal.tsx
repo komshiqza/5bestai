@@ -106,7 +106,7 @@ export function ContestLightboxModal({
     }
   };
 
-  const showPromptSection = submission.prompt && (submission.sellPrompt || submission.hasPromptAccess);
+  const showPromptSection = submission.prompt && submission.hasPromptAccess;
   const needsPurchase = submission.sellPrompt && !submission.hasPromptAccess;
 
   return (

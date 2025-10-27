@@ -1189,10 +1189,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hasPromptAccess = true;
           }
           
-          // Include full prompt from AI generation if user has access
+          // Include full prompt if user has access
+          // Priority: submission.prompt (direct field) > AI generation prompt (from generationId)
           let prompt = null;
-          if (hasPromptAccess && sub.generationId) {
-            prompt = generationPromptsMap.get(sub.generationId) || null;
+          if (hasPromptAccess) {
+            prompt = sub.prompt || (sub.generationId ? generationPromptsMap.get(sub.generationId) : null) || null;
           }
           
           return { ...sub, hasPromptAccess, prompt };
