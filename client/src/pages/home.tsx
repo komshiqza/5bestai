@@ -38,10 +38,10 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen pb-32 md:pb-0" data-testid="home-page">
+    <div data-testid="home-page">
       {/* Hero Section */}
-      <section className="container mx-auto flex flex-1 flex-col items-center justify-center px-4 sm:px-6 text-center py-20 md:py-32">
-        <div className="flex max-w-4xl flex-col items-center gap-8 relative">
+      <section className="min-h-screen container mx-auto flex flex-col items-center justify-center px-4 sm:px-6 text-center">
+        <div className="flex max-w-4xl flex-col items-center gap-6 sm:gap-8 relative">
           <div className={`flex flex-col gap-4 ${isVisible ? 'animate-fade-in-up animation-delay-100' : 'opacity-0'}`}>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter gradient-text animate-pulse-slow" data-testid="hero-title">
               Where Prompts Become Glory
