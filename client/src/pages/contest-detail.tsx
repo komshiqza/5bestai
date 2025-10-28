@@ -6,6 +6,7 @@ import { GlassButton } from "@/components/GlassButton";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
 import { ContestRulesCard } from "@/components/ContestRulesCard";
 import { UploadWizardModal } from "@/components/UploadWizardModal";
+import { PromptPaymentModal } from "@/components/PromptPaymentModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,7 @@ export default function ContestDetailPage() {
 
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showUploadWizard, setShowUploadWizard] = useState(false);
   const [showAllPrizesModal, setShowAllPrizesModal] = useState(false);
@@ -30,12 +32,22 @@ export default function ContestDetailPage() {
   const [isToolbarSticky, setIsToolbarSticky] = useState(false);
   const toolbarRef = React.useRef<HTMLDivElement>(null);
 
-  // Fetch contest by slug
-  const { data: contests = [], isLoading: contestsLoading } = useQuery<any[]>({
-    queryKey: ["/api/contests"]
+  // Fetch contest by slug (optimized - direct fetch)
+  const { data: contest, isLoading: contestsLoading } = useQuery<any>({
+    queryKey: ["/api/contests/by-slug", slug],
+    queryFn: async () => {
+      const response = await fetch(`/api/contests/by-slug/${slug}`, {
+        credentials: "include"
+      });
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error("Failed to fetch contest");
+      }
+      return response.json();
+    },
+    staleTime: 30000, // Cache for 30 seconds
+    enabled: !!slug
   });
-
-  const contest = contests.find((c: any) => c.slug === slug);
 
   // Fetch submissions for this contest
   const { data: submissions = [], isLoading: submissionsLoading } = useQuery({
@@ -52,7 +64,8 @@ export default function ContestDetailPage() {
       if (!response.ok) throw new Error("Failed to fetch submissions");
       const data = await response.json();
       return data;
-    }
+    },
+    staleTime: 30000, // Cache for 30 seconds
   });
 
   // Fetch user's votes
@@ -63,7 +76,8 @@ export default function ContestDetailPage() {
       const response = await fetch("/api/votes/user", { credentials: "include" });
       if (!response.ok) return [];
       return response.json();
-    }
+    },
+    staleTime: 30000 // Cache for 30 seconds
   });
 
   // Vote mutation
@@ -75,6 +89,7 @@ export default function ContestDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/submissions", contest?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/votes/user"] });
+      // No need to invalidate contest query - contest data doesn't change from voting
       toast({
         title: "Vote recorded!",
         description: "Your vote has been counted"
@@ -87,44 +102,6 @@ export default function ContestDetailPage() {
         variant: "destructive"
       });
     }
-  });
-
-  // Buy prompt mutation
-  const buyPromptMutation = useMutation({
-    mutationFn: async (submissionId: string) => {
-      const response = await apiRequest("POST", `/api/prompts/purchase/${submissionId}`, {});
-      return response.json();
-    },
-    onSuccess: async (data, submissionId) => {
-      // Invalidate all relevant queries
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/me"] }); // Update user balance
-      
-      // Fetch fresh submissions data directly (this ensures we get the latest data)
-      const updatedSubmissions = await queryClient.fetchQuery({
-        queryKey: ["/api/submissions", contest?.id],
-      }) as any[];
-      
-      // Find the updated submission with hasPurchasedPrompt: true
-      const updatedSubmission = updatedSubmissions?.find((s: any) => s.id === submissionId);
-      
-      // Update selected submission state with fresh data
-      if (updatedSubmission) {
-        setSelectedSubmission(updatedSubmission);
-      }
-      
-      toast({
-        title: "Prompt purchased!",
-        description: "The prompt is now visible to you.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Purchase failed",
-        description: error.message || "Failed to purchase prompt. Please try again.",
-        variant: "destructive",
-      });
-    },
   });
 
   // Share functionality
@@ -352,7 +329,28 @@ export default function ContestDetailPage() {
       });
       return;
     }
-    buyPromptMutation.mutate(submissionId);
+    // Open payment modal instead of directly purchasing
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    // Invalidate queries to refresh data
+    queryClient.invalidateQueries({ 
+      predicate: (query) => query.queryKey[0] === "/api/submissions"
+    });
+    queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+    
+    // Update selected submission
+    if (selectedSubmission) {
+      setSelectedSubmission({
+        ...selectedSubmission,
+        hasPurchasedPrompt: true
+      });
+    }
+    
+    // Close payment modal
+    setIsPaymentModalOpen(false);
   };
 
   const handleShowUpload = () => {
@@ -922,6 +920,16 @@ export default function ContestDetailPage() {
         onBuyPrompt={(submissionId: string) => handleBuyPrompt(submissionId)}
         onShare={() => selectedSubmission && handleShare(selectedSubmission)}
       />
+
+      {/* Payment Selection Modal */}
+      {selectedSubmission && (
+        <PromptPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          submission={selectedSubmission}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
 
       <ContestRulesCard
         isOpen={showRules}

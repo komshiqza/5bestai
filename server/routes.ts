@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import * as ed25519 from "@noble/ed25519";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import { authenticateToken, requireAdmin, requireApproved, authenticateOptional, generateToken, type AuthRequest } from "./middleware/auth";
 import { votingRateLimiter } from "./services/rate-limiter";
 import { upload, uploadFile, deleteFile, generateAndUploadThumbnail } from "./services/file-upload";
@@ -46,6 +46,7 @@ import {
   type UserSubscription,
   type SubscriptionTransaction
 } from "@shared/schema";
+import { users } from "../shared/schema";
 
 // Create contest scheduler instance
 export const contestScheduler = new ContestScheduler(storage);
@@ -801,6 +802,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/contests/by-slug/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const contest = await storage.getContestBySlug(slug);
+      
+      if (!contest) {
+        return res.status(404).json({ error: "Contest not found" });
+      }
+      
+      // Auto-end if expired
+      const now = new Date();
+      if (contest.status === "active" && new Date(contest.endAt) < now) {
+        const updated = await storage.updateContest(contest.id, { status: "ended" });
+        return res.json({
+          ...updated,
+          prizeDistribution: (updated.config as any)?.prizeDistribution || []
+        });
+      }
+      
+      res.json({
+        ...contest,
+        prizeDistribution: (contest.config as any)?.prizeDistribution || []
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contest" });
+    }
+  });
+
   app.get("/api/contests/featured", async (req, res) => {
     try {
       const contests = await storage.getContests({ status: "active" });
@@ -828,33 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/contests/:id", async (req, res) => {
-    try {
-      let contest = await storage.getContest(req.params.id);
-      if (!contest) {
-        return res.status(404).json({ error: "Contest not found" });
-      }
-
-      // Auto-end contest if it has passed its endAt time
-      const now = new Date();
-      if (contest.status === "active" && new Date(contest.endAt) < now) {
-        const updated = await storage.updateContest(contest.id, { status: "ended" });
-        contest = updated || contest;
-      }
-
-      // Get top 10 submissions for this contest
-      const topSubmissions = await storage.getTopSubmissionsByContest(contest.id, 10);
-      
-      res.json({
-        ...contest,
-        prizeDistribution: (contest.config as any)?.prizeDistribution || [],
-        topSubmissions
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch contest" });
-    }
-  });
-
+  // Admin contest routes (BEFORE /api/contests/:id to avoid conflicts)
   app.post("/api/admin/contests", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
       const contestData = insertContestSchema.parse(req.body);
@@ -1119,6 +1122,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, deletedCount, message: `Successfully deleted ${deletedCount} contests` });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : "Invalid input" });
+    }
+  });
+
+  // Get single contest by ID (MUST BE AFTER all specific contest routes to avoid route conflicts)
+  app.get("/api/contests/:id", async (req, res) => {
+    try {
+      let contest = await storage.getContest(req.params.id);
+      if (!contest) {
+        return res.status(404).json({ error: "Contest not found" });
+      }
+
+      // Auto-end contest if it has passed its endAt time
+      const now = new Date();
+      if (contest.status === "active" && new Date(contest.endAt) < now) {
+        const updated = await storage.updateContest(contest.id, { status: "ended" });
+        contest = updated || contest;
+      }
+
+      // Get top 10 submissions for this contest
+      const topSubmissions = await storage.getTopSubmissionsByContest(contest.id, 10);
+      
+      res.json({
+        ...contest,
+        prizeDistribution: (contest.config as any)?.prizeDistribution || [],
+        topSubmissions
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contest" });
     }
   });
 
@@ -3011,6 +3042,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Purchase prompt with Solana payment
+  app.post("/api/prompts/purchase-with-solana", authenticateToken, requireApproved, async (req: AuthRequest, res) => {
+    try {
+      const { submissionId, txHash, reference } = req.body;
+      const userId = req.user!.id;
+
+      if (!submissionId || !txHash && !reference) {
+        return res.status(400).json({ error: "submissionId and txHash or reference required" });
+      }
+
+      // Get submission details
+      const submission = await storage.getSubmission(submissionId);
+      if (!submission || !submission.promptForSale) {
+        return res.status(404).json({ error: "Submission or prompt not found" });
+      }
+
+      if (!submission.promptPrice || !submission.promptCurrency) {
+        return res.status(400).json({ error: "Prompt price not set" });
+      }
+
+      if (submission.userId === userId) {
+        return res.status(400).json({ error: "Cannot purchase your own prompt" });
+      }
+
+      // Get platform wallet address from site settings
+      const siteSettings = await storage.getSiteSettings();
+      if (!siteSettings || !siteSettings.platformWalletAddress) {
+        return res.status(500).json({ error: "Platform wallet not configured" });
+      }
+
+      const recipientAddress = siteSettings.platformWalletAddress;
+      const expectedAmount = parseFloat(submission.promptPrice);
+      const currency = submission.promptCurrency;
+
+      // Import Solana verification
+      const { Connection, PublicKey } = await import('@solana/web3.js');
+      const { findReference } = await import('@solana/pay');
+      const solanaConnection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+
+      // Find transaction by reference or hash
+      let signature: string;
+      
+      if (reference) {
+        const referenceKey = new PublicKey(reference);
+        const signatureInfo = await findReference(solanaConnection, referenceKey);
+        signature = signatureInfo.signature;
+      } else {
+        signature = txHash;
+      }
+
+      // Check if already processed
+      const existingTx = await storage.getGloryTransactionByHash(signature);
+      if (existingTx) {
+        return res.json({ 
+          success: true,
+          alreadyProcessed: true,
+          message: "Transaction already processed" 
+        });
+      }
+
+      // Verify transaction
+      let txResult;
+      if (currency === "USDC") {
+        const { verifyUSDCTransaction } = await import('./solana.js');
+        txResult = await verifyUSDCTransaction(signature, recipientAddress);
+      } else if (currency === "SOL") {
+        const { verifySOLTransaction } = await import('./solana.js');
+        txResult = await verifySOLTransaction(signature, recipientAddress);
+      } else {
+        return res.status(400).json({ error: "Unsupported currency" });
+      }
+
+      if (!txResult.confirmed) {
+        return res.json({ found: false, message: "Transaction not yet confirmed" });
+      }
+
+      // Verify amount
+      if (!txResult.amount || txResult.amount < expectedAmount) {
+        return res.status(400).json({ 
+          error: `Insufficient payment amount. Expected ${expectedAmount} ${currency}, received ${txResult.amount || 0}` 
+        });
+      }
+
+      // Verify recipient
+      if (txResult.to !== recipientAddress) {
+        return res.status(400).json({ error: "Payment recipient address mismatch" });
+      }
+
+      // Record transaction
+      await storage.createGloryTransaction({
+        userId,
+        delta: expectedAmount.toString(),
+        currency: currency,
+        reason: `Received ${expectedAmount} ${currency} from Solana payment for prompt purchase`,
+        txHash: signature,
+        submissionId: submissionId
+      });
+
+      // Credit user balance
+      if (currency === "GLORY") {
+        const buyer = await storage.getUser(userId);
+        if (buyer) {
+          await storage.updateUser(userId, {
+            gloryBalance: buyer.gloryBalance + expectedAmount,
+            updatedAt: new Date()
+          });
+        }
+      } else if (currency === "SOL") {
+        await db.update(users).set({
+          solBalance: sql`${users.solBalance} + ${expectedAmount}`,
+          updatedAt: new Date()
+        }).where(eq(users.id, userId));
+      } else if (currency === "USDC") {
+        await db.update(users).set({
+          usdcBalance: sql`${users.usdcBalance} + ${expectedAmount}`,
+          updatedAt: new Date()
+        }).where(eq(users.id, userId));
+      }
+
+      // Now automatically purchase the prompt with the credited balance
+      const purchase = await storage.purchasePrompt(userId, submissionId);
+
+      return res.json({ 
+        success: true,
+        purchase,
+        txHash: signature 
+      });
+
+    } catch (error) {
+      console.error("Prompt purchase with Solana error:", error);
+      return res.status(400).json({ 
+        error: error instanceof Error ? error.message : "Failed to process Solana payment" 
+      });
+    }
+  });
+
   app.get("/api/prompts/purchased/submissions", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const userId = req.user!.id;
@@ -3719,6 +3886,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!url || typeof url !== 'string') {
         return res.status(400).json({ error: "URL parameter is required" });
+      }
+
+      // SSRF Protection: Whitelist allowed domains
+      const ALLOWED_DOMAINS = ['replicate.com', 'replicate.delivery', 'supabase.co', 'cloudinary.com'];
+      let urlObj: URL;
+      try {
+        urlObj = new URL(url);
+      } catch {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      const isAllowed = ALLOWED_DOMAINS.some(domain => urlObj.hostname.endsWith(domain));
+      if (!isAllowed) {
+        console.error(`[SSRF Protection] Blocked request to: ${urlObj.hostname}`);
+        return res.status(400).json({ error: "URL domain not allowed" });
       }
 
       console.log("Proxy download request for URL:", url);

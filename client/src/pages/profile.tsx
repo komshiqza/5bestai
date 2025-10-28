@@ -476,22 +476,22 @@ export default function Profile() {
           {/* Profile Content */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="submissions" className="space-y-4" data-testid="profile-tabs">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-                <TabsTrigger value="submissions" className="gap-2" data-testid="tab-submissions">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="submissions" className="gap-1 sm:gap-2 flex items-center justify-center" data-testid="tab-submissions">
                   <Upload className="w-4 h-4" />
-                  <span className="hidden md:inline">My Submissions</span>
+                  <span className="hidden md:inline ml-1">My Submissions</span>
                 </TabsTrigger>
-                <TabsTrigger value="purchased" className="gap-2" data-testid="tab-purchased">
+                <TabsTrigger value="purchased" className="gap-1 sm:gap-2 flex items-center justify-center" data-testid="tab-purchased">
                   <ShoppingCart className="w-4 h-4" />
-                  <span className="hidden md:inline">Purchased Prompts</span>
+                  <span className="hidden md:inline ml-1">Purchased Prompts</span>
                 </TabsTrigger>
-                <TabsTrigger value="glory" className="gap-2" data-testid="tab-transactions">
+                <TabsTrigger value="glory" className="gap-1 sm:gap-2 flex items-center justify-center" data-testid="tab-transactions">
                   <Medal className="w-4 h-4" />
-                  <span className="hidden md:inline">Transaction History</span>
+                  <span className="hidden md:inline ml-1">Transaction History</span>
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
+                <TabsTrigger value="settings" className="gap-1 sm:gap-2 flex items-center justify-center" data-testid="tab-settings">
                   <Settings className="w-4 h-4" />
-                  <span className="hidden md:inline">Settings</span>
+                  <span className="hidden md:inline ml-1">Settings</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -660,67 +660,87 @@ export default function Profile() {
               {/* Purchased Prompts Tab */}
               <TabsContent value="purchased" className="space-y-4" data-testid="purchased-tab">
                 {purchasedPrompts.length > 0 ? (
-                  <div className="masonry-grid">
+                  <div className="space-y-3">
                     {purchasedPrompts.map((submission: any) => (
                       <Card 
                         key={submission.id} 
-                        className="group overflow-hidden hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-300 cursor-pointer"
+                        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer border-border/50"
                         onClick={() => {
                           setSelectedSubmission(submission);
                           setEditModalOpen(false);
                         }}
                         data-testid={`purchased-submission-${submission.id}`}
                       >
-                        <div className="relative aspect-square">
-                          <img
-                            src={submission.thumbnailUrl || submission.mediaUrl}
-                            alt={submission.title}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                          
-                          {/* Purchased Badge */}
-                          <div className="absolute top-3 right-3">
-                            <Badge className="bg-green-600 hover:bg-green-600">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Owned
-                            </Badge>
+                        <div className="flex flex-col sm:flex-row">
+                          {/* Left: Image */}
+                          <div className="w-full h-48 sm:w-32 sm:h-32 lg:w-40 lg:h-40 border-b sm:border-b-0 sm:border-r border-border">
+                            <img
+                              src={submission.thumbnailUrl || submission.mediaUrl}
+                              alt={submission.title}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
-
-                          {/* Info on hover */}
-                          <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                            <h3 className="text-white font-semibold mb-1 line-clamp-1">
-                              {submission.title}
-                            </h3>
-                            <div className="flex items-center justify-between text-xs text-gray-300">
-                              <span>by @{submission.user?.username || 'Unknown'}</span>
+                          
+                          {/* Right: Content */}
+                          <div className="flex-1 p-3 sm:p-4 min-w-0 flex flex-col sm:h-32 lg:h-40">
+                            {/* Header - Wrap on mobile */}
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm lg:text-base text-foreground flex-wrap">
+                              <h3 className="font-semibold truncate text-sm sm:text-base">
+                                {submission.title}
+                              </h3>
+                              <span className="text-muted-foreground hidden sm:inline">by @{submission.user?.username || 'Unknown'}</span>
                               {submission.purchasePrice && submission.purchaseCurrency && (
-                                <span className="bg-white/20 px-2 py-0.5 rounded">
-                                  {parseFloat(submission.purchasePrice).toString()} {submission.purchaseCurrency}
-                                </span>
+                                <>
+                                  <span className="text-muted-foreground hidden sm:inline">•</span>
+                                  <span className="text-green-600 text-xs sm:text-sm">
+                                    {parseFloat(submission.purchasePrice).toString()} {submission.purchaseCurrency}
+                                  </span>
+                                </>
+                              )}
+                              {submission.aiModel && (
+                                <>
+                                  <span className="text-muted-foreground hidden sm:inline">•</span>
+                                  <Badge variant="outline" className="text-xs h-5">
+                                    {submission.aiModel}
+                                  </Badge>
+                                </>
                               )}
                             </div>
-                          </div>
-                        </div>
-                        
-                        {/* Prompt Text */}
-                        {submission.prompt && (
-                          <CardContent className="p-4 space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                              <span>Prompt:</span>
+                            
+                            {/* Mobile: Show user below title */}
+                            <div className="sm:hidden text-xs text-muted-foreground mb-1">
+                              by @{submission.user?.username || 'Unknown'}
                             </div>
-                            <p className="text-sm text-foreground/90 bg-muted/30 p-3 rounded-md border border-border/50">
-                              {submission.prompt}
-                            </p>
-                            {submission.aiModel && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Badge variant="outline" className="text-xs">
-                                  {submission.aiModel}
-                                </Badge>
+
+                            {/* Prompt Text */}
+                            {submission.prompt && (
+                              <div className="mt-2 bg-muted/30 p-2 sm:p-3 rounded-md border border-border/50 relative group flex-1 overflow-hidden flex flex-col max-h-24 sm:max-h-28">
+                                <div className="flex items-center gap-2 mb-1 flex-shrink-0">
+                                  <span className="text-xs font-medium text-muted-foreground">Prompt:</span>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="h-5 sm:h-6 px-1.5 sm:px-2 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(submission.prompt);
+                                      toast({
+                                        title: "Copied!",
+                                        description: "Prompt copied to clipboard"
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="w-3 h-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Copy</span>
+                                  </Button>
+                                </div>
+                                <p className="text-xs sm:text-sm text-foreground/90 break-words overflow-y-auto flex-1">
+                                  {submission.prompt}
+                                </p>
                               </div>
                             )}
-                          </CardContent>
-                        )}
+                          </div>
+                        </div>
                       </Card>
                     ))}
                   </div>

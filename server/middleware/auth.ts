@@ -1,7 +1,12 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "fallback_secret_key";
+// Require JWT_SECRET or SESSION_SECRET to be set - never use fallback
+if (!process.env.JWT_SECRET && !process.env.SESSION_SECRET) {
+  throw new Error("CRITICAL: JWT_SECRET or SESSION_SECRET must be set in environment variables");
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET!;
 
 export interface AuthRequest extends Request {
   user?: {

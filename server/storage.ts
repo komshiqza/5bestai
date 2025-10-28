@@ -1320,9 +1320,9 @@ export class DbStorage implements IStorage {
       conditions.push(sql`EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${'%' + filters.tag + '%'}))`);
     }
 
-    // Calculate pagination
+    // Calculate pagination with maximum limit to prevent DoS
     const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const limit = Math.min(filters.limit || 20, 100); // Max 100 items per page
     const offset = (page - 1) * limit;
 
     const submissionsData = await db.query.submissions.findMany({
@@ -1332,29 +1332,35 @@ export class DbStorage implements IStorage {
       offset: offset
     });
 
-    const result: SubmissionWithUser[] = [];
-    for (const submission of submissionsData) {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, submission.userId),
-        columns: { id: true, username: true }
-      });
-      
-      let contest = null;
-      if (submission.contestId) {
-        contest = await db.query.contests.findFirst({
-          where: eq(contests.id, submission.contestId),
-          columns: { id: true, title: true }
-        });
-      }
-      
-      if (user) {
-        result.push({
+    // Batch fetch all users in one query (instead of N queries)
+    const userIds = [...new Set(submissionsData.map(s => s.userId))];
+    const usersData = await db.query.users.findMany({
+      where: inArray(users.id, userIds),
+      columns: { id: true, username: true }
+    });
+    const usersMap = new Map(usersData.map(u => [u.id, u]));
+    
+    // Batch fetch all contests in one query (instead of N queries)
+    const contestIds = [...new Set(submissionsData.map(s => s.contestId).filter(Boolean))];
+    const contestsData = await db.query.contests.findMany({
+      where: inArray(contests.id, contestIds),
+      columns: { id: true, title: true }
+    });
+    const contestsMap = new Map(contestsData.map(c => [c.id, c]));
+    
+    // Map results efficiently
+    const result: SubmissionWithUser[] = submissionsData
+      .map(submission => {
+        const user = usersMap.get(submission.userId);
+        if (!user) return null;
+        
+        return {
           ...submission,
           user,
-          contest: contest || { id: '', title: submission.contestName || 'Deleted Contest' }
-        });
-      }
-    }
+          contest: contestsMap.get(submission.contestId) || { id: '', title: submission.contestName || 'Deleted Contest' }
+        };
+      })
+      .filter((item): item is SubmissionWithUser => item !== null);
 
     return result;
   }

@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubmissionCard } from "@/components/submission-card";
 import { ContestLightboxModal } from "@/components/ContestLightboxModal";
+import { PromptPaymentModal } from "@/components/PromptPaymentModal";
 import { Image as ImageIcon, Play, Search, Loader2 } from "lucide-react";
 import { useAuth, isAuthenticated, isApproved } from "@/lib/auth";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -22,8 +23,10 @@ function ExploreContent() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [searchTag, setSearchTag] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const prevSubmissionsRef = useRef<any[]>([]);
 
   // Clear submissions cache on mount to ensure fresh data
   useEffect(() => {
@@ -31,7 +34,8 @@ function ExploreContent() {
     queryClient.removeQueries({ queryKey: ["/api/submissions"] });
     setAllSubmissions([]);
     setPage(1);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // Reset pagination when search tag changes
   useEffect(() => {
@@ -46,7 +50,7 @@ function ExploreContent() {
       const params = new URLSearchParams({
         status: 'approved',
         page: page.toString(),
-        limit: '12'
+        limit: '30'
       });
       if (searchTag) {
         params.append('tag', searchTag);
@@ -55,40 +59,48 @@ function ExploreContent() {
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },
+    staleTime: 30000, // Cache for 30 seconds to prevent unnecessary re-fetches
   });
 
   // Update submissions when new data arrives
   useEffect(() => {
-    if (submissions && submissions.length >= 0) {
-      if (page === 1) {
-        setAllSubmissions(submissions);
-      } else if (submissions.length > 0) {
-        setAllSubmissions(prev => [...prev, ...submissions]);
-      }
-      // hasMore is true only if we got a full page (12 items)
-      setHasMore(submissions.length === 12);
-      setIsLoadingMore(false);
+    if (!submissions) return;
+    
+    // Check if data actually changed by comparing IDs
+    const currentIds = submissions.map((s: any) => s.id).join(',');
+    const prevIds = prevSubmissionsRef.current.map((s: any) => s.id).join(',');
+    
+    if (currentIds === prevIds && submissions.length === prevSubmissionsRef.current.length) {
+      return; // Data hasn't actually changed
     }
+    
+    // Only update if submissions actually changed
+    if (page === 1) {
+      setAllSubmissions(submissions);
+    } else if (submissions.length > 0) {
+      setAllSubmissions(prev => {
+        // Check if this data is already in the array to prevent duplicates
+        const existingIds = new Set(prev.map(s => s.id));
+        const newSubmissions = submissions.filter((s: any) => !existingIds.has(s.id));
+        if (newSubmissions.length === 0) return prev;
+        return [...prev, ...newSubmissions];
+      });
+    }
+    
+    // hasMore is true only if we got a full page (30 items)
+    setHasMore(submissions.length === 30);
+    setIsLoadingMore(false);
+    
+    // Update ref with current data
+    prevSubmissionsRef.current = submissions;
   }, [submissions, page]);
 
-  // Infinite scroll logic
-  const handleScroll = useCallback(() => {
-    if (isLoadingMore || !hasMore || allSubmissions.length < 12) return;
-    
-    const scrollTop = document.documentElement.scrollTop;
-    const scrollHeight = document.documentElement.scrollHeight;
-    const clientHeight = document.documentElement.clientHeight;
-    
-    if (scrollTop + clientHeight >= scrollHeight - 500) {
-      setIsLoadingMore(true);
-      setPage(prev => prev + 1);
-    }
-  }, [isLoadingMore, hasMore, allSubmissions.length]);
-
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+  // Load More button handler (no infinite scroll)
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    setPage(prev => prev + 1);
+  }, [isLoadingMore, hasMore]);
 
   // Vote mutation for modal
   const voteMutation = useMutation({
@@ -144,19 +156,25 @@ function ExploreContent() {
       return response.json();
     },
     onSuccess: async (data, submissionId) => {
-      // Invalidate all submissions queries to refresh grids
-      queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/me"] }); // Update user balance
-      
-      // Update selected submission directly with hasPurchasedPrompt flag
-      // This ensures the modal shows the unlocked prompt immediately
+      // Optimistically update selected submission immediately
       if (selectedSubmission && selectedSubmission.id === submissionId) {
-        setSelectedSubmission({
+        const updatedSubmission = {
           ...selectedSubmission,
           hasPurchasedPrompt: true
-        });
+        };
+        setSelectedSubmission(updatedSubmission);
       }
+      
+      // Invalidate ALL submissions queries across ALL pages using wildcard
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey[0] === "/api/submissions";
+        }
+      });
+      
+      // Also invalidate purchased prompts and user data
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       
       toast({
         title: "Prompt purchased!",
@@ -164,15 +182,36 @@ function ExploreContent() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Purchase failed",
-        description: error.message || "Failed to purchase prompt. Please try again.",
-        variant: "destructive",
-      });
+      // If already purchased, treat as success and update UI
+      if (error.message && error.message.includes("already purchased")) {
+        if (selectedSubmission && selectedSubmission.id) {
+          setSelectedSubmission({
+            ...selectedSubmission,
+            hasPurchasedPrompt: true
+          });
+        }
+        
+        queryClient.invalidateQueries({ 
+          predicate: (query) => {
+            return query.queryKey[0] === "/api/submissions";
+          }
+        });
+        
+        toast({
+          title: "Prompt already purchased",
+          description: "The prompt is now visible to you.",
+        });
+      } else {
+        toast({
+          title: "Purchase failed",
+          description: error.message || "Failed to purchase prompt. Please try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
-  // Handle buying prompt from modal
+  // Handle buying prompt from modal - opens payment selection modal
   const handleBuyPromptFromModal = (submissionId: string) => {
     if (!isAuthenticated(user)) {
       toast({
@@ -192,7 +231,31 @@ function ExploreContent() {
       return;
     }
 
-    buyPromptMutation.mutate(submissionId);
+    // Open payment modal instead of directly purchasing
+    setIsPaymentModalOpen(true);
+  };
+
+  // Handle successful payment
+  const handlePaymentSuccess = () => {
+    // Invalidate queries to refresh data
+    queryClient.invalidateQueries({ 
+      predicate: (query) => {
+        return query.queryKey[0] === "/api/submissions";
+      }
+    });
+    queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+    
+    // Update selected submission
+    if (selectedSubmission) {
+      setSelectedSubmission({
+        ...selectedSubmission,
+        hasPurchasedPrompt: true
+      });
+    }
+    
+    // Close payment modal
+    setIsPaymentModalOpen(false);
   };
 
   const handleOpenSubmissionModal = (submission: any) => {
@@ -203,13 +266,6 @@ function ExploreContent() {
   const handleCloseSubmissionModal = () => {
     setIsModalOpen(false);
     setSelectedSubmission(null);
-  };
-
-  const handleLoadMore = () => {
-    if (!isLoadingMore && hasMore) {
-      setIsLoadingMore(true);
-      setPage(prev => prev + 1);
-    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -267,7 +323,21 @@ function ExploreContent() {
               ))}
             </div>
             
-            {/* Loading indicator for infinite scroll */}
+            {/* Load More Button */}
+            {hasMore && !isLoadingMore && (
+              <div className="mt-8 text-center">
+                <Button
+                  onClick={handleLoadMore}
+                  variant="outline"
+                  size="lg"
+                  className="min-w-[200px]"
+                >
+                  Load More
+                </Button>
+              </div>
+            )}
+            
+            {/* Loading indicator */}
             {isLoadingMore && (
               <div className="mt-8 text-center">
                 <div className="inline-flex items-center px-4 py-2 text-sm text-muted-foreground">
@@ -311,6 +381,16 @@ function ExploreContent() {
           onClose={handleCloseSubmissionModal}
           onVote={handleVoteFromModal}
           onBuyPrompt={handleBuyPromptFromModal}
+        />
+      )}
+
+      {/* Payment Selection Modal */}
+      {selectedSubmission && (
+        <PromptPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          submission={selectedSubmission}
+          onSuccess={handlePaymentSuccess}
         />
       )}
     </div>

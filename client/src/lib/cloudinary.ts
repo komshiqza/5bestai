@@ -104,3 +104,37 @@ export const cloudinaryPresets = {
     format: 'auto'
   })
 };
+
+/**
+ * Smart image optimization function that works with Cloudinary, Supabase, and local URLs
+ * Automatically optimizes images based on their source
+ */
+export function optimizeImageUrl(
+  url: string,
+  size: 'xsmall' | 'thumbnail' | 'medium' | 'large' = 'medium'
+): string {
+  if (!url) return url;
+  
+  // Cloudinary optimization
+  if (url.includes('cloudinary.com')) {
+    return cloudinaryPresets[size](url);
+  }
+  
+  // Supabase optimization via URL transform params
+  if (url.includes('supabase.co')) {
+    const sizeMap: Record<typeof size, number> = {
+      xsmall: 200,
+      thumbnail: 400,
+      medium: 800,
+      large: 1920
+    };
+    const width = sizeMap[size];
+    
+    // Check if URL already has query params
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}width=${width}&quality=80`;
+  }
+  
+  // Local or unknown - return as-is
+  return url;
+}

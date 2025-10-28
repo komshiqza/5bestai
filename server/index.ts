@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { ContestScheduler } from "./contest-scheduler";
@@ -10,17 +12,46 @@ import { seedSubscriptionTiers } from "./seed-tiers";
 
 const app = express();
 
+// Security headers with Helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Needed for Vite
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"], // Allow Google Fonts
+      fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"], // Allow Google Fonts
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: [
+        "'self'", 
+        "https://mainnet.helius-rpc.com", 
+        "https://api.mainnet-beta.solana.com",
+        "https://devnet.helius-rpc.com",
+        "https://api.devnet.solana.com"
+      ],
+    },
+  },
+}));
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
   }
 }
 app.use(express.json({
+  limit: '10mb', // Prevent large payloads
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -63,7 +94,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    console.error("Error:", err); // Log error without throwing
   });
 
   // importantly only setup vite in development and after

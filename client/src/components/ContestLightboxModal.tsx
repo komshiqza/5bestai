@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { X, Heart, User, Calendar, Share2, Tag, Sparkles, MessageSquare, ShoppingCart, ChevronDown } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 import { useAuth } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { optimizeImageUrl } from "@/lib/cloudinary";
 
 interface ContestLightboxModalProps {
   isOpen: boolean;
@@ -42,6 +44,20 @@ export function ContestLightboxModal({
 }: ContestLightboxModalProps) {
   const { data: currentUser } = useAuth();
   const infoPanelRef = useRef<HTMLDivElement>(null);
+  
+  // Fetch purchased prompts for global check
+  const { data: purchasedPrompts = [] } = useQuery({
+    queryKey: ["/api/prompts/purchased"],
+    enabled: !!currentUser && isOpen && submission?.promptForSale,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    queryFn: async () => {
+      const response = await fetch("/api/prompts/purchased/submissions", { 
+        credentials: "include" 
+      });
+      if (!response.ok) throw new Error("Failed to fetch purchased prompts");
+      return response.json();
+    }
+  });
 
   const scrollToInfo = () => {
     infoPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -83,9 +99,15 @@ export function ContestLightboxModal({
 
   if (!isOpen || !submission) return null;
 
-  // Calculate blur logic
+  // Calculate blur logic with global purchased check
   const isCreator = currentUser?.id === submission.userId;
-  const hasPurchased = submission.hasPurchasedPrompt;
+  const hasPurchasedLocal = submission.hasPurchasedPrompt;
+  
+  // Global check: is this submission in purchased prompts list?
+  const hasPurchasedGlobal = purchasedPrompts?.some((p: any) => p.id === submission.id);
+  
+  // If either local or global says purchased, then it's purchased
+  const hasPurchased = hasPurchasedLocal || hasPurchasedGlobal;
   const shouldBlur = submission.promptForSale && !hasPurchased && !isCreator;
 
   const handleVote = () => {
@@ -143,10 +165,11 @@ export function ContestLightboxModal({
           onClick={(e) => e.stopPropagation()}
         >
           <img
-            src={submission.mediaUrl}
+            src={optimizeImageUrl(submission.mediaUrl, 'large')}
             alt={submission.title}
             className="w-full h-full lg:max-w-full lg:max-h-full object-cover lg:object-contain lg:rounded-lg"
             data-testid="lightbox-image"
+            loading="lazy"
           />
           
           {/* Close button - top right on image */}
@@ -263,7 +286,7 @@ export function ContestLightboxModal({
                   </div>
                   
                   {/* Buy Prompt Button - show only if for sale, not purchased, and not the creator */}
-                  {submission.promptForSale && !submission.hasPurchasedPrompt && currentUser?.id !== submission.userId && (
+                  {submission.promptForSale && !hasPurchased && !isCreator && (
                     <GlassButton
                       onClick={(e) => {
                         e.stopPropagation();

@@ -225,10 +225,11 @@ export function ContestRulesCard({ isOpen, contest, onClose }: ContestRulesCardP
               Contest Rules & Guidelines
             </h4>
             <div 
-              className="prose prose-invert prose-sm max-w-none text-slate-300"
-              dangerouslySetInnerHTML={{ __html: contest.rules.replace(/\n/g, '<br>') }}
+              className="prose prose-invert prose-sm max-w-none text-slate-300 whitespace-pre-wrap"
               data-testid="text-contest-rules"
-            />
+            >
+              {contest.rules}
+            </div>
           </div>
 
           {/* Close Button */}
