@@ -9,12 +9,7 @@ if (!process.env.JWT_SECRET && !process.env.SESSION_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET!;
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    status: string;
-  };
+  // user and userId are defined in express.d.ts
 }
 
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {

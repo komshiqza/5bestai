@@ -171,12 +171,12 @@ export function PromptPaymentModal({
       const newBalance = user.gloryBalance - price;
       return newBalance.toLocaleString();
     } else if (submission.promptCurrency === "SOL") {
-      const current = parseFloat(user.solBalance);
-      const newBalance = current - price;
+      const current: number = parseFloat(user.solBalance);
+      const newBalance: number = current - price;
       return newBalance.toFixed(4);
     } else if (submission.promptCurrency === "USDC") {
-      const current = parseFloat(user.usdcBalance);
-      const newBalance = current - price;
+      const current: number = parseFloat(user.usdcBalance);
+      const newBalance: number = current - price;
       return newBalance.toFixed(2);
     }
 

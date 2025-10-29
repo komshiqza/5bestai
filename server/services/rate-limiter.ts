@@ -66,11 +66,13 @@ class RateLimiter {
 
   private cleanup() {
     const now = Date.now();
-    for (const [key, entry] of this.limits.entries()) {
+    const keysToDelete: string[] = [];
+    this.limits.forEach((entry, key) => {
       if (now - entry.windowStart > this.windowMs) {
-        this.limits.delete(key);
+        keysToDelete.push(key);
       }
-    }
+    });
+    keysToDelete.forEach(key => this.limits.delete(key));
   }
 }
 

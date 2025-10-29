@@ -1317,7 +1317,9 @@ export class DbStorage implements IStorage {
     if (filters.status) conditions.push(eq(submissions.status, filters.status));
     if (filters.tag) {
       // Check if any tag in the array contains the search string (case-insensitive)
-      conditions.push(sql`EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${'%' + filters.tag + '%'}))`);
+      // SAFE: Escape special characters to prevent SQL injection
+      const sanitizedTag = filters.tag.replace(/[%_\\]/g, '\\$&');
+      conditions.push(sql`EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${'%' + sanitizedTag + '%'}) ESCAPE '\\')`);
     }
 
     // Calculate pagination with maximum limit to prevent DoS
@@ -1333,7 +1335,8 @@ export class DbStorage implements IStorage {
     });
 
     // Batch fetch all users in one query (instead of N queries)
-    const userIds = [...new Set(submissionsData.map(s => s.userId))];
+    const userIdSet = new Set(submissionsData.map(s => s.userId));
+    const userIds = Array.from(userIdSet);
     const usersData = await db.query.users.findMany({
       where: inArray(users.id, userIds),
       columns: { id: true, username: true }
@@ -1341,7 +1344,8 @@ export class DbStorage implements IStorage {
     const usersMap = new Map(usersData.map(u => [u.id, u]));
     
     // Batch fetch all contests in one query (instead of N queries)
-    const contestIds = [...new Set(submissionsData.map(s => s.contestId).filter(Boolean))];
+    const contestIdSet = new Set(submissionsData.map(s => s.contestId).filter((id): id is string => id !== null));
+    const contestIds = Array.from(contestIdSet);
     const contestsData = await db.query.contests.findMany({
       where: inArray(contests.id, contestIds),
       columns: { id: true, title: true }
@@ -1357,7 +1361,7 @@ export class DbStorage implements IStorage {
         return {
           ...submission,
           user,
-          contest: contestsMap.get(submission.contestId) || { id: '', title: submission.contestName || 'Deleted Contest' }
+          contest: (submission.contestId ? contestsMap.get(submission.contestId) : null) || { id: '', title: submission.contestName || 'Deleted Contest' }
         };
       })
       .filter((item): item is SubmissionWithUser => item !== null);

@@ -210,7 +210,7 @@ export function UploadCard({ isOpen, contestId, onClose, onSuccess }: UploadCard
           <GlassButton
             onClick={handleSubmit}
             disabled={!selectedFile || !title.trim() || isUploading}
-            variant="purple"
+            variant="primary"
             className="w-full py-4 flex items-center justify-center gap-2"
             data-testid="button-submit-upload"
           >

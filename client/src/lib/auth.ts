@@ -8,8 +8,8 @@ export interface User {
   role: string;
   status: string;
   gloryBalance: number;
-  solBalance: number;
-  usdcBalance: number;
+  solBalance: string; // numeric in DB returns string
+  usdcBalance: string; // numeric in DB returns string
   imageCredits: number;
   avatarUrl?: string | null;
   withdrawalAddress?: string | null;

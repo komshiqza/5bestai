@@ -13,17 +13,26 @@ export const rateLimiter = async (req: Request, res: Response, next: NextFunctio
   }
 
   try {
+    // Simple in-memory rate limiting
     const now = Date.now();
-    const windowStart = new Date(now - WINDOW_MS);
+    const userLimit = voteLimits.get(req.userId);
     
-    // Check database for actual votes in the time window
-    const recentVotes = await storage.getUserVotesInTimeWindow(req.userId, windowStart);
-    
-    if (recentVotes >= VOTE_LIMIT) {
-      return res.status(429).json({ 
-        error: "Rate limit exceeded. Maximum 30 votes per hour.", 
-        code: "RATE_LIMIT_EXCEEDED" 
-      });
+    if (userLimit) {
+      if (now < userLimit.resetTime) {
+        if (userLimit.count >= VOTE_LIMIT) {
+          return res.status(429).json({ 
+            error: "Rate limit exceeded. Maximum 30 votes per hour.", 
+            code: "RATE_LIMIT_EXCEEDED" 
+          });
+        }
+        userLimit.count++;
+      } else {
+        // Reset window
+        voteLimits.set(req.userId, { count: 1, resetTime: now + WINDOW_MS });
+      }
+    } else {
+      // First vote
+      voteLimits.set(req.userId, { count: 1, resetTime: now + WINDOW_MS });
     }
 
     next();

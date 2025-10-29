@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { SubscriptionSolanaPayment } from "@/components/payment/SubscriptionSolanaPayment";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import type { SubscriptionTier } from "@shared/schema";
+import type { SubscriptionTierWithFeatures } from "@shared/schema";
 import { 
   Crown, 
   Sparkles, 
@@ -86,12 +86,12 @@ export default function PricingPage() {
   const { data: user } = useAuth();
   const [, setLocation] = useLocation();
   const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("crypto"); // Default to crypto
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTierWithFeatures | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const { toast } = useToast();
 
   // Fetch tiers
-  const { data: tiers = [], isLoading } = useQuery<SubscriptionTier[]>({
+  const { data: tiers = [], isLoading } = useQuery<SubscriptionTierWithFeatures[]>({
     queryKey: ["/api/tiers"],
   });
 
@@ -106,7 +106,7 @@ export default function PricingPage() {
     return `$${(cents / 100).toFixed(2)}`;
   };
 
-  const handleGetStarted = (tier: SubscriptionTier) => {
+  const handleGetStarted = (tier: SubscriptionTierWithFeatures) => {
     if (!user) {
       setLocation("/register");
       return;
@@ -151,11 +151,11 @@ export default function PricingPage() {
     setSelectedTier(null);
   };
 
-  const isCurrentTier = (tier: SubscriptionTier) => {
+  const isCurrentTier = (tier: SubscriptionTierWithFeatures) => {
     return subscription?.tier.slug === tier.slug;
   };
 
-  const getButtonText = (tier: SubscriptionTier) => {
+  const getButtonText = (tier: SubscriptionTierWithFeatures) => {
     if (isCurrentTier(tier)) {
       return "Current Plan";
     }

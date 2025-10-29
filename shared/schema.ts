@@ -367,7 +367,8 @@ export const createCashoutRequestSchema = z.object({
 export const updateCashoutStatusSchema = z.object({
   status: z.enum(["approved", "rejected", "processing", "sent", "confirmed", "failed"]),
   rejectionReason: z.string().optional(),
-  txHash: z.string().optional()
+  txHash: z.string().optional(),
+  notes: z.string().optional()
 });
 
 export const approveCashoutSchema = z.object({
@@ -745,6 +746,16 @@ export const insertEditJobSchema = createInsertSchema(editJobs).omit({
   finishedAt: true
 });
 
+// Subscription Tier Features interface
+export interface TierFeatures {
+  maxSubmissionsPerContest?: number;
+  prioritySupport?: boolean;
+  apiAccess?: boolean;
+  customBranding?: boolean;
+  advancedAnalytics?: boolean;
+  [key: string]: any; // Allow additional custom features
+}
+
 // Export types
 export type InsertSubscriptionTier = z.infer<typeof insertSubscriptionTierSchema>;
 export type SubscriptionTier = typeof subscriptionTiers.$inferSelect;
@@ -761,6 +772,11 @@ export type InsertImageVersion = z.infer<typeof insertImageVersionSchema>;
 export type ImageVersion = typeof imageVersions.$inferSelect;
 export type InsertEditJob = z.infer<typeof insertEditJobSchema>;
 export type EditJob = typeof editJobs.$inferSelect;
+
+// Subscription Tier with typed features
+export type SubscriptionTierWithFeatures = Omit<SubscriptionTier, 'features'> & {
+  features: TierFeatures | null;
+};
 
 // Extended types with relations
 export type UserSubscriptionWithTier = UserSubscription & {
