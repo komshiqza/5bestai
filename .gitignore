@@ -11,3 +11,19 @@ vite.config.ts.*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Replit and local state files
+.local/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build outputs
+build/
+dist/
+*.tsbuildinfo
