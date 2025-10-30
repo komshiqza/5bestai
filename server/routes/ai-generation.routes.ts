@@ -69,7 +69,13 @@ export function registerAiGenerationRoutes(app: Express): void {
       try {
         const generateImageSchema = z.object({
           prompt: z.string().min(1).max(2000),
-          model: z.string().optional(),
+          model: z.enum([
+            "ideogram-v3",
+            "nano-banana",
+            "flux-1.1-pro",
+            "sd-3.5-large",
+            "leonardo-lucid",
+          ]).optional(),
           numImages: z.number().min(1).max(4).optional(),
           width: z.number().optional(),
           height: z.number().optional(),

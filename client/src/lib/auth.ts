@@ -34,9 +34,9 @@ export function useAuth() {
         return null;
       }
     },
-    staleTime: 5000, // Consider data stale after 5 seconds
-    refetchInterval: 30000, // Refetch every 30 seconds
-    refetchOnWindowFocus: true, // Refetch when window gets focus
+    staleTime: 120000, // Consider data stale after 2 minutes (increased from 5 seconds)
+    refetchInterval: 300000, // Refetch every 5 minutes (increased from 30 seconds)
+    refetchOnWindowFocus: false, // Disabled to reduce unnecessary refetches
   });
 }
 

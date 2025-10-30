@@ -1,7 +1,92 @@
 import type { Express } from "express";
+import { z } from "zod";
 import { storage } from "../storage";
+import {
+  authenticateToken,
+  requireAdmin,
+  type AuthRequest,
+} from "../middleware/auth";
 
 export async function registerSettingsRoutes(app: Express): Promise<void> {
+  // GET /api/admin/settings/pricing - Get all pricing settings
+  app.get(
+    "/api/admin/settings/pricing",
+    authenticateToken,
+    requireAdmin,
+    async (req: AuthRequest, res) => {
+      try {
+        const allPricing = await storage.getAllPricingSettings();
+        const pricingObject: Record<string, number> = {};
+        allPricing.forEach((value, key) => {
+          pricingObject[key] = value;
+        });
+        res.json(pricingObject);
+      } catch (error) {
+        console.error("Error fetching pricing settings:", error);
+        res.status(500).json({ error: "Failed to fetch pricing settings" });
+      }
+    },
+  );
+
+  // PUT /api/admin/settings/pricing/:key - Update pricing for a specific model
+  app.put(
+    "/api/admin/settings/pricing/:key",
+    authenticateToken,
+    requireAdmin,
+    async (req: AuthRequest, res) => {
+      try {
+        const { key } = req.params;
+        const { value } = z
+          .object({ value: z.number().min(0) })
+          .parse(req.body);
+
+        await storage.updatePricingSetting(key, value);
+        res.json({ success: true, key, value });
+      } catch (error) {
+        console.error("Error updating pricing:", error);
+        if (error instanceof z.ZodError) {
+          return res
+            .status(400)
+            .json({ error: "Invalid value", details: error.errors });
+        }
+        res.status(500).json({ error: "Failed to update pricing" });
+      }
+    },
+  );
+
+  // GET /api/admin/settings - Get current site settings
+  app.get(
+    "/api/admin/settings",
+    authenticateToken,
+    requireAdmin,
+    async (req: AuthRequest, res) => {
+      try {
+        const settings = await storage.getSiteSettings();
+        res.json(settings);
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+        res.status(500).json({ error: "Failed to fetch settings" });
+      }
+    },
+  );
+
+  // PATCH /api/admin/settings - Update site settings
+  app.patch(
+    "/api/admin/settings",
+    authenticateToken,
+    requireAdmin,
+    async (req: AuthRequest, res) => {
+      try {
+        const updates = req.body;
+        const updatedSettings = await storage.updateSiteSettings(updates);
+        res.json(updatedSettings);
+      } catch (error) {
+        console.error("Error updating settings:", error);
+        res.status(500).json({ error: "Failed to update settings" });
+      }
+    },
+  );
+
   // GET /api/settings/private-mode - Get private mode status
   app.get("/api/settings/private-mode", async (req, res) => {
     try {

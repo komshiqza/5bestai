@@ -289,9 +289,9 @@ export function registerSubmissionCrudRoutes(app: Express): void {
               }
 
               const currency = config.entryFeeCurrency || "GLORY";
-              let balance = user.gloryBalance;
-              if (currency === "SOL") balance = user.solBalance;
-              else if (currency === "USDC") balance = user.usdcBalance;
+              let balance: number = user.gloryBalance;
+              if (currency === "SOL") balance = Number(user.solBalance);
+              else if (currency === "USDC") balance = Number(user.usdcBalance);
 
               if (balance < config.entryFeeAmount) {
                 return res.status(400).json({

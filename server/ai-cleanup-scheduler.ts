@@ -1,6 +1,6 @@
 import type { IStorage } from "./storage";
 import { db } from "./db";
-import { aiGenerations, images, imageVersions, editJobs } from "@shared/schema";
+import { aiGenerations, images, imageVersions, editJobs, submissions } from "@shared/schema";
 import { lt, eq, or, inArray } from "drizzle-orm";
 import { v2 as cloudinary } from "cloudinary";
 import { supabaseAdmin } from "./supabase";
@@ -44,6 +44,16 @@ export class AiCleanupScheduler {
 
       for (const generation of oldGenerations) {
         try {
+          // Skip if this generation is used in a contest submission (permanent)
+          const [linkedSubmission] = await db.select()
+            .from(submissions)
+            .where(eq(submissions.generationId, generation.id))
+            .limit(1);
+          if (linkedSubmission) {
+            console.log(`[AI Cleanup] Skipping permanent generation (linked to submission): ${generation.id}`);
+            continue;
+          }
+
           // Delete from Cloudinary if cloudinaryPublicId exists
           if (generation.cloudinaryPublicId) {
             try {

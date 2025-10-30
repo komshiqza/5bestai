@@ -22,10 +22,45 @@ import {
 import { findReference } from "@solana/pay";
 import { PublicKey } from "@solana/web3.js";
 
+// In-memory cache for /api/me endpoint
+interface UserCacheEntry {
+  data: any;
+  timestamp: number;
+}
+
+const userCache = new Map<string, UserCacheEntry>();
+const CACHE_TTL_MS = 45 * 1000; // 45 seconds TTL
+
+// Helper function to invalidate user cache
+export function invalidateUserCache(userId: string) {
+  userCache.delete(`user:${userId}`);
+}
+
 export function registerUserRoutes(app: Express): void {
   // GET /api/me - Get current user profile
   app.get("/api/me", authenticateToken, async (req: AuthRequest, res) => {
     const userId = req.user!.id;
+    const cacheKey = `user:${userId}`;
+
+    // Check cache first
+    const cached = userCache.get(cacheKey);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+      // Return cached data with ETag
+      const etag = `"${cached.data.updatedAt}"`;
+      res.setHeader("ETag", etag);
+      
+      // Check If-None-Match header
+      const ifNoneMatch = req.headers["if-none-match"];
+      if (ifNoneMatch === etag) {
+        return res.status(304).end(); // Not Modified
+      }
+      
+      // Return cached data
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      return res.json(cached.data);
+    }
 
     // Auto-refresh subscription credits if period has expired
     try {
@@ -40,10 +75,8 @@ export function registerUserRoutes(app: Express): void {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Set Cache-Control header to prevent HTTP caching of dynamic user data
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-
-    res.json({
+    // Prepare response data
+    const userData = {
       id: user.id,
       username: user.username,
       email: user.email,
@@ -56,7 +89,29 @@ export function registerUserRoutes(app: Express): void {
       avatarUrl: user.avatarUrl,
       withdrawalAddress: user.withdrawalAddress,
       createdAt: user.createdAt,
+      updatedAt: user.updatedAt, // Added for ETag generation
+    };
+
+    // Cache the response
+    userCache.set(cacheKey, {
+      data: userData,
+      timestamp: now,
     });
+
+    // Set ETag header
+    const etag = `"${user.updatedAt}"`;
+    res.setHeader("ETag", etag);
+
+    // Check If-None-Match header
+    const ifNoneMatch = req.headers["if-none-match"];
+    if (ifNoneMatch === etag) {
+      return res.status(304).end(); // Not Modified
+    }
+
+    // Set Cache-Control header to prevent HTTP caching of dynamic user data
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+
+    res.json(userData);
   });
 
   // GET /api/me/submissions - Get current user's submissions
@@ -99,6 +154,10 @@ export function registerUserRoutes(app: Express): void {
       }
 
       await storage.updateUser(userId, { username: username.trim() });
+      
+      // Invalidate cache after user update
+      invalidateUserCache(userId);
+      
       const updatedUser = await storage.getUser(userId);
 
       res.json({
@@ -137,6 +196,10 @@ export function registerUserRoutes(app: Express): void {
         const { url } = await uploadFile(req.file);
 
         await storage.updateUser(userId, { avatarUrl: url });
+        
+        // Invalidate cache after avatar update
+        invalidateUserCache(userId);
+        
         const updatedUser = await storage.getUser(userId);
 
         res.json({
@@ -169,6 +232,9 @@ export function registerUserRoutes(app: Express): void {
 
       // Delete user (cascade will handle related data)
       await storage.deleteUser(userId);
+      
+      // Invalidate cache after user deletion
+      invalidateUserCache(userId);
 
       // Clear auth cookie
       res.clearCookie("authToken");
@@ -201,6 +267,9 @@ export function registerUserRoutes(app: Express): void {
         if (!updatedUser) {
           return res.status(404).json({ error: "User not found" });
         }
+        
+        // Invalidate cache after withdrawal address update
+        invalidateUserCache(userId);
 
         res.json({
           success: true,

@@ -58,12 +58,20 @@ const settingsFormSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
 const MODEL_NAMES: Record<string, string> = {
+  // AI Generation Models
   "leonardo": "Leonardo Lucid (Fast)",
   "nano-banana": "Nano Banana (Style Reference)",
   "flux-1.1-pro": "Flux 1.1 Pro (High Quality)",
   "sd-3.5-large": "Stable Diffusion 3.5",
   "ideogram-v3": "Ideogram v3 (Premium)",
-  "upscale": "AI Upscaling (4x)",
+  
+  // Pro Edit Presets
+  "upscale": "Upscale 4×",
+  "clean": "Clean & Denoise",
+  "portrait_pro": "Portrait Pro",
+  "bg_remove": "Remove Background",
+  "relight": "Relight Scene",
+  "enhance": "Smart Enhance",
 };
 
 export default function AdminDashboard() {
@@ -95,10 +103,11 @@ export default function AdminDashboard() {
   const [selectedCashoutIds, setSelectedCashoutIds] = useState<string[]>([]);
 
   // Balance edit state
+  type CurrencyType = "GLORY" | "SOL" | "USDC" | "CREDITS";
   const [gloryEditDialogOpen, setGloryEditDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [gloryAmountInput, setGloryAmountInput] = useState("");
-  const [selectedCurrency, setSelectedCurrency] = useState<"GLORY" | "SOL" | "USDC">("GLORY");
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>("GLORY");
 
   // Clear audit logs state
   const [clearLogsDialogOpen, setClearLogsDialogOpen] = useState(false);
@@ -151,9 +160,9 @@ export default function AdminDashboard() {
   });
 
   const { data: cashoutRequests = [] } = useQuery({
-    queryKey: ["/api/admin/cashout/requests"],
+    queryKey: ["/api/admin/cashouts"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/cashout/requests", { credentials: "include" });
+      const response = await fetch("/api/admin/cashouts", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch cashout requests");
       const data = await response.json();
       return data.requests;
@@ -489,7 +498,7 @@ export default function AdminDashboard() {
       return apiRequest("POST", "/api/admin/cashout/approve", { requestId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashouts"] });
       toast({
         title: "Cashout Approved",
         description: "GLORY has been deducted. Remember to send tokens and mark as sent.",
@@ -509,7 +518,7 @@ export default function AdminDashboard() {
       return apiRequest("POST", "/api/admin/cashout/reject", { requestId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashouts"] });
       toast({
         title: "Cashout Rejected",
         description: "The cashout request has been rejected.",
@@ -531,7 +540,7 @@ export default function AdminDashboard() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashouts"] });
       setSelectedCashoutIds([]);
       toast({
         title: "Cashouts approved",
@@ -554,7 +563,7 @@ export default function AdminDashboard() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashout/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/cashouts"] });
       setSelectedCashoutIds([]);
       toast({
         title: "Cashouts rejected",
@@ -676,6 +685,42 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: error.message || `Failed to update ${variables.currency} balance.`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update Credits mutation
+  const updateCreditsMutation = useMutation({
+    mutationFn: async ({ userId, amount, operation }: { userId: string; amount: number; operation: 'set' | 'add' | 'subtract' }) => {
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/credits`, { 
+        amount, 
+        operation,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setGloryEditDialogOpen(false);
+      setGloryAmountInput("");
+      setSelectedUserId("");
+      setSelectedCurrency("GLORY");
+      
+      // Also invalidate /api/me for all users to update their credits display
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      
+      // Force refetch to ensure immediate update
+      queryClient.refetchQueries({ queryKey: ["/api/me"] });
+      
+      toast({
+        title: "Credits updated",
+        description: data.message || `Successfully updated user's image credits.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || `Failed to update image credits.`,
         variant: "destructive",
       });
     },
@@ -869,7 +914,7 @@ export default function AdminDashboard() {
   // Helper function to handle Glory balance update
   const handleGloryBalanceUpdate = () => {
     // Prevent double clicks while mutation is pending
-    if (updateGloryBalanceMutation.isPending) {
+    if (updateGloryBalanceMutation.isPending || updateCreditsMutation.isPending) {
       return;
     }
 
@@ -907,7 +952,12 @@ export default function AdminDashboard() {
       return;
     }
 
-    updateGloryBalanceMutation.mutate({ userId: selectedUserId, amount, operation, currency: selectedCurrency });
+    // Route to the appropriate mutation based on selectedCurrency
+    if (selectedCurrency === 'CREDITS') {
+      updateCreditsMutation.mutate({ userId: selectedUserId, amount, operation });
+    } else {
+      updateGloryBalanceMutation.mutate({ userId: selectedUserId, amount, operation, currency: selectedCurrency as "GLORY" | "SOL" | "USDC" });
+    }
   };
 
   // Helper functions for bulk contest selection
@@ -2805,8 +2855,8 @@ export default function AdminDashboard() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <Select value={selectedCurrency} onValueChange={(value) => setSelectedCurrency(value as "GLORY" | "SOL" | "USDC")}>
+              <Label htmlFor="currency">Currency / Type</Label>
+              <Select value={selectedCurrency} onValueChange={(value) => setSelectedCurrency(value as CurrencyType)}>
                 <SelectTrigger id="currency" data-testid="select-balance-currency">
                   <SelectValue />
                 </SelectTrigger>
@@ -2814,27 +2864,29 @@ export default function AdminDashboard() {
                   <SelectItem value="GLORY">GLORY</SelectItem>
                   <SelectItem value="SOL">SOL</SelectItem>
                   <SelectItem value="USDC">USDC</SelectItem>
+                  <SelectItem value="CREDITS">Image Credits</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {selectedUserId && (
               <div className="bg-muted p-3 rounded-md">
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Current {selectedCurrency} balance:</span>
+                  <span className="text-muted-foreground">Current {selectedCurrency === 'CREDITS' ? 'Credits' : selectedCurrency} balance:</span>
                   <span className="font-mono font-semibold ml-2">
                     {(() => {
                       const userBalance = filteredUsers.find((u: any) => u.id === selectedUserId);
                       const balance = selectedCurrency === 'SOL' ? userBalance?.solBalance : 
                                      selectedCurrency === 'USDC' ? userBalance?.usdcBalance : 
+                                     selectedCurrency === 'CREDITS' ? userBalance?.imageCredits :
                                      userBalance?.gloryBalance;
                       return (balance || 0).toLocaleString();
-                    })()} {selectedCurrency}
+                    })()} {selectedCurrency === 'CREDITS' ? 'Credits' : selectedCurrency}
                   </span>
                 </div>
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="gloryAmount">New {selectedCurrency} Amount</Label>
+              <Label htmlFor="gloryAmount">New {selectedCurrency === 'CREDITS' ? 'Credits' : selectedCurrency} Amount</Label>
               <Input
                 id="gloryAmount"
                 placeholder="e.g., 300, +50, -20"
@@ -2843,7 +2895,7 @@ export default function AdminDashboard() {
                 data-testid="glory-amount-input"
               />
               <p className="text-xs text-muted-foreground">
-                Enter a number to set exact balance, or use +/- to add/subtract
+                Enter a number to set exact {selectedCurrency === 'CREDITS' ? 'credits' : 'balance'}, or use +/- to add/subtract
               </p>
             </div>
           </div>
@@ -2862,11 +2914,11 @@ export default function AdminDashboard() {
             </Button>
             <Button
               onClick={handleGloryBalanceUpdate}
-              disabled={updateGloryBalanceMutation.isPending || !gloryAmountInput.trim()}
+              disabled={updateGloryBalanceMutation.isPending || updateCreditsMutation.isPending || !gloryAmountInput.trim()}
               data-testid="confirm-glory-edit"
               className="bg-primary/20 text-primary hover:bg-primary/30 border-primary/30"
             >
-              {updateGloryBalanceMutation.isPending ? (
+              {(updateGloryBalanceMutation.isPending || updateCreditsMutation.isPending) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Updating...
@@ -2874,7 +2926,7 @@ export default function AdminDashboard() {
               ) : (
                 <>
                   <Crown className="h-4 w-4 mr-2" />
-                  Update Balance
+                  Update {selectedCurrency === 'CREDITS' ? 'Credits' : 'Balance'}
                 </>
               )}
             </Button>

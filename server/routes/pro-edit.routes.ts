@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { images, editJobs } from "@shared/schema";
+import { images, editJobs, imageVersions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { storage } from "../storage";
 import {
@@ -9,6 +9,7 @@ import {
 } from "../middleware/auth";
 import { upload, uploadFile } from "../services/file-upload";
 import * as replicate from "../replicate";
+import { uploadImageToSupabase } from "../supabase";
 
 /**
  * Pro Edit and Canvas Routes
@@ -80,19 +81,51 @@ export function registerProEditRoutes(app: Express): void {
           );
 
           if (prediction.status === "succeeded") {
-            // Get output URL (it's an array for some models)
-            const outputUrl = Array.isArray(prediction.output)
+            // Get output URL from Replicate (it's an array for some models)
+            const replicateOutputUrl = Array.isArray(prediction.output)
               ? prediction.output[0]
               : prediction.output;
 
-            // Create output version
-            const outputVersion = await storage.createImageVersion({
-              imageId: job.imageId,
-              url: outputUrl,
-              source: "edit",
-              preset: job.preset,
-              params: job.params || {},
-            });
+            console.log(`[ProEdit Polling] Replicate output URL: ${replicateOutputUrl}`);
+
+            // Get image details for Supabase upload
+            const image = await storage.getImage(job.imageId);
+            if (!image) {
+              throw new Error(`Image not found: ${job.imageId}`);
+            }
+
+            // Generate version ID
+            const versionId = `v${Date.now()}`;
+
+            // Upload to Supabase Storage (permanent storage)
+            const { url: supabaseUrl } = await uploadImageToSupabase(
+              replicateOutputUrl,
+              image.userId,
+              job.imageId,
+              versionId,
+            );
+
+            console.log(`[ProEdit Polling] Uploaded to Supabase: ${supabaseUrl}`);
+
+            // First unset all other versions for this image
+            await db
+              .update(imageVersions)
+              .set({ isCurrent: false })
+              .where(eq(imageVersions.imageId, job.imageId));
+
+            // Then create the new version with Supabase URL + isCurrent=true
+            const [outputVersion] = await db
+              .insert(imageVersions)
+              .values({
+                imageId: job.imageId,
+                url: supabaseUrl,
+                thumbnailUrl: supabaseUrl,
+                source: "edit",
+                preset: job.preset,
+                params: job.params || {},
+                isCurrent: true,
+              })
+              .returning();
 
             // Update job
             await storage.updateEditJob(jobId, {
@@ -219,22 +252,42 @@ export function registerProEditRoutes(app: Express): void {
             .json({ error: "submissionId or generationId required" });
         }
 
-        // Find image by submissionId or generationId
+        // Find image by submissionId or generationId (prefer canonical record with versions)
         let image = null;
         if (submissionId) {
           const imgs = await db
             .select()
             .from(images)
-            .where(eq(images.submissionId, submissionId as string))
-            .limit(1);
-          image = imgs[0];
+            .where(eq(images.submissionId, submissionId as string));
+          // Prefer one with currentVersionId, else the earliest created
+          const withCurrent = imgs.find((img: any) => img.currentVersionId);
+          image = withCurrent || imgs[0] || null;
         } else if (generationId) {
           const imgs = await db
             .select()
             .from(images)
-            .where(eq(images.generationId, generationId as string))
-            .limit(1);
-          image = imgs[0];
+            .where(eq(images.generationId, generationId as string));
+          // Prefer one with currentVersionId, else fallback to the one with most versions, else earliest
+          const withCurrent = imgs.find((img: any) => img.currentVersionId);
+          if (withCurrent) {
+            image = withCurrent;
+          } else if (imgs.length > 1) {
+            // Count versions for each candidate and choose the one with most versions
+            let best = imgs[0];
+            let bestCount = 0;
+            for (const candidate of imgs) {
+              try {
+                const versions = await storage.getImageVersionsByImageId(candidate.id);
+                if (versions.length > bestCount) {
+                  best = candidate;
+                  bestCount = versions.length;
+                }
+              } catch {}
+            }
+            image = best;
+          } else {
+            image = imgs[0] || null;
+          }
         }
 
         // If no image found, return null (not an error - just means no edits yet)

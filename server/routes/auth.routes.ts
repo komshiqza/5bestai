@@ -20,7 +20,7 @@ export function registerAuthRoutes(app: Express): void {
     try {
       // Rate limiting check
       const ip = req.ip || req.socket.remoteAddress || 'unknown';
-      if (!authRateLimiter.tryRequest(ip)) {
+      if (!authRateLimiter.isAllowed(ip)) {
         return res.status(429).json({ 
           error: "Too many registration attempts. Please try again later." 
         });
@@ -103,7 +103,7 @@ export function registerAuthRoutes(app: Express): void {
     try {
       // Rate limiting check
       const ip = req.ip || req.socket.remoteAddress || 'unknown';
-      if (!authRateLimiter.tryRequest(ip)) {
+      if (!authRateLimiter.isAllowed(ip)) {
         return res.status(429).json({ 
           error: "Too many login attempts. Please try again later." 
         });

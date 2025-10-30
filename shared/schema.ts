@@ -371,6 +371,12 @@ export const updateCashoutStatusSchema = z.object({
   notes: z.string().optional()
 });
 
+export const updateUserCreditsSchema = z.object({
+  amount: z.number().min(0),
+  operation: z.enum(["set", "add", "subtract"]),
+  reason: z.string().optional(),
+});
+
 export const approveCashoutSchema = z.object({
   requestId: z.string()
 });

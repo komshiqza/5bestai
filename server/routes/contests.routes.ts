@@ -70,6 +70,12 @@ export function registerContestRoutes(
         const updated = await storage.updateContest(contest.id, {
           status: "ended",
         });
+        
+        if (!updated) {
+          console.error(`Failed to update contest ${contest.id} to ended status`);
+          return res.status(500).json({ error: "Failed to end contest" });
+        }
+        
         return res.json({
           ...updated,
           prizeDistribution: (updated.config as any)?.prizeDistribution || [],

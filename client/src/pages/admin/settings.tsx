@@ -24,12 +24,20 @@ const settingsFormSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 
 const MODEL_NAMES: Record<string, string> = {
+  // AI Generation Models
   "leonardo": "Leonardo Lucid (Fast)",
   "nano-banana": "Nano Banana (Style Reference)",
   "flux-1.1-pro": "Flux 1.1 Pro (High Quality)",
   "sd-3.5-large": "Stable Diffusion 3.5",
   "ideogram-v3": "Ideogram v3 (Premium)",
-  "upscale": "AI Upscaling (4x)",
+  
+  // Pro Edit Presets
+  "upscale": "Upscale 4×",
+  "clean": "Clean & Denoise",
+  "portrait_pro": "Portrait Pro",
+  "bg_remove": "Remove Background",
+  "relight": "Relight Scene",
+  "enhance": "Smart Enhance",
 };
 
 export default function AdminSettings() {

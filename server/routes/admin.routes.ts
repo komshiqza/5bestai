@@ -15,6 +15,7 @@ import {
   bulkCashoutIdsSchema,
   bulkRejectCashoutSchema,
   insertSiteSettingsSchema,
+  updateUserCreditsSchema,
 } from "@shared/schema";
 import { refundEntryFee } from "./utils";
 import { deleteFile } from "../services/file-upload";
@@ -427,6 +428,13 @@ export function registerAdminRoutes(app: Express): void {
 
         // If approved, deduct from user's GLORY balance
         if (status === "approved") {
+          // Check if already approved to prevent double deduction
+          if (request.status === "approved") {
+            return res.status(400).json({ 
+              error: "Cashout request already approved" 
+            });
+          }
+          
           await storage.createGloryTransaction({
             userId: request.userId,
             delta: -request.amountGlory,
@@ -463,50 +471,10 @@ export function registerAdminRoutes(app: Express): void {
     },
   );
 
-  // Site settings
-  app.get(
-    "/api/admin/settings",
-    authenticateToken,
-    requireAdmin,
-    async (req: AuthRequest, res) => {
-      try {
-        const settings = await storage.getSiteSettings();
-        res.json(settings || {});
-      } catch (error) {
-        res.status(500).json({ error: "Failed to fetch site settings" });
-      }
-    },
-  );
-
-  app.patch(
-    "/api/admin/settings",
-    authenticateToken,
-    requireAdmin,
-    async (req: AuthRequest, res) => {
-      try {
-        // Validate the request body using partial schema for updates
-        const updateSchema = insertSiteSettingsSchema.partial();
-        const updates = updateSchema.parse(req.body);
-
-        const settings = await storage.updateSiteSettings(updates);
-
-        // Log the change in audit log
-        await storage.createAuditLog({
-          actorUserId: req.user!.id,
-          action: "UPDATE_SITE_SETTINGS",
-          meta: { updates },
-        });
-
-        res.json(settings);
-      } catch (error) {
-        res.status(500).json({ error: "Failed to update settings" });
-      }
-    },
-  );
-
   // ============================================================================
   // BULK USER OPERATIONS
   // ============================================================================
+  // Note: Site settings endpoints moved to settings.routes.ts
 
   // Bulk approve users
   app.patch(
@@ -705,10 +673,10 @@ export function registerAdminRoutes(app: Express): void {
         let newBalance: number;
         let delta: number;
         let reason: string;
-        let currentBalance = user.gloryBalance;
+        let currentBalance: number = user.gloryBalance;
 
-        if (currency === "SOL") currentBalance = user.solBalance;
-        else if (currency === "USDC") currentBalance = user.usdcBalance;
+        if (currency === "SOL") currentBalance = Number(user.solBalance);
+        else if (currency === "USDC") currentBalance = Number(user.usdcBalance);
 
         switch (operation) {
           case "set":
@@ -734,7 +702,7 @@ export function registerAdminRoutes(app: Express): void {
         if (delta !== 0) {
           await storage.createGloryTransaction({
             userId,
-            delta,
+            delta: delta,
             currency,
             reason,
             contestId: null,
@@ -751,7 +719,7 @@ export function registerAdminRoutes(app: Express): void {
         }
 
         // Get final balance based on currency
-        let finalBalance = updatedUser.gloryBalance;
+        let finalBalance: number | string = updatedUser.gloryBalance;
         if (currency === "SOL") finalBalance = updatedUser.solBalance;
         else if (currency === "USDC") finalBalance = updatedUser.usdcBalance;
 
@@ -788,6 +756,146 @@ export function registerAdminRoutes(app: Express): void {
       } catch (error) {
         console.error("Error updating balance:", error);
         res.status(500).json({ error: "Failed to update balance" });
+      }
+    },
+  );
+
+  // POST /api/admin/users/:userId/credits - Update user image credits
+  app.post(
+    "/api/admin/users/:userId/credits",
+    authenticateToken,
+    requireAdmin,
+    async (req: AuthRequest, res) => {
+      try {
+        const { userId } = req.params;
+        const { amount, operation, reason } = updateUserCreditsSchema.parse(req.body);
+
+        // Additional protection: Global rate limit per admin user (max 1 credits operation per 3 seconds)
+        const adminRateLimitKey = `admin-credits:${req.user!.id}`;
+        const lastAdminRequest = recentGloryRequests.get(adminRateLimitKey);
+        const now = Date.now();
+        
+        if (lastAdminRequest && now - lastAdminRequest < 3000) {
+          return res.status(429).json({
+            error: "Please wait before making another credits change.",
+          });
+        }
+
+        // Create request signature to detect duplicates
+        const requestSignature = `credits-${userId}-${amount}-${operation}`;
+        const lastRequest = recentGloryRequests.get(requestSignature);
+
+        // If same request within 5 seconds, reject as duplicate
+        if (lastRequest && now - lastRequest < 5000) {
+          return res.status(429).json({
+            error: "Duplicate request detected. Please wait before trying again.",
+          });
+        }
+
+        // Store this request and admin rate limit
+        recentGloryRequests.set(requestSignature, now);
+        recentGloryRequests.set(adminRateLimitKey, now);
+
+        // Cleanup old entries
+        const keysToDelete: string[] = [];
+        recentGloryRequests.forEach((timestamp, key) => {
+          if (now - timestamp > 10000) {
+            keysToDelete.push(key);
+          }
+        });
+        keysToDelete.forEach((key) => recentGloryRequests.delete(key));
+
+        // Validate amount
+        if (typeof amount !== "number" || amount < 0 || isNaN(amount)) {
+          return res.status(400).json({ 
+            error: "Valid amount (>= 0) is required" 
+          });
+        }
+
+        // Validate operation
+        if (!["set", "add", "subtract"].includes(operation)) {
+          return res.status(400).json({
+            error: "Invalid operation. Must be 'set', 'add', or 'subtract'",
+          });
+        }
+
+        // Get current user
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        const currentCredits = user.imageCredits;
+        let newCredits: number;
+        let delta: number;
+        let operationReason: string;
+
+        switch (operation) {
+          case "set":
+            newCredits = amount;
+            delta = amount - currentCredits;
+            operationReason = reason || `Admin set credits to ${amount}`;
+            break;
+          case "add":
+            newCredits = currentCredits + amount;
+            delta = amount;
+            operationReason = reason || `Admin added ${amount} credits`;
+            break;
+          case "subtract":
+            newCredits = Math.max(0, currentCredits - amount);
+            delta = -Math.min(amount, currentCredits);
+            operationReason = reason || `Admin subtracted ${Math.min(amount, currentCredits)} credits`;
+            break;
+          default:
+            return res.status(400).json({ error: "Invalid operation" });
+        }
+
+        // Update user credits
+        const updatedUser = await storage.updateUser(userId, {
+          imageCredits: newCredits,
+          updatedAt: new Date(),
+        });
+
+        if (!updatedUser) {
+          return res.status(500).json({ 
+            error: "Failed to update user credits" 
+          });
+        }
+
+        // Log admin action
+        await storage.createAuditLog({
+          actorUserId: req.user!.id,
+          action: "UPDATE_USER_CREDITS",
+          meta: {
+            targetUserId: userId,
+            operation,
+            amount,
+            oldCredits: currentCredits,
+            newCredits: updatedUser.imageCredits,
+            delta,
+            reason: operationReason,
+          },
+        });
+
+        res.json({
+          success: true,
+          newCredits: updatedUser.imageCredits,
+          delta,
+          operation,
+          reason: operationReason,
+          message: `Image credits ${operation === "set" ? "set to" : operation === "add" ? "increased by" : "decreased by"} ${Math.abs(delta)}`,
+          userData: {
+            id: updatedUser.id,
+            username: updatedUser.username,
+            imageCredits: updatedUser.imageCredits,
+          },
+        });
+      } catch (error) {
+        console.error("Error updating user credits:", error);
+        res.status(500).json({ 
+          error: "Failed to update user credits", 
+          details: error 
+        });
       }
     },
   );
@@ -1091,49 +1199,6 @@ export function registerAdminRoutes(app: Express): void {
     },
   );
 
-  // Admin pricing management
-  app.get(
-    "/api/admin/settings/pricing",
-    authenticateToken,
-    requireAdmin,
-    async (req: AuthRequest, res) => {
-      try {
-        const allPricing = await storage.getAllPricingSettings();
-        const pricingObject: Record<string, number> = {};
-        allPricing.forEach((value, key) => {
-          pricingObject[key] = value;
-        });
-        res.json(pricingObject);
-      } catch (error) {
-        console.error("Error fetching pricing settings:", error);
-        res.status(500).json({ error: "Failed to fetch pricing settings" });
-      }
-    },
-  );
-
-  app.put(
-    "/api/admin/settings/pricing/:key",
-    authenticateToken,
-    requireAdmin,
-    async (req: AuthRequest, res) => {
-      try {
-        const { key } = req.params;
-        const { value } = z
-          .object({ value: z.number().min(0) })
-          .parse(req.body);
-
-        await storage.updatePricingSetting(key, value);
-        res.json({ message: "Pricing updated successfully", key, value });
-      } catch (error) {
-        console.error("Error updating pricing:", error);
-        if (error instanceof z.ZodError) {
-          return res
-            .status(400)
-            .json({ error: "Invalid value", details: error.errors });
-        }
-        res.status(500).json({ error: "Failed to update pricing" });
-      }
-    },
-  );
+  // Note: Pricing endpoints moved to settings.routes.ts
 }
 

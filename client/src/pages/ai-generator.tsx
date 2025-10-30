@@ -303,6 +303,44 @@ function AiGeneratorPageContent() {
   const [imageVersions, setImageVersions] = useState<string[]>([]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
   
+  // Merge fetched versions with local state, preserve chronological order (oldest -> newest) and dedupe by URL
+  const mergeVersionUrls = (existingUrls: string[], fetchedVersions: any[]) => {
+    // Build fetched array of { url, createdAt } if available
+    const fetched = (fetchedVersions || []).map((v: any) => ({
+      url: v.url,
+      createdAt: v.createdAt || v.created_at || null,
+    }));
+
+    // If timestamps present, sort fetched by createdAt ascending
+    const hasTimestamps = fetched.some((f: any) => f.createdAt);
+    if (hasTimestamps) {
+      fetched.sort((a: any, b: any) => {
+        if (!a.createdAt) return -1;
+        if (!b.createdAt) return 1;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+    }
+
+    // Maintain order: existing (assumed oldest->newest) then fetched; keep first occurrence of each URL
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const u of existingUrls || []) {
+      if (!u) continue;
+      if (!seen.has(u)) {
+        seen.add(u);
+        out.push(u);
+      }
+    }
+    for (const f of fetched) {
+      if (!f.url) continue;
+      if (!seen.has(f.url)) {
+        seen.add(f.url);
+        out.push(f.url);
+      }
+    }
+    return out;
+  };
+  
   // Canvas zoom state
   const [zoomLevel, setZoomLevel] = useState<'fit' | '100' | '150' | '200'>('fit');
   
@@ -461,16 +499,58 @@ function AiGeneratorPageContent() {
       
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setEditJobId(data.jobId);
       setImageId(data.imageId);
+      
+      // Optimistically update credit balance
+      const oldData = queryClient.getQueryData<any>(["/api/me"]);
+      if (oldData) {
+        queryClient.setQueryData(["/api/me"], {
+          ...oldData,
+          imageCredits: oldData.imageCredits - data.creditsDeducted
+        });
+      }
+      
+      // КРИТИЧНО: Fetch versions веднага след получаване на imageId
+      // Това ще зареди original version ПРЕДИ edit-ът да завърши
+      if (data.imageId) {
+        try {
+          const versionsResponse = await fetch(`/api/images/${data.imageId}/versions`, {
+            credentials: "include",
+          });
+          if (versionsResponse.ok) {
+            const { versions } = await versionsResponse.json();
+            const versionUrls = versions.map((v: any) => v.url);
+            if (versionUrls.length > 0) {
+              // Покажи ВСИЧКИ версии и по подразбиране покажи original (първата),
+              // за да може потребителят да вижда историята преди новото копие да е готово.
+              setImageVersions(versionUrls);
+              setCurrentVersionIndex(0); // show original so user can choose
+              historyIndexRef.current = 0;
+              setCurrentImage(versionUrls[0]);
+              console.log(`[ProEdit] Loaded ${versionUrls.length} initial versions (including original)`);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch initial versions:", err);
+        }
+      }
+      
       toast({
         title: "Processing started",
         description: `Your image is being enhanced. Credits used: ${data.creditsDeducted}`
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
       setProcessingPreset(null);
+      
+      // Rollback optimistic update
+      const oldData = queryClient.getQueryData<any>(["/api/me"]);
+      if (oldData) {
+        queryClient.setQueryData(["/api/me"], oldData);
+      }
+
       toast({
         title: "Edit Failed",
         description: error.message,
@@ -620,16 +700,46 @@ function AiGeneratorPageContent() {
   // Handle Pro Edit job completion
   useEffect(() => {
     if (jobStatus?.status === 'succeeded' && jobStatus.outputUrl) {
-      const outputUrl = jobStatus.outputUrl;
-      setCurrentImage(outputUrl);
-      setImageVersions(prev => {
-        const newVersions = [...prev, outputUrl];
-        setCurrentVersionIndex(newVersions.length - 1);
-        historyIndexRef.current = newVersions.length - 1;
-        return newVersions;
-      });
+      // САМО refetch от API, без да манипулираме local state
+      // API е source of truth за versions
+      const refetchVersions = async () => {
+        if (imageId) {
+          try {
+            const versionsResponse = await fetch(`/api/images/${imageId}/versions`, {
+              credentials: "include",
+            });
+            if (versionsResponse.ok) {
+              const { versions } = await versionsResponse.json();
+              const versionUrls = versions.map((v: any) => v.url);
+              
+              // Set versions from DB (source of truth)
+              setImageVersions(versionUrls);
+              setCurrentVersionIndex(versionUrls.length - 1);
+              historyIndexRef.current = versionUrls.length - 1;
+              
+              // Show latest version (edited one)
+              const latestVersionUrl = versionUrls[versionUrls.length - 1];
+              setCurrentImage(latestVersionUrl);
+              
+              console.log(`[ProEdit] Loaded ${versionUrls.length} versions after edit completion`);
+            }
+          } catch (err) {
+            console.error("Failed to refetch versions:", err);
+            // Fallback: show output URL
+            setCurrentImage(jobStatus.outputUrl);
+          }
+        } else {
+          // No imageId? Just show the output
+          setCurrentImage(jobStatus.outputUrl);
+        }
+      };
+      
+      refetchVersions();
+      
       setProcessingPreset(null);
       setEditJobId(null);
+      // Sync credits with server after job completion
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       toast({ 
         title: "Edit Complete!",
         description: "Your image has been processed successfully."
@@ -637,13 +747,15 @@ function AiGeneratorPageContent() {
     } else if (jobStatus?.status === 'failed') {
       setProcessingPreset(null);
       setEditJobId(null);
+      // Ensure credits reflect any refund logic on server
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
       toast({ 
         title: "Edit Failed", 
         description: jobStatus.error || "Processing failed. Please try again.",
         variant: "destructive" 
       });
     }
-  }, [jobStatus, toast]);
+  }, [jobStatus, imageId, toast]);
 
   const handleOpenSubmitWizard = (generation: AiGeneration) => {
     if (!generation.cloudinaryPublicId) {
@@ -666,7 +778,6 @@ function AiGeneratorPageContent() {
   };
 
   const handleSelectGeneration = async (gen: AiGeneration) => {
-    setCurrentImage(gen.imageUrl);
     setCurrentGenerationId(gen.id);
     setProcessingPreset(null);
     setEditJobId(null);
@@ -690,39 +801,54 @@ function AiGeneratorPageContent() {
           
           if (versionsResponse.ok) {
             const { versions } = await versionsResponse.json();
-            const versionUrls = versions.map((v: any) => v.url);
-            setImageVersions(versionUrls.length > 0 ? versionUrls : [gen.imageUrl]);
-            setCurrentVersionIndex(versionUrls.length > 0 ? versionUrls.length - 1 : 0);
             
-            // Only switch to Versions tab if there are actual versions (more than just the original)
-            if (versionUrls.length > 0) {
+            if (versions.length > 0) {
+              const versionUrls = versions.map((v: any) => v.url);
+              
+              // Show LATEST version instead of original
+              const latestVersionUrl = versionUrls[versionUrls.length - 1];
+              setCurrentImage(latestVersionUrl);
+              
+              setImageVersions(versionUrls);
+              setCurrentVersionIndex(versionUrls.length - 1);
               setCurrentTab("versions");
-            } else {
-              setCurrentTab("history");
-            }
           } else {
-            setImageVersions([gen.imageUrl]);
+            // Fallback: use editedImageUrl if exists, otherwise original
+            setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+            setImageVersions([gen.editedImageUrl || gen.imageUrl]);
             setCurrentVersionIndex(0);
             setCurrentTab("history");
           }
         } else {
-          // No imageId yet, start fresh
-          setImageId(null);
-          setImageVersions([gen.imageUrl]);
+          // Fallback: use editedImageUrl if exists, otherwise original
+          setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+          setImageVersions([gen.editedImageUrl || gen.imageUrl]);
           setCurrentVersionIndex(0);
           setCurrentTab("history");
         }
       } else {
-        setImageVersions([gen.imageUrl]);
+        // No imageId yet, start fresh - use editedImageUrl if exists
+        setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+        setImageId(null);
+        setImageVersions([gen.editedImageUrl || gen.imageUrl]);
         setCurrentVersionIndex(0);
         setCurrentTab("history");
       }
-    } catch (error) {
-      console.error("Error fetching versions:", error);
-      setImageVersions([gen.imageUrl]);
+    } else {
+      // Fallback: use editedImageUrl if exists, otherwise original
+      setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+      setImageVersions([gen.editedImageUrl || gen.imageUrl]);
       setCurrentVersionIndex(0);
       setCurrentTab("history");
     }
+  } catch (error) {
+    console.error("Error fetching versions:", error);
+    // Fallback: use editedImageUrl if exists, otherwise original
+    setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+    setImageVersions([gen.editedImageUrl || gen.imageUrl]);
+    setCurrentVersionIndex(0);
+    setCurrentTab("history");
+  }
   };
 
   const handleGenerate = async () => {
@@ -926,33 +1052,43 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'clean', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5"
+                    className="gap-1.5 flex-col py-1.5"
                     title="Clean & Denoise"
                   >
-                    {processingPreset === 'clean' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      {processingPreset === 'clean' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      Clean
+                    </div>
+                    {pricing?.clean && pricing.clean > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{pricing.clean} cr</span>
                     )}
-                    Clean
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setProcessingPreset('upscale4x');
-                      startEditMutation.mutate({ preset: 'upscale4x', imageUrl: currentImage! });
+                      setProcessingPreset('upscale');
+                      startEditMutation.mutate({ preset: 'upscale', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5"
+                    className="gap-1.5 flex-col py-1.5"
                     title="Upscale 4×"
                   >
-                    {processingPreset === 'upscale4x' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Maximize2 className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      {processingPreset === 'upscale' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Maximize2 className="h-3.5 w-3.5" />
+                      )}
+                      Upscale
+                    </div>
+                    {pricing?.upscale && pricing.upscale > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{pricing.upscale} cr</span>
                     )}
-                    Upscale
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
@@ -962,15 +1098,20 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'portrait_pro', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5"
+                    className="gap-1.5 flex-col py-1.5"
                     title="Portrait Pro"
                   >
-                    {processingPreset === 'portrait_pro' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <User className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      {processingPreset === 'portrait_pro' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <User className="h-3.5 w-3.5" />
+                      )}
+                      Portrait
+                    </div>
+                    {pricing?.portrait_pro && pricing.portrait_pro > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{pricing.portrait_pro} cr</span>
                     )}
-                    Portrait
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
@@ -980,15 +1121,20 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'enhance', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5"
+                    className="gap-1.5 flex-col py-1.5"
                     title="Smart Enhance"
                   >
-                    {processingPreset === 'enhance' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      {processingPreset === 'enhance' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-3.5 w-3.5" />
+                      )}
+                      Enhance
+                    </div>
+                    {pricing?.enhance && pricing.enhance > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{pricing.enhance} cr</span>
                     )}
-                    Enhance
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
@@ -998,15 +1144,20 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'bg_remove', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5"
+                    className="gap-1.5 flex-col py-1.5"
                     title="Remove Background"
                   >
-                    {processingPreset === 'bg_remove' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      {processingPreset === 'bg_remove' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                      Remove BG
+                    </div>
+                    {pricing?.bg_remove && pricing.bg_remove > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{pricing.bg_remove} cr</span>
                     )}
-                    Remove BG
                   </GlassButton>
                   <GlassButton
                     variant="ghost"
@@ -1016,15 +1167,20 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'relight', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5"
+                    className="gap-1.5 flex-col py-1.5"
                     title="Relight Scene"
                   >
-                    {processingPreset === 'relight' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      {processingPreset === 'relight' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      Relight
+                    </div>
+                    {pricing?.relight && pricing.relight > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{pricing.relight} cr</span>
                     )}
-                    Relight
                   </GlassButton>
                 </div>
               )}
@@ -1042,7 +1198,6 @@ function AiGeneratorPageContent() {
             </div>
           </div>
         </div>
-      </div>
 
       <div className="w-full">
         {/* Mobile Vertical Scroll Layout (< lg) */}
@@ -1539,11 +1694,12 @@ function AiGeneratorPageContent() {
                                   <h4 className="text-lg font-semibold">Processing...</h4>
                                   <p className="text-sm text-muted-foreground">
                                     Applying {processingPreset === 'clean' ? 'Clean & Denoise' : 
-                                              processingPreset === 'upscale4x' ? 'Upscale 4×' :
+                                              processingPreset === 'upscale' ? 'Upscale 4×' :
                                               processingPreset === 'portrait_pro' ? 'Portrait Pro' :
                                               processingPreset === 'enhance' ? 'Smart Enhance' :
                                               processingPreset === 'bg_remove' ? 'Remove Background' :
-                                              'Relight Scene'}
+                                              processingPreset === 'relight' ? 'Relight Scene' :
+                                              'Unknown Effect'}
                                   </p>
                                 </div>
                               </div>
@@ -1667,27 +1823,31 @@ function AiGeneratorPageContent() {
                                   )}
                                   <span>Clean & Denoise</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">2 credits</span>
+                                {pricing?.clean && pricing.clean > 0 && (
+                                  <span className="text-xs text-muted-foreground">{pricing.clean} credits</span>
+                                )}
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
-                                setProcessingPreset('upscale4x');
-                                startEditMutation.mutate({ preset: 'upscale4x', imageUrl: currentImage! });
+                                setProcessingPreset('upscale');
+                                startEditMutation.mutate({ preset: 'upscale', imageUrl: currentImage! });
                               }}
                               disabled={processingPreset !== null}
                               data-testid="menu-item-upscale"
                             >
                               <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-2">
-                                  {processingPreset === 'upscale4x' ? (
+                                  {processingPreset === 'upscale' ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     <Maximize2 className="h-4 w-4" />
                                   )}
                                   <span>Upscale 4×</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">4 credits</span>
+                                {pricing?.upscale && pricing.upscale > 0 && (
+                                  <span className="text-xs text-muted-foreground">{pricing.upscale} credits</span>
+                                )}
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -1707,7 +1867,9 @@ function AiGeneratorPageContent() {
                                   )}
                                   <span>Portrait Pro</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">4 credits</span>
+                                {pricing?.portrait_pro && pricing.portrait_pro > 0 && (
+                                  <span className="text-xs text-muted-foreground">{pricing.portrait_pro} credits</span>
+                                )}
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -1727,7 +1889,9 @@ function AiGeneratorPageContent() {
                                   )}
                                   <span>Smart Enhance</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">3 credits</span>
+                                {pricing?.enhance && pricing.enhance > 0 && (
+                                  <span className="text-xs text-muted-foreground">{pricing.enhance} credits</span>
+                                )}
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -1747,7 +1911,9 @@ function AiGeneratorPageContent() {
                                   )}
                                   <span>Remove Background</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">2 credits</span>
+                                {pricing?.bg_remove && pricing.bg_remove > 0 && (
+                                  <span className="text-xs text-muted-foreground">{pricing.bg_remove} credits</span>
+                                )}
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -1767,7 +1933,9 @@ function AiGeneratorPageContent() {
                                   )}
                                   <span>Relight Scene</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">4 credits</span>
+                                {pricing?.relight && pricing.relight > 0 && (
+                                  <span className="text-xs text-muted-foreground">{pricing.relight} credits</span>
+                                )}
                               </div>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -1960,6 +2128,26 @@ function AiGeneratorPageContent() {
                                     <Download className="h-3 w-3" />
                                   )}
                                 </GlassButton>
+                                {imageVersions.length > 1 && (
+                                  <GlassButton
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full text-red-400 hover:text-red-300"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!confirm("Изтриване на тази версия?")) return;
+                                      
+                                      toast({
+                                        title: "Скоро",
+                                        description: "Delete функцията скоро ще бъде добавена",
+                                      });
+                                    }}
+                                    title="Delete version"
+                                    data-testid={`button-delete-version-${index}`}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </GlassButton>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -2133,7 +2321,8 @@ function AiGeneratorPageContent() {
                                           processingPreset === 'portrait_pro' ? 'Portrait Pro' :
                                           processingPreset === 'enhance' ? 'Smart Enhance' :
                                           processingPreset === 'bg_remove' ? 'Remove Background' :
-                                          'Relight Scene'}
+                                          processingPreset === 'relight' ? 'Relight Scene' :
+                                          'Unknown Effect'}
                               </p>
                             </div>
                           </div>
@@ -2827,6 +3016,7 @@ function AiGeneratorPageContent() {
         userCredits={userCredits}
         currentEditedUrl={lightboxGenerationId === currentGenerationId ? currentImage : null}
       />
+    </div>
     </div>
   );
 }

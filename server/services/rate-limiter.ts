@@ -6,7 +6,7 @@ interface RateLimitEntry {
   windowStart: number;
 }
 
-class RateLimiter {
+export class RateLimiter {
   private limits = new Map<string, RateLimitEntry>();
   private readonly windowMs: number;
   private readonly maxRequests: number;

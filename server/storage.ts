@@ -65,7 +65,7 @@ import {
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { eq, and, desc, sql, count, countDistinct, sum, inArray, gte } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, countDistinct, sum, inArray, gte } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -1073,12 +1073,19 @@ export class DbStorage implements IStorage {
     const existingPricing = await db.query.pricingSettings.findFirst();
     if (!existingPricing) {
       const defaultPricing = [
+        // AI Generation models
         { key: "leonardo", value: 1 },
         { key: "nano-banana", value: 12 },
         { key: "flux-1.1-pro", value: 12 },
         { key: "sd-3.5-large", value: 20 },
         { key: "ideogram-v3", value: 27 },
-        { key: "upscale", value: 5 }
+        // Pro Edit presets (defaults aligned with replicate PRESET_CONFIG)
+        { key: "clean", value: 2 },
+        { key: "upscale", value: 4 },
+        { key: "portrait_pro", value: 4 },
+        { key: "enhance", value: 3 },
+        { key: "bg_remove", value: 2 },
+        { key: "relight", value: 4 },
       ];
 
       await db.insert(pricingSettings).values(defaultPricing);
@@ -2425,7 +2432,7 @@ export class DbStorage implements IStorage {
     return await db.select()
       .from(imageVersions)
       .where(eq(imageVersions.imageId, imageId))
-      .orderBy(desc(imageVersions.createdAt));
+      .orderBy(asc(imageVersions.createdAt));  // Oldest first (original → edits)
   }
 
   async getCurrentImageVersion(imageId: string): Promise<ImageVersion | undefined> {

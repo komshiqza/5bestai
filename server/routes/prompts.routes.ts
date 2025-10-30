@@ -140,8 +140,8 @@ export function registerPromptRoutes(app: Express): void {
           const { verifyUSDCTransaction } = await import("../solana.js");
           txResult = await verifyUSDCTransaction(signature, recipientAddress);
         } else if (currency === "SOL") {
-          const { verifySOLTransaction } = await import("../solana.js");
-          txResult = await verifySOLTransaction(signature, recipientAddress);
+        const { verifyTransaction } = await import("../solana.js");
+        txResult = await verifyTransaction(signature);
         } else {
           return res.status(400).json({ error: "Unsupported currency" });
         }
@@ -167,42 +167,18 @@ export function registerPromptRoutes(app: Express): void {
             .json({ error: "Payment recipient address mismatch" });
         }
 
-        // Record transaction
+        // Record transaction (this automatically credits the user balance)
         await storage.createGloryTransaction({
           userId,
-          delta: expectedAmount.toString(),
+          delta: expectedAmount,
           currency: currency,
           reason: `Received ${expectedAmount} ${currency} from Solana payment for prompt purchase`,
           txHash: signature,
           submissionId: submissionId,
         });
 
-        // Credit user balance based on currency
-        if (currency === "GLORY") {
-          const buyer = await storage.getUser(userId);
-          if (buyer) {
-            await storage.updateUser(userId, {
-              gloryBalance: buyer.gloryBalance + expectedAmount,
-              updatedAt: new Date(),
-            });
-          }
-        } else if (currency === "SOL") {
-          await db
-            .update(users)
-            .set({
-              solBalance: sql`${users.solBalance} + ${expectedAmount}`,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, userId));
-        } else if (currency === "USDC") {
-          await db
-            .update(users)
-            .set({
-              usdcBalance: sql`${users.usdcBalance} + ${expectedAmount}`,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, userId));
-        }
+        // Note: createGloryTransaction automatically updates user balance via updateUserBalance()
+        // No manual balance update needed here - removed to prevent double crediting
 
         // Now automatically purchase the prompt with the credited balance
         const purchase = await storage.purchasePrompt(userId, submissionId);

@@ -9,19 +9,12 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { SubmissionWithUser } from "@shared/schema";
 import { GlassButton } from "@/components/ui/glass-button";
-import { ProEditModal } from "@/components/pro-edit/ProEditModal";
-
 export default function MySubmissions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithUser | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Pro Edit modal state
-  const [proEditModalOpen, setProEditModalOpen] = useState(false);
-  const [proEditImageUrl, setProEditImageUrl] = useState<string>("");
-  const [proEditSubmissionId, setProEditSubmissionId] = useState<string | null>(null);
 
   // Handle browser back button and Escape key for lightbox modal
   useEffect(() => {
@@ -317,24 +310,7 @@ export default function MySubmissions() {
                         <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
                       </GlassButton>
                       
-                      {/* Edit (Pro Edit) - only for image submissions */}
-                      {submission.type === "image" && (
-                        <GlassButton 
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProEditImageUrl(submission.mediaUrl);
-                            setProEditSubmissionId(submission.id);
-                            setProEditModalOpen(true);
-                          }}
-                          title="Edit"
-                          data-testid={`button-edit-${submission.id}`}
-                        >
-                          <Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-purple-300" />
-                        </GlassButton>
-                      )}
+
                       
                       {/* Download button */}
                       <GlassButton 
@@ -512,13 +488,7 @@ export default function MySubmissions() {
         </div>
       )}
 
-      {/* Pro Edit Modal */}
-      <ProEditModal
-        open={proEditModalOpen}
-        onOpenChange={setProEditModalOpen}
-        imageUrl={proEditImageUrl}
-        submissionId={proEditSubmissionId || undefined}
-      />
+
     </div>
   );
 }
