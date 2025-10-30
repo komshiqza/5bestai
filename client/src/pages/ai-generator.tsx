@@ -301,6 +301,7 @@ function AiGeneratorPageContent() {
   const [editJobId, setEditJobId] = useState<string | null>(null);
   const [imageId, setImageId] = useState<string | null>(null);
   const [imageVersions, setImageVersions] = useState<string[]>([]);
+  const [imageVersionMeta, setImageVersionMeta] = useState<any[]>([]);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(0);
   
   // Merge fetched versions with local state, preserve chronological order (oldest -> newest) and dedupe by URL
@@ -478,6 +479,44 @@ function AiGeneratorPageContent() {
     },
   });
 
+  // Delete a single image version
+  const deleteVersionMutation = useMutation({
+    mutationFn: async ({ imageId, versionId }: { imageId: string; versionId: string }) => {
+      const res = await fetch(`/api/images/${imageId}/versions/${versionId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to delete version");
+      }
+      return res.json();
+    },
+    onMutate: async ({ versionId }: { imageId: string; versionId: string }) => {
+      // Optimistic update handled by caller via index removal; nothing mandatory here
+      return {};
+    },
+    onError: (err: any) => {
+      toast({ title: "Delete Failed", description: err.message || "Could not delete version", variant: "destructive" });
+    },
+    onSuccess: async () => {
+      // Refresh versions for this imageId
+      if (imageId) {
+        try {
+          const vres = await fetch(`/api/images/${imageId}/versions`, { credentials: 'include' });
+          if (vres.ok) {
+            const { versions } = await vres.json();
+            setImageVersionMeta(versions);
+            setImageVersions(versions.map((v: any) => v.url));
+            setCurrentVersionIndex((idx) => Math.min(idx, Math.max(0, versions.length - 1)));
+          }
+        } catch (e) {}
+      }
+
+      toast({ title: "Deleted", description: "Version removed." });
+    }
+  });
+
   // Pro Edit mutations
   const startEditMutation = useMutation({
     mutationFn: async ({ preset, imageUrl }: { preset: string; imageUrl: string }) => {
@@ -525,6 +564,7 @@ function AiGeneratorPageContent() {
             if (versionUrls.length > 0) {
               // Покажи ВСИЧКИ версии и по подразбиране покажи original (първата),
               // за да може потребителят да вижда историята преди новото копие да е готово.
+              setImageVersionMeta(versions);
               setImageVersions(versionUrls);
               setCurrentVersionIndex(0); // show original so user can choose
               historyIndexRef.current = 0;
@@ -709,19 +749,20 @@ function AiGeneratorPageContent() {
               credentials: "include",
             });
             if (versionsResponse.ok) {
-              const { versions } = await versionsResponse.json();
-              const versionUrls = versions.map((v: any) => v.url);
-              
-              // Set versions from DB (source of truth)
-              setImageVersions(versionUrls);
-              setCurrentVersionIndex(versionUrls.length - 1);
-              historyIndexRef.current = versionUrls.length - 1;
-              
-              // Show latest version (edited one)
-              const latestVersionUrl = versionUrls[versionUrls.length - 1];
-              setCurrentImage(latestVersionUrl);
-              
-              console.log(`[ProEdit] Loaded ${versionUrls.length} versions after edit completion`);
+                const { versions } = await versionsResponse.json();
+                const versionUrls = versions.map((v: any) => v.url);
+
+                // Set versions from DB (source of truth)
+                setImageVersionMeta(versions);
+                setImageVersions(versionUrls);
+                setCurrentVersionIndex(versionUrls.length - 1);
+                historyIndexRef.current = versionUrls.length - 1;
+
+                // Show latest version (edited one)
+                const latestVersionUrl = versionUrls[versionUrls.length - 1];
+                setCurrentImage(latestVersionUrl);
+
+                console.log(`[ProEdit] Loaded ${versionUrls.length} versions after edit completion`);
             }
           } catch (err) {
             console.error("Failed to refetch versions:", err);
@@ -804,17 +845,19 @@ function AiGeneratorPageContent() {
             
             if (versions.length > 0) {
               const versionUrls = versions.map((v: any) => v.url);
-              
+
               // Show LATEST version instead of original
               const latestVersionUrl = versionUrls[versionUrls.length - 1];
               setCurrentImage(latestVersionUrl);
-              
+
+              setImageVersionMeta(versions);
               setImageVersions(versionUrls);
               setCurrentVersionIndex(versionUrls.length - 1);
               setCurrentTab("versions");
           } else {
             // Fallback: use editedImageUrl if exists, otherwise original
             setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+            setImageVersionMeta([{ id: null, url: gen.editedImageUrl || gen.imageUrl }]);
             setImageVersions([gen.editedImageUrl || gen.imageUrl]);
             setCurrentVersionIndex(0);
             setCurrentTab("history");
@@ -822,21 +865,24 @@ function AiGeneratorPageContent() {
         } else {
           // Fallback: use editedImageUrl if exists, otherwise original
           setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+          setImageVersionMeta([{ id: null, url: gen.editedImageUrl || gen.imageUrl }]);
           setImageVersions([gen.editedImageUrl || gen.imageUrl]);
           setCurrentVersionIndex(0);
           setCurrentTab("history");
         }
-      } else {
-        // No imageId yet, start fresh - use editedImageUrl if exists
-        setCurrentImage(gen.editedImageUrl || gen.imageUrl);
-        setImageId(null);
-        setImageVersions([gen.editedImageUrl || gen.imageUrl]);
-        setCurrentVersionIndex(0);
-        setCurrentTab("history");
+        } else {
+          // No imageId yet, start fresh - use editedImageUrl if exists
+          setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+          setImageId(null);
+          setImageVersionMeta([{ id: null, url: gen.editedImageUrl || gen.imageUrl }]);
+          setImageVersions([gen.editedImageUrl || gen.imageUrl]);
+          setCurrentVersionIndex(0);
+          setCurrentTab("history");
       }
     } else {
       // Fallback: use editedImageUrl if exists, otherwise original
       setCurrentImage(gen.editedImageUrl || gen.imageUrl);
+      setImageVersionMeta([{ id: null, url: gen.editedImageUrl || gen.imageUrl }]);
       setImageVersions([gen.editedImageUrl || gen.imageUrl]);
       setCurrentVersionIndex(0);
       setCurrentTab("history");
@@ -2136,11 +2182,37 @@ function AiGeneratorPageContent() {
                                     onClick={async (e) => {
                                       e.stopPropagation();
                                       if (!confirm("Изтриване на тази версия?")) return;
-                                      
-                                      toast({
-                                        title: "Скоро",
-                                        description: "Delete функцията скоро ще бъде добавена",
-                                      });
+
+                                      if (!imageId) {
+                                        toast({ title: "Невъзможно", description: "Не е налично imageId за тази версия", variant: "destructive" });
+                                        return;
+                                      }
+
+                                      const meta = imageVersionMeta[index];
+                                      if (!meta || !meta.id) {
+                                        toast({ title: "Невъзможно", description: "Тази версия не може да бъде изтрита", variant: "destructive" });
+                                        return;
+                                      }
+
+                                      // Optimistic UI update
+                                      const prevMeta = [...imageVersionMeta];
+                                      const prevUrls = [...imageVersions];
+                                      const newMeta = prevMeta.filter((_, i) => i !== index);
+                                      const newUrls = prevUrls.filter((_, i) => i !== index);
+                                      setImageVersionMeta(newMeta);
+                                      setImageVersions(newUrls);
+                                      if (currentVersionIndex >= newUrls.length) {
+                                        setCurrentVersionIndex(Math.max(0, newUrls.length - 1));
+                                      }
+
+                                      try {
+                                        await deleteVersionMutation.mutateAsync({ imageId, versionId: meta.id });
+                                      } catch (err: any) {
+                                        // Rollback on error
+                                        setImageVersionMeta(prevMeta);
+                                        setImageVersions(prevUrls);
+                                        toast({ title: "Delete failed", description: err?.message || "Could not delete version", variant: "destructive" });
+                                      }
                                     }}
                                     title="Delete version"
                                     data-testid={`button-delete-version-${index}`}
@@ -2950,11 +3022,37 @@ function AiGeneratorPageContent() {
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   if (!confirm("Изтриване на тази версия?")) return;
-                                  
-                                  toast({
-                                    title: "Скоро",
-                                    description: "Delete функцията скоро ще бъде добавена",
-                                  });
+
+                                  if (!imageId) {
+                                    toast({ title: "Невъзможно", description: "Не е налично imageId за тази версия", variant: "destructive" });
+                                    return;
+                                  }
+
+                                  const meta = imageVersionMeta[index];
+                                  if (!meta || !meta.id) {
+                                    toast({ title: "Невъзможно", description: "Тази версия не може да бъде изтрита", variant: "destructive" });
+                                    return;
+                                  }
+
+                                  // Optimistic UI update
+                                  const prevMeta = [...imageVersionMeta];
+                                  const prevUrls = [...imageVersions];
+                                  const newMeta = prevMeta.filter((_, i) => i !== index);
+                                  const newUrls = prevUrls.filter((_, i) => i !== index);
+                                  setImageVersionMeta(newMeta);
+                                  setImageVersions(newUrls);
+                                  if (currentVersionIndex >= newUrls.length) {
+                                    setCurrentVersionIndex(Math.max(0, newUrls.length - 1));
+                                  }
+
+                                  try {
+                                    await deleteVersionMutation.mutateAsync({ imageId, versionId: meta.id });
+                                  } catch (err: any) {
+                                    // Rollback on error
+                                    setImageVersionMeta(prevMeta);
+                                    setImageVersions(prevUrls);
+                                    toast({ title: "Delete failed", description: err?.message || "Could not delete version", variant: "destructive" });
+                                  }
                                 }}
                                 title="Delete version"
                                 data-testid={`button-delete-version-${index}`}

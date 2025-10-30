@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { db } from "../db";
 import { images, editJobs, imageVersions } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { storage } from "../storage";
 import {
   authenticateToken,
@@ -9,7 +9,7 @@ import {
 } from "../middleware/auth";
 import { upload, uploadFile } from "../services/file-upload";
 import * as replicate from "../replicate";
-import { uploadImageToSupabase } from "../supabase";
+import { uploadImageToSupabase, supabaseAdmin } from "../supabase";
 
 /**
  * Pro Edit and Canvas Routes
@@ -49,6 +49,100 @@ export function registerProEditRoutes(app: Express): void {
             error instanceof Error
               ? error.message
               : "Failed to save canvas version",
+        });
+      }
+    },
+  );
+
+  // DELETE /api/images/:imageId/versions/:versionId - Delete a single image version
+  app.delete(
+    "/api/images/:imageId/versions/:versionId",
+    authenticateToken,
+    async (req: AuthRequest, res) => {
+      try {
+        const userId = req.user!.id;
+        const { imageId, versionId } = req.params;
+
+        // Load image and verify ownership
+        const image = await storage.getImage(imageId);
+        if (!image) return res.status(404).json({ error: "Image not found" });
+        if (image.userId !== userId && req.user!.role !== "admin") {
+          return res.status(403).json({ error: "Access denied" });
+        }
+
+        // Load version
+        const version = await storage.getImageVersion(versionId);
+        if (!version) return res.status(404).json({ error: "Version not found" });
+        if (version.imageId !== imageId) {
+          return res.status(400).json({ error: "Version does not belong to specified image" });
+        }
+
+        // Prevent deleting a version that is referenced by running/queued edit jobs
+        const referencingJobs = await db.select().from(editJobs).where(
+          or(
+            eq(editJobs.inputVersionId, versionId),
+            eq(editJobs.outputVersionId, versionId),
+          ),
+        );
+
+        if (referencingJobs && referencingJobs.length > 0) {
+          const blocking = referencingJobs.find((j: any) => j.status === 'queued' || j.status === 'running');
+          if (blocking) {
+            return res.status(400).json({ error: 'Version is used by an in-progress edit job and cannot be deleted' });
+          }
+        }
+
+        // Attempt to delete the underlying storage object if it's in Supabase
+        try {
+          if (version.url && version.url.includes('supabase.co')) {
+            const urlParts = version.url.split('/');
+            const publicIdx = urlParts.indexOf('public');
+            if (publicIdx !== -1 && urlParts.length > publicIdx + 2) {
+              const bucketName = urlParts[publicIdx + 1];
+              const filePath = urlParts.slice(publicIdx + 2).join('/');
+              try {
+                await supabaseAdmin.storage.from(bucketName).remove([filePath]);
+                console.log(`[ProEdit] Deleted Supabase file: ${bucketName}/${filePath}`);
+              } catch (supErr) {
+                console.warn(`[ProEdit] Supabase deletion failed for ${version.url}:`, supErr);
+              }
+            }
+          }
+        } catch (storageErr) {
+          console.warn('[ProEdit] Failed to cleanup storage for version:', storageErr);
+        }
+
+        // Delete any edit_jobs that reference this version (input or output)
+        await db.delete(editJobs).where(
+          or(
+            eq(editJobs.inputVersionId, versionId),
+            eq(editJobs.outputVersionId, versionId),
+          ),
+        );
+
+        // Delete the version row
+        await db.delete(imageVersions).where(eq(imageVersions.id, versionId));
+
+        // Recompute current version: pick newest remaining version if any
+        const remaining = await storage.getImageVersionsByImageId(imageId);
+        if (remaining.length > 0) {
+          // Choose latest (last in ascending createdAt list)
+          const latest = remaining[remaining.length - 1];
+
+          // Unset all current flags then set the chosen one
+          await db.update(imageVersions).set({ isCurrent: false }).where(eq(imageVersions.imageId, imageId));
+          await db.update(imageVersions).set({ isCurrent: true }).where(eq(imageVersions.id, latest.id));
+          await storage.updateImage(imageId, { currentVersionId: latest.id });
+        } else {
+          // No versions remain - clear currentVersionId
+          await storage.updateImage(imageId, { currentVersionId: null });
+        }
+
+        res.json({ success: true, remainingVersions: remaining });
+      } catch (error) {
+        console.error('[ProEdit] Error deleting image version:', error);
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'Failed to delete version',
         });
       }
     },
