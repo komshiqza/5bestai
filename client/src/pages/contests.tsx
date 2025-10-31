@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Trophy, Search, Filter, Calendar, Users } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatPrizeAmount } from "@/lib/utils";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
@@ -43,6 +43,22 @@ function ContestsContent() {
 
   const statusCounts = getStatusCounts();
   const { isCollapsed } = useSidebar();
+
+  // Compute total prizes split by currency across all contests
+  const prizeTotals = useMemo(() => {
+    return (contests as any[]).reduce(
+      (acc, contest: any) => {
+        const amount = Number(contest.prizeGlory) || 0;
+        if (amount <= 0) return acc;
+        const currency = (contest.config && contest.config.currency) || "GLORY";
+        if (currency === "SOL") acc.sol += amount;
+        else if (currency === "USDC") acc.usdc += amount;
+        else acc.glory += amount;
+        return acc;
+      },
+      { sol: 0, usdc: 0, glory: 0 }
+    );
+  }, [contests]);
 
   if (isLoading) {
     return (
@@ -162,10 +178,35 @@ function ContestsContent() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-12">
           <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-total-prizes">
             <Trophy className="text-primary mx-auto mb-3" size={32} />
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {formatPrizeAmount(contests.reduce((total: number, contest: any) => total + (Number(contest.prizeGlory) || 0), 0))}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">$GLORY in Prizes</p>
+            <div className="space-y-1">
+              {prizeTotals.sol > 0 && (
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {formatPrizeAmount(prizeTotals.sol)}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">SOL in Prizes</p>
+                </div>
+              )}
+              {prizeTotals.usdc > 0 && (
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {formatPrizeAmount(prizeTotals.usdc)}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">USDC in Prizes</p>
+                </div>
+              )}
+              {prizeTotals.glory > 0 && (
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {formatPrizeAmount(prizeTotals.glory)}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">GLORY in Prizes</p>
+                </div>
+              )}
+              {prizeTotals.sol === 0 && prizeTotals.usdc === 0 && prizeTotals.glory === 0 && (
+                <p className="text-gray-600 dark:text-gray-400">No prizes configured</p>
+              )}
+            </div>
           </div>
           <div className="bg-background-light dark:bg-gray-900/40 rounded-xl p-6 text-center border border-gray-200 dark:border-gray-800" data-testid="stat-active-contests">
             <Calendar className="text-primary mx-auto mb-3" size={32} />

@@ -1,10 +1,13 @@
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Heart, ArrowLeft, Share2, Trophy, User, Sparkles } from "lucide-react";
+import { Heart, ArrowLeft, Share2, Trophy, User, Sparkles, Tag, MessageSquare, ShoppingCart, Copy, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { GlassButton } from "@/components/GlassButton";
+import { PromptPaymentModal } from "@/components/PromptPaymentModal";
+import { formatPrizeAmount } from "@/lib/utils";
 export default function SubmissionDetailPage() {
   const [match, params] = useRoute("/submission/:id");
   const submissionId = params?.id || "";
@@ -24,6 +27,54 @@ export default function SubmissionDetailPage() {
       return response.json();
     }
   });
+
+  // Deep-link purchase success detection (e.g., wallet redirects back with params)
+  // Supports: ?purchased=1, ?purchase=success, or ?tx=<signature>
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const purchased = sp.get("purchased") === "1" || sp.get("purchase") === "success";
+    const hasTx = !!sp.get("tx");
+    if (purchased || hasTx) {
+      toast({
+        title: "Prompt Purchased!",
+        description: "Your payment has been processed and the prompt is now visible.",
+      });
+      // Clean the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Refresh submission to reflect unlocked prompt
+      queryClient.invalidateQueries({ queryKey: ["/api/submissions", submissionId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/purchased/submissions"] });
+    }
+  }, [submissionId, queryClient, toast]);
+
+  // Purchased prompts (global) - used to determine if prompt is unlocked
+  const { data: purchasedSubmissions = [] } = useQuery({
+    queryKey: ["/api/prompts/purchased/submissions"],
+    enabled: !!user && !!submission?.promptForSale,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const response = await fetch("/api/prompts/purchased/submissions", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch purchased prompts");
+      return response.json();
+    }
+  });
+
+  const isCreator = useMemo(() => {
+    if (!user || !submission) return false;
+    return user.id === submission.userId;
+  }, [user, submission]);
+
+  const hasPurchasedGlobal = useMemo(() => {
+    if (!submission || !purchasedSubmissions) return false;
+    return purchasedSubmissions.some((p: any) => p.id === submission.id);
+  }, [purchasedSubmissions, submission]);
+
+  const hasPurchased = !!submission?.hasPurchasedPrompt || hasPurchasedGlobal;
+  const shouldBlur = !!submission?.promptForSale && !hasPurchased && !isCreator;
+
+  // Prompt purchase modal state
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Vote mutation
   const voteMutation = useMutation({
@@ -59,6 +110,18 @@ export default function SubmissionDetailPage() {
       return;
     }
     voteMutation.mutate();
+  };
+
+  const handleBuyPrompt = () => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please log in to purchase prompts",
+        variant: "destructive"
+      });
+      return;
+    }
+    setShowPromptModal(true);
   };
 
   const handleShare = () => {
@@ -119,18 +182,22 @@ export default function SubmissionDetailPage() {
         {/* Back button */}
         <div className="mb-6">
           {submission.contest ? (
-            <Link href={`/contest/${submission.contest.slug}`}>
-              <a className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors" data-testid="link-back-contest">
-                <ArrowLeft className="h-5 w-5" />
-                Back to {submission.contest.title}
-              </a>
+            <Link
+              href={`/contest/${submission.contest.slug}`}
+              className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+              data-testid="link-back-contest"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span>Back to {submission.contest.title}</span>
             </Link>
           ) : (
-            <Link href="/">
-              <a className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors" data-testid="link-back-home">
-                <ArrowLeft className="h-5 w-5" />
-                Back to home
-              </a>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+              data-testid="link-back-home"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span>Back to home</span>
             </Link>
           )}
         </div>
@@ -160,14 +227,163 @@ export default function SubmissionDetailPage() {
 
           {/* Info Section */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Title and Author */}
+            {/* Vote & Share at top, side-by-side like lightboxes */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleVote}
+                disabled={voteMutation.isPending || submission.hasVoted}
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg shadow-violet-500/20 ${submission.hasVoted ? 'opacity-80' : ''}`}
+                data-testid="button-vote"
+              >
+                <Heart className={`h-5 w-5 ${submission.hasVoted ? "fill-current" : ""}`} />
+                <span>
+                  {submission.hasVoted ? "Voted" : "Vote"} ({submission.voteCount})
+                </span>
+              </button>
+              <button
+                onClick={handleShare}
+                className="px-4 py-3 rounded-xl font-semibold bg-slate-700/50 text-white hover:bg-slate-600/50 transition-all duration-300 flex items-center justify-center gap-2 border border-white/10"
+                data-testid="button-share"
+              >
+                <Share2 className="h-5 w-5" />
+                <span>Share</span>
+              </button>
+            </div>
+
+            {/* Contest Entry next */}
+            {submission.contest && (
+              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Trophy className="h-5 w-5 text-yellow-400" />
+                  <p className="text-sm text-white/60">Contest Entry</p>
+                </div>
+                <Link
+                  href={`/contest/${submission.contest.slug}`}
+                  className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors"
+                  data-testid="link-contest"
+                >
+                  {submission.contest.title}
+                </Link>
+              </div>
+            )}
+
+            {/* Name (Title) and Description */}
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 text-glow" data-testid="text-title">
                 {submission.title}
               </h1>
-              
+
+              {submission.description && (
+                <p className="text-white/80 mt-4" data-testid="text-description">
+                  {submission.description}
+                </p>
+              )}
+            </div>
+
+            {/* Details: Category and AI Model side by side, then Tags */}
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {submission.category && (
+                  <div className="flex items-start gap-3" data-testid="info-category">
+                    <Tag className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-white/60 uppercase tracking-wide mb-1">Category</p>
+                      <p className="text-white font-medium">{submission.category}</p>
+                    </div>
+                  </div>
+                )}
+                {submission.aiModel && (
+                  <div className="flex items-start gap-3" data-testid="info-ai-model">
+                    <Sparkles className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-white/60 uppercase tracking-wide mb-1">AI Model</p>
+                      <p className="text-white font-medium">{submission.aiModel}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {submission.tags && submission.tags.length > 0 && (
+                <div>
+                  <p className="text-sm text-white/60 mb-2">Tags</p>
+                  <div className="flex flex-wrap gap-2">
+                    {submission.tags.map((tag: string, index: number) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-white/10 rounded-full text-sm text-white/80"
+                        data-testid={`tag-${index}`}
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Contest Info moved to top above */}
+
+            {/* Prompt content and Buy CTA */}
+              {submission.prompt && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-start gap-3">
+                    <MessageSquare className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-white/60 uppercase tracking-wide">Prompt</p>
+                        {!shouldBlur && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(submission.prompt || "");
+                                setCopied(true);
+                                toast({ title: "Copied!", description: "Prompt copied to clipboard." });
+                                setTimeout(() => setCopied(false), 1500);
+                              } catch (err) {
+                                toast({ title: "Copy failed", description: "Couldn't copy the prompt.", variant: "destructive" });
+                              }
+                            }}
+                            className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md border border-white/20 text-white/90 hover:bg-white/10 transition text-[11px]"
+                            title="Copy prompt"
+                            data-testid="button-copy-prompt"
+                          >
+                            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                            <span>{copied ? "Copied" : "Copy"}</span>
+                          </button>
+                        )}
+                      </div>
+                      <p
+                        className={`text-white text-sm leading-relaxed ${shouldBlur ? 'filter blur-sm select-none pointer-events-none' : ''}`}
+                        data-testid="text-prompt-content"
+                      >
+                        {submission.prompt}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Buy Prompt Button - only for sale, not purchased, not creator */}
+                  {submission.promptForSale && !hasPurchased && !isCreator && (
+                    <GlassButton
+                      onClick={handleBuyPrompt}
+                      className="w-full flex items-center justify-center gap-2"
+                      data-testid="button-buy-prompt"
+                    >
+                      <ShoppingCart className="h-5 w-5" />
+                      <span className="font-semibold">Buy Prompt</span>
+                      {submission.promptPrice && submission.promptCurrency && (
+                        <span className="ml-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-sm">
+                          {formatPrizeAmount(submission.promptPrice)} {submission.promptCurrency}
+                        </span>
+                      )}
+                    </GlassButton>
+                  )}
+                </div>
+              )}
+
+            {/* Created by and Date (moved here after prompt) */}
+            <div className="space-y-3">
               {submission.user && (
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
                     <User className="h-6 w-6 text-white" />
                   </div>
@@ -179,60 +395,13 @@ export default function SubmissionDetailPage() {
                   </div>
                 </div>
               )}
-
-              {submission.description && (
-                <p className="text-white/80 mt-4" data-testid="text-description">
-                  {submission.description}
-                </p>
-              )}
-            </div>
-
-            {/* Contest Info */}
-            {submission.contest && (
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="flex items-center gap-2 mb-2">
-                  <Trophy className="h-5 w-5 text-yellow-400" />
-                  <p className="text-sm text-white/60">Contest Entry</p>
-                </div>
-                <Link href={`/contest/${submission.contest.slug}`}>
-                  <a className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors" data-testid="link-contest">
-                    {submission.contest.title}
-                  </a>
-                </Link>
+              <div className="text-white/60 text-sm">
+                <span>Date: </span>
+                <span>{submission.createdAt ? new Date(submission.createdAt).toLocaleDateString() : '—'}</span>
               </div>
-            )}
-
-            {/* Vote and Share Actions */}
-            <div className="space-y-3">
-              {/* Vote Button */}
-              <button
-                onClick={handleVote}
-                disabled={voteMutation.isPending || submission.hasVoted}
-                className={`w-full py-4 px-6 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-3 ${
-                  submission.hasVoted
-                    ? "bg-primary text-white cursor-not-allowed"
-                    : "bg-white/10 text-white hover:bg-primary hover:scale-105 backdrop-blur-sm"
-                }`}
-                data-testid="button-vote"
-              >
-                <Heart className={`h-5 w-5 ${submission.hasVoted ? "fill-current" : ""}`} />
-                <span>
-                  {submission.hasVoted ? "Voted" : "Vote"} ({submission.voteCount})
-                </span>
-              </button>
-
-              {/* Share Button */}
-              <button
-                onClick={handleShare}
-                className="w-full py-4 px-6 rounded-lg font-semibold bg-white/10 text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-3 backdrop-blur-sm"
-                data-testid="button-share"
-              >
-                <Share2 className="h-5 w-5" />
-                <span>Share</span>
-              </button>
-
-              {/* Pro Edit Button - Only for image submissions owned by user */}
             </div>
+
+            {/* Vote & Share were moved to the top */}
 
             {/* Tags */}
             {submission.tags && submission.tags.length > 0 && (
@@ -254,6 +423,24 @@ export default function SubmissionDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Prompt Payment Modal */}
+      {submission && (
+        <PromptPaymentModal
+          isOpen={showPromptModal}
+          onClose={() => setShowPromptModal(false)}
+          submission={{
+            id: submission.id,
+            title: submission.title,
+            promptPrice: submission.promptPrice,
+            promptCurrency: submission.promptCurrency,
+            promptForSale: submission.promptForSale,
+          }}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "/api/submissions" });
+          }}
+        />
+      )}
 
     </div>
   );

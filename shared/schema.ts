@@ -608,6 +608,9 @@ export const purchasedPrompts = pgTable("purchased_prompts", {
   sellerId: varchar("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Creator of the prompt
   price: numeric("price", { precision: 18, scale: 9 }).notNull(), // Price paid (supports decimals for SOL/USDC)
   currency: varchar("currency", { length: 20 }).notNull(), // GLORY, SOL, USDC
+  sellerAmount: numeric("seller_amount", { precision: 18, scale: 9 }).notNull(), // Amount received by seller (after commission)
+  platformCommission: numeric("platform_commission", { precision: 18, scale: 9 }).notNull(), // Platform commission amount
+  commissionRate: integer("commission_rate").notNull(), // Commission rate % at time of purchase
   createdAt: timestamp("created_at").notNull().defaultNow()
 }, (table) => ({
   userIdx: index("purchased_prompts_user_idx").on(table.userId),

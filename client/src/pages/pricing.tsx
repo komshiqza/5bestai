@@ -291,48 +291,30 @@ export default function PricingPage() {
                       </li>
                     )}
 
-                    {/* Edit Permission */}
+                    {/* Pro Edit Tools */}
                     <li className="flex items-start gap-2">
-                      {tier.canEdit ? (
-                        <>
-                          <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                          <span>Edit & Transform Images</span>
-                        </>
-                      ) : (
-                        <>
-                          <X className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                          <span className="text-muted-foreground">Image Editing</span>
-                        </>
-                      )}
+                      <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Pro Edit tools:</strong> Clean & Denoise, Upscale 4×, Portrait Pro, Remove Background, Relight Scene, Smart Enhance
+                      </span>
                     </li>
 
-                    {/* Upscale Permission */}
-                    <li className="flex items-start gap-2">
-                      {tier.canUpscale ? (
-                        <>
-                          <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                          <span>AI Upscaling (4K+)</span>
-                        </>
-                      ) : (
-                        <>
-                          <X className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                          <span className="text-muted-foreground">AI Upscaling</span>
-                        </>
-                      )}
-                    </li>
-
-                    {/* Commission Rates */}
-                    {tier.promptCommission > 0 && (
+                    {/* Commission Rates (show user earnings, not platform %) */}
+                    {typeof tier.promptCommission === 'number' && (
                       <li className="flex items-start gap-2">
                         <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                        <span>Earn {tier.promptCommission}% from Prompt Sales</span>
+                        <span>
+                          Earn {Math.max(0, 100 - (tier.promptCommission || 0))}% from Prompt Sales
+                        </span>
                       </li>
                     )}
 
-                    {tier.imageCommission > 0 && (
+                    {typeof tier.imageCommission === 'number' && (
                       <li className="flex items-start gap-2">
                         <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                        <span>Earn {tier.imageCommission}% from Image Sales</span>
+                        <span>
+                          Earn {Math.max(0, 100 - (tier.imageCommission || 0))}% from Image Sales (Coming Soon)
+                        </span>
                       </li>
                     )}
 
@@ -344,12 +326,7 @@ export default function PricingPage() {
                       </li>
                     )}
 
-                    {tier.features && tier.features.apiAccess && (
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                        <span>API Access</span>
-                      </li>
-                    )}
+                    {/* API Access removed from public pricing */}
                   </ul>
 
                   {/* CTA Button */}
@@ -412,50 +389,34 @@ export default function PricingPage() {
                     ))}
                   </tr>
 
-                  {/* Edit Images */}
+                  {/* Pro Edit tools */}
                   <tr className="border-b border-white/10 hover:bg-white/5">
-                    <td className="p-4 font-medium">Edit Images</td>
+                    <td className="p-4 font-medium">Pro Edit tools</td>
                     {sortedTiers.map((tier) => (
-                      <td key={tier.id} className="p-4 text-center" data-testid={`td-edit-${tier.slug}`}>
-                        {tier.canEdit ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
-                        ) : (
-                          <X className="h-5 w-5 text-red-500 mx-auto" />
-                        )}
+                      <td key={tier.id} className="p-4 text-center" data-testid={`td-pro-edit-${tier.slug}`}>
+                        <span className="text-xs text-muted-foreground block max-w-[220px] mx-auto">
+                          Clean & Denoise, Upscale 4×, Portrait Pro, Remove Background, Relight Scene, Smart Enhance
+                        </span>
                       </td>
                     ))}
                   </tr>
 
-                  {/* Upscale */}
+                  {/* Prompt Earnings (User side) */}
                   <tr className="border-b border-white/10 hover:bg-white/5">
-                    <td className="p-4 font-medium">AI Upscaling</td>
-                    {sortedTiers.map((tier) => (
-                      <td key={tier.id} className="p-4 text-center" data-testid={`td-upscale-${tier.slug}`}>
-                        {tier.canUpscale ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
-                        ) : (
-                          <X className="h-5 w-5 text-red-500 mx-auto" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* Prompt Commission */}
-                  <tr className="border-b border-white/10 hover:bg-white/5">
-                    <td className="p-4 font-medium">Prompt Sales Commission</td>
+                    <td className="p-4 font-medium">Your Earnings from Prompt Sales</td>
                     {sortedTiers.map((tier) => (
                       <td key={tier.id} className="p-4 text-center" data-testid={`td-prompt-commission-${tier.slug}`}>
-                        {tier.promptCommission}%
+                        {Math.max(0, 100 - (tier.promptCommission || 0))}%
                       </td>
                     ))}
                   </tr>
 
-                  {/* Image Commission */}
+                  {/* Image Earnings (User side) - Coming Soon */}
                   <tr className="border-b border-white/10 hover:bg-white/5">
-                    <td className="p-4 font-medium">Image Sales Commission</td>
+                    <td className="p-4 font-medium">Your Earnings from Image Sales (Coming Soon)</td>
                     {sortedTiers.map((tier) => (
                       <td key={tier.id} className="p-4 text-center" data-testid={`td-image-commission-${tier.slug}`}>
-                        {tier.imageCommission}%
+                        {Math.max(0, 100 - (tier.imageCommission || 0))}%
                       </td>
                     ))}
                   </tr>
@@ -474,19 +435,7 @@ export default function PricingPage() {
                     ))}
                   </tr>
 
-                  {/* API Access */}
-                  <tr className="hover:bg-white/5">
-                    <td className="p-4 font-medium">API Access</td>
-                    {sortedTiers.map((tier) => (
-                      <td key={tier.id} className="p-4 text-center" data-testid={`td-api-${tier.slug}`}>
-                        {tier.features?.apiAccess ? (
-                          <Check className="h-5 w-5 text-green-500 mx-auto" />
-                        ) : (
-                          <X className="h-5 w-5 text-red-500 mx-auto" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {/* API Access removed from public pricing */}
                 </tbody>
               </table>
             </div>

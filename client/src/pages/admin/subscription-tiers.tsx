@@ -60,8 +60,6 @@ type SubscriptionTier = {
   description: string | null;
   priceUsd: number;
   monthlyCredits: number;
-  canEdit: boolean;
-  canUpscale: boolean;
   allowedModels: string[];
   promptCommission: number;
   imageCommission: number;
@@ -78,8 +76,6 @@ const editTierFormSchema = z.object({
   description: z.string().optional(),
   priceUsd: z.coerce.number().int().min(0, "Price must be 0 or greater"),
   monthlyCredits: z.coerce.number().int().min(0, "Credits must be 0 or greater"),
-  canEdit: z.boolean(),
-  canUpscale: z.boolean(),
   allowedModels: z.array(z.string()).min(0),
   promptCommission: z.coerce.number().int().min(0).max(100, "Must be between 0-100"),
   imageCommission: z.coerce.number().int().min(0).max(100, "Must be between 0-100"),
@@ -114,8 +110,6 @@ export default function AdminSubscriptionTiers() {
       description: "",
       priceUsd: 0,
       monthlyCredits: 0,
-      canEdit: false,
-      canUpscale: false,
       allowedModels: [],
       promptCommission: 0,
       imageCommission: 0,
@@ -155,8 +149,6 @@ export default function AdminSubscriptionTiers() {
       description: tier.description || "",
       priceUsd: tier.priceUsd,
       monthlyCredits: tier.monthlyCredits,
-      canEdit: tier.canEdit,
-      canUpscale: tier.canUpscale,
       allowedModels: tier.allowedModels || [],
       promptCommission: tier.promptCommission,
       imageCommission: tier.imageCommission,
@@ -243,17 +235,7 @@ export default function AdminSubscriptionTiers() {
                     </span>
                   </div>
 
-                  {/* Feature Flags */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Checkbox checked={tier.canEdit} disabled />
-                      <span className="text-sm text-gray-300">Can Edit Images</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox checked={tier.canUpscale} disabled />
-                      <span className="text-sm text-gray-300">Can Upscale Images</span>
-                    </div>
-                  </div>
+                  {/* Feature Flags - removed canEdit/canUpscale from UI */}
 
                   {/* Commissions */}
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -410,47 +392,7 @@ export default function AdminSubscriptionTiers() {
                 )}
               />
 
-              {/* Can Edit */}
-              <FormField
-                control={form.control}
-                name="canEdit"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Can Edit Images</FormLabel>
-                      <FormDescription>Allow users to edit images with the built-in editor</FormDescription>
-                    </div>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-tier-can-edit"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {/* Can Upscale */}
-              <FormField
-                control={form.control}
-                name="canUpscale"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Can Upscale Images</FormLabel>
-                      <FormDescription>Allow users to upscale images using AI</FormDescription>
-                    </div>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-tier-can-upscale"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              {/* Removed: canEdit and canUpscale toggles */}
 
               {/* Allowed Models */}
               <FormField

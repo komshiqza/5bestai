@@ -90,7 +90,7 @@ export interface IStorage {
   
   // Submissions
   getSubmission(id: string): Promise<Submission | undefined>;
-  getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]>;
+  getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; search?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission | undefined>;
   deleteSubmission(id: string): Promise<boolean>;
@@ -507,7 +507,7 @@ export class MemStorage implements IStorage {
     return this.submissions.get(id);
   }
 
-  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
+  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; search?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
     let submissions = Array.from(this.submissions.values());
     
     if (filters.contestId) {
@@ -1368,7 +1368,7 @@ export class DbStorage implements IStorage {
     return result;
   }
 
-  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
+  async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; search?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
     try {
       const conditions = [] as any[];
       if (filters.contestId) conditions.push(eq(submissions.contestId, filters.contestId));
@@ -1379,6 +1379,20 @@ export class DbStorage implements IStorage {
         // SAFE: Escape special characters to prevent SQL injection
         const sanitizedTag = filters.tag.replace(/[%_\\]/g, '\\$&');
         conditions.push(sql`EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${'%' + sanitizedTag + '%'}) ESCAPE '\\')`);
+      }
+      if (filters.search) {
+        // Dynamic search across multiple fields: title, description, category, tags, and AI model
+        const sanitizedSearch = filters.search.replace(/[%_\\]/g, '\\$&');
+        const searchPattern = '%' + sanitizedSearch + '%';
+        conditions.push(
+          sql`(
+            LOWER(${submissions.title}) LIKE LOWER(${searchPattern}) ESCAPE '\\' OR
+            LOWER(${submissions.description}) LIKE LOWER(${searchPattern}) ESCAPE '\\' OR
+            LOWER(${submissions.category}) LIKE LOWER(${searchPattern}) ESCAPE '\\' OR
+            LOWER(${submissions.aiModel}) LIKE LOWER(${searchPattern}) ESCAPE '\\' OR
+            EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${searchPattern}) ESCAPE '\\')
+          )`
+        );
       }
 
       // Calculate pagination with maximum limit to prevent DoS
@@ -1839,6 +1853,14 @@ export class DbStorage implements IStorage {
     const price = parseFloat(submission.promptPrice);
     const currency = submission.promptCurrency;
 
+    // Get buyer's subscription to determine commission rate
+    const subscription = await this.getUserSubscription(userId);
+    const commissionRate = subscription?.tier?.promptCommission || 0; // Default 0% if no tier
+    
+    // Calculate commission split
+    const platformCommission = (price * commissionRate) / 100;
+    const sellerAmount = price - platformCommission;
+
     // Perform entire purchase atomically to prevent race conditions and double transactions
     const purchase = await db.transaction(async (tx) => {
       // Check if already purchased (inside transaction to prevent race conditions)
@@ -1876,7 +1898,7 @@ export class DbStorage implements IStorage {
         throw new Error(`Insufficient ${currency} balance`);
       }
 
-      // Deduct from buyer balance
+      // Deduct full price from buyer balance
       if (currency === "GLORY") {
         await tx.update(users)
           .set({ 
@@ -1900,31 +1922,31 @@ export class DbStorage implements IStorage {
           .where(eq(users.id, userId));
       }
 
-      // Credit seller balance
+      // Credit seller with amount after commission
       if (currency === "GLORY") {
         await tx.update(users)
           .set({ 
-            gloryBalance: sql`${users.gloryBalance} + ${price}`,
+            gloryBalance: sql`${users.gloryBalance} + ${sellerAmount}`,
             updatedAt: new Date()
           })
           .where(eq(users.id, submission.userId));
       } else if (currency === "SOL") {
         await tx.update(users)
           .set({ 
-            solBalance: sql`${users.solBalance} + ${price}`,
+            solBalance: sql`${users.solBalance} + ${sellerAmount}`,
             updatedAt: new Date()
           })
           .where(eq(users.id, submission.userId));
       } else if (currency === "USDC") {
         await tx.update(users)
           .set({ 
-            usdcBalance: sql`${users.usdcBalance} + ${price}`,
+            usdcBalance: sql`${users.usdcBalance} + ${sellerAmount}`,
             updatedAt: new Date()
           })
           .where(eq(users.id, submission.userId));
       }
 
-      // Create ledger entry for buyer (deduction)
+      // Create ledger entry for buyer (full deduction)
       // Note: contestId is null for marketplace transactions to avoid unique constraint conflicts
       await tx.insert(gloryLedger).values({
         userId,
@@ -1937,34 +1959,42 @@ export class DbStorage implements IStorage {
         metadata: {
           sellerId: submission.userId,
           price,
-          currency
+          currency,
+          commissionRate,
+          platformCommission
         }
       });
 
-      // Create ledger entry for seller (credit)
+      // Create ledger entry for seller (amount after commission)
       // Note: contestId is null for marketplace transactions to avoid unique constraint conflicts
       await tx.insert(gloryLedger).values({
         userId: submission.userId,
-        delta: price.toString(),
+        delta: sellerAmount.toString(),
         currency,
-        reason: `Sold prompt for submission "${submission.title}"`,
+        reason: `Sold prompt for submission "${submission.title}" (${commissionRate}% commission)`,
         submissionId,
         contestId: null,
         txHash: null,
         metadata: {
           buyerId: userId,
           price,
+          sellerAmount,
+          platformCommission,
+          commissionRate,
           currency
         }
       });
 
-      // Create purchased prompt record (unique constraint prevents duplicates)
+      // Create purchased prompt record with commission tracking
       const [newPurchase] = await tx.insert(purchasedPrompts).values({
         userId,
         submissionId,
         sellerId: submission.userId,
         price: price.toString(),
-        currency
+        currency,
+        sellerAmount: sellerAmount.toString(),
+        platformCommission: platformCommission.toString(),
+        commissionRate
       }).returning();
 
       return newPurchase;
@@ -1979,6 +2009,155 @@ export class DbStorage implements IStorage {
       orderBy: [desc(purchasedPrompts.createdAt)]
     });
     return results as PurchasedPrompt[];
+  }
+
+  async getPromptSalesStats(): Promise<{
+    totalSales: number;
+    totalCommission: {
+      GLORY: number;
+      SOL: number;
+      USDC: number;
+    };
+    totalRevenue: {
+      GLORY: number;
+      SOL: number;
+      USDC: number;
+    };
+    topSellers: Array<{
+      sellerId: string;
+      sellerName: string;
+      totalSales: number;
+      totalRevenue: number;
+      currency: string;
+    }>;
+  }> {
+    // Get all purchases
+    const purchases = await db.query.purchasedPrompts.findMany({
+      with: {
+        seller: true
+      }
+    });
+
+    // Calculate totals by currency
+    const totalCommission = {
+      GLORY: 0,
+      SOL: 0,
+      USDC: 0
+    };
+    const totalRevenue = {
+      GLORY: 0,
+      SOL: 0,
+      USDC: 0
+    };
+
+    purchases.forEach(p => {
+      const commission = parseFloat(p.platformCommission || "0");
+      const price = parseFloat(p.price || "0");
+      
+      if (p.currency === "GLORY") {
+        totalCommission.GLORY += commission;
+        totalRevenue.GLORY += price;
+      } else if (p.currency === "SOL") {
+        totalCommission.SOL += commission;
+        totalRevenue.SOL += price;
+      } else if (p.currency === "USDC") {
+        totalCommission.USDC += commission;
+        totalRevenue.USDC += price;
+      }
+    });
+
+    // Calculate top sellers by currency
+    const sellerStats = new Map<string, {
+      sellerId: string;
+      sellerName: string;
+      salesByCurrency: Map<string, { count: number; revenue: number }>;
+    }>();
+
+    purchases.forEach(p => {
+      const key = p.sellerId;
+      if (!sellerStats.has(key)) {
+        sellerStats.set(key, {
+          sellerId: p.sellerId,
+          sellerName: p.seller?.username || "Unknown",
+          salesByCurrency: new Map()
+        });
+      }
+      
+      const seller = sellerStats.get(key)!;
+      const currency = p.currency;
+      const existing = seller.salesByCurrency.get(currency) || { count: 0, revenue: 0 };
+      
+      seller.salesByCurrency.set(currency, {
+        count: existing.count + 1,
+        revenue: existing.revenue + parseFloat(p.price || "0")
+      });
+    });
+
+    // Flatten to top sellers array
+    const topSellers: Array<{
+      sellerId: string;
+      sellerName: string;
+      totalSales: number;
+      totalRevenue: number;
+      currency: string;
+    }> = [];
+
+    sellerStats.forEach(seller => {
+      seller.salesByCurrency.forEach((stats, currency) => {
+        topSellers.push({
+          sellerId: seller.sellerId,
+          sellerName: seller.sellerName,
+          totalSales: stats.count,
+          totalRevenue: stats.revenue,
+          currency
+        });
+      });
+    });
+
+    // Sort by revenue descending
+    topSellers.sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    return {
+      totalSales: purchases.length,
+      totalCommission,
+      totalRevenue,
+      topSellers: topSellers.slice(0, 10) // Top 10 sellers
+    };
+  }
+
+  async getPromptSalesTransactions(limit: number = 50, offset: number = 0): Promise<Array<any>> {
+    const transactions = await db.query.purchasedPrompts.findMany({
+      with: {
+        user: true,
+        seller: true,
+        submission: true
+      },
+      orderBy: [desc(purchasedPrompts.createdAt)],
+      limit,
+      offset
+    });
+
+    return transactions.map(t => ({
+      id: t.id,
+      buyer: {
+        id: t.user?.id,
+        username: t.user?.username
+      },
+      seller: {
+        id: t.seller?.id,
+        username: t.seller?.username
+      },
+      submission: {
+        id: t.submission?.id,
+        title: t.submission?.title
+      },
+      price: parseFloat(t.price || "0"),
+      sellerAmount: parseFloat(t.sellerAmount || "0"),
+      platformCommission: parseFloat(t.platformCommission || "0"),
+      commissionRate: t.commissionRate,
+      currency: t.currency,
+      createdAt: t.createdAt
+    }));
   }
 
   async checkIfPromptPurchased(userId: string, submissionId: string): Promise<boolean> {

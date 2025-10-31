@@ -36,7 +36,7 @@ export function registerSubmissionCrudRoutes(app: Express): void {
         }
       }
 
-  const { contestId, userId, status, tag, page, limit, includeAll } = req.query as Record<string, string | undefined>;
+  const { contestId, userId, status, tag, search, page, limit, includeAll } = req.query as Record<string, string | undefined>;
   const includeAllFlag = includeAll === '1' || includeAll === 'true';
 
       // Parse pagination parameters
@@ -82,6 +82,7 @@ export function registerSubmissionCrudRoutes(app: Express): void {
           userId: userId as string | undefined,
           status: effectiveStatus,
           tag: tag as string | undefined,
+          search: search as string | undefined,
           page: validPage,
           limit: validLimit,
         });
@@ -95,6 +96,7 @@ export function registerSubmissionCrudRoutes(app: Express): void {
         userId: userId as string | undefined,
         status: "approved",
         tag: tag as string | undefined,
+        search: search as string | undefined,
         page: validPage,
         limit: validLimit,
       });

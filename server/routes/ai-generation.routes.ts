@@ -96,10 +96,13 @@ export function registerAiGenerationRoutes(app: Express): void {
           );
         }
 
-        // Check tier-based model access
+        // Get pricing key for model (needed for both access check and pricing)
+        const pricingKey = modelToPricingKey(modelId);
+
+        // Check tier-based model access using pricing key
         const hasModelAccess = await storage.canUserAccessModel(
           userId,
-          modelId,
+          pricingKey,
         );
         if (!hasModelAccess) {
           return res.status(403).json({
@@ -109,8 +112,7 @@ export function registerAiGenerationRoutes(app: Express): void {
           });
         }
 
-        // Get model cost from pricing settings using pricing key
-        const pricingKey = modelToPricingKey(modelId);
+        // Get model cost from pricing settings
         const modelCost = await storage.getPricingSetting(pricingKey);
         if (!modelCost) {
           return res

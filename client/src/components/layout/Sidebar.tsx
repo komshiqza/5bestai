@@ -24,7 +24,8 @@ import {
   MessageCircle,
   HelpCircle,
   FileText,
-  Compass
+  Compass,
+  DollarSign
 } from "lucide-react";
 
 export function Sidebar() {
@@ -310,6 +311,12 @@ export function Sidebar() {
                         <DropdownMenuItem>
                           <CreditCard className="w-4 h-4 mr-2" />
                           Subscription Tiers
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/admin/prompt-sales" data-testid="link-admin-prompt-sales">
+                        <DropdownMenuItem>
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          Prompt Sales
                         </DropdownMenuItem>
                       </Link>
                     </>

@@ -296,6 +296,8 @@ function ContestDetailContent() {
     otherSubmissions = otherSubmissions.filter((sub: any) =>
       sub.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sub.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sub.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sub.aiModel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sub.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }
@@ -823,7 +825,7 @@ function ContestDetailContent() {
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="w-full rounded-lg border-white/30 py-2 pl-10 pr-4 text-sm text-white placeholder-white/60 transition-all focus:border-white focus:ring-1 focus:ring-white" 
-                          placeholder="Search entries..." 
+                          placeholder="Search by name, description, category, tags, or AI model..." 
                           type="search"
                           data-testid="input-search"
                           style={{ backgroundColor: '#171121' }}

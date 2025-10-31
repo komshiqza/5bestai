@@ -387,6 +387,11 @@ function AiGeneratorPageContent() {
     queryKey: ["/api/pricing"],
   });
 
+  // Subscription details (to filter allowed models for the user's tier)
+  const { data: subscription } = useQuery<any>({
+    queryKey: ["/api/subscription"],
+  });
+
   // Map model IDs to pricing keys
   const modelToPricingKey: Record<string, string> = useMemo(() => ({
     "leonardo-lucid": "leonardo",
@@ -400,6 +405,26 @@ function AiGeneratorPageContent() {
     modelConfigs?.find(m => m.id === selectedModel),
     [modelConfigs, selectedModel]
   );
+
+  // Filter available models by user's tier allowedModels
+  const allowedModelSlugs: string[] = useMemo(() => subscription?.tier?.allowedModels || [], [subscription]);
+  const filteredModelConfigs = useMemo(() => {
+    if (!modelConfigs) return [] as NonNullable<typeof modelConfigs>;
+    if (!allowedModelSlugs || allowedModelSlugs.length === 0) return modelConfigs; // no restriction
+    return modelConfigs.filter((model) => {
+      const key = modelToPricingKey[model.id] || model.id;
+      return allowedModelSlugs.includes(key);
+    });
+  }, [modelConfigs, allowedModelSlugs, modelToPricingKey]);
+
+  // Ensure selected model is allowed; if not, switch to first allowed
+  useEffect(() => {
+    if (!filteredModelConfigs || filteredModelConfigs.length === 0) return;
+    const selectedIsAllowed = !!filteredModelConfigs.find((m) => m.id === selectedModel);
+    if (!selectedIsAllowed) {
+      setSelectedModel(filteredModelConfigs[0].id);
+    }
+  }, [filteredModelConfigs, selectedModel]);
   
   const userCredits = userData?.imageCredits || 0;
   
@@ -440,14 +465,36 @@ function AiGeneratorPageContent() {
       const res = await apiRequest("POST", "/api/ai/generate", params);
       return res.json();
     },
+    onMutate: async () => {
+      // Optimistically update credits immediately
+      const oldData = queryClient.getQueryData<any>(["/api/me"]);
+      if (oldData && totalCost > 0) {
+        queryClient.setQueryData(["/api/me"], {
+          ...oldData,
+          imageCredits: oldData.imageCredits - totalCost
+        });
+      }
+      return { oldData };
+    },
     onSuccess: (data) => {
       // Handle multiple images - show the first one
       if (data.images && data.images.length > 0) {
         setCurrentImage(data.images[0].imageUrl);
         setCurrentGenerationId(data.images[0].id);
       }
+      
+      // Update with actual credits used from server
+      const oldData = queryClient.getQueryData<any>(["/api/me"]);
+      if (oldData && data.creditsUsed !== undefined) {
+        queryClient.setQueryData(["/api/me"], {
+          ...oldData,
+          imageCredits: oldData.imageCredits - data.creditsUsed + totalCost // Adjust from optimistic to actual
+        });
+      }
+      
+      // Invalidate and refetch queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["/api/ai/generations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      queryClient.refetchQueries({ queryKey: ["/api/me"] });
       
       const imageCount = data.images?.length || 1;
       const imageText = imageCount > 1 ? `${imageCount} images` : "Image";
@@ -457,7 +504,12 @@ function AiGeneratorPageContent() {
         description: `Your AI image${imageCount > 1 ? 's have' : ' has'} been created successfully. ${data.creditsUsed} credits used.`,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context: any) => {
+      // Rollback optimistic update on error
+      if (context?.oldData) {
+        queryClient.setQueryData(["/api/me"], context.oldData);
+      }
+      
       toast({
         title: "Generation Failed",
         description: error.message,
@@ -1098,7 +1150,7 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'clean', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5 flex-col py-1.5"
+                    className="flex-col items-center gap-1.5 h-auto min-h-[2.5rem] px-3 py-1.5 leading-tight whitespace-nowrap"
                     title="Clean & Denoise"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1121,7 +1173,7 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'upscale', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5 flex-col py-1.5"
+                    className="flex-col items-center gap-1.5 h-auto min-h-[2.5rem] px-3 py-1.5 leading-tight whitespace-nowrap"
                     title="Upscale 4×"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1144,7 +1196,7 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'portrait_pro', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5 flex-col py-1.5"
+                    className="flex-col items-center gap-1.5 h-auto min-h-[2.5rem] px-3 py-1.5 leading-tight whitespace-nowrap"
                     title="Portrait Pro"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1167,7 +1219,7 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'enhance', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5 flex-col py-1.5"
+                    className="flex-col items-center gap-1.5 h-auto min-h-[2.5rem] px-3 py-1.5 leading-tight whitespace-nowrap"
                     title="Smart Enhance"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1190,7 +1242,7 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'bg_remove', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5 flex-col py-1.5"
+                    className="flex-col items-center gap-1.5 h-auto min-h-[2.5rem] px-3 py-1.5 leading-tight whitespace-nowrap"
                     title="Remove Background"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1213,7 +1265,7 @@ function AiGeneratorPageContent() {
                       startEditMutation.mutate({ preset: 'relight', imageUrl: currentImage! });
                     }}
                     disabled={processingPreset !== null || !currentImage}
-                    className="gap-1.5 flex-col py-1.5"
+                    className="flex-col items-center gap-1.5 h-auto min-h-[2.5rem] px-3 py-1.5 leading-tight whitespace-nowrap"
                     title="Relight Scene"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1300,7 +1352,7 @@ function AiGeneratorPageContent() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {modelConfigs?.map((model) => {
+                          {filteredModelConfigs.map((model) => {
                             const pricingKey = modelToPricingKey[model.id] || model.id;
                             const credits = pricing?.[pricingKey] || 0;
                             return (
@@ -2333,9 +2385,11 @@ function AiGeneratorPageContent() {
                       disabled={!currentGenerationId}
                       title="Upload to Contest or Gallery"
                       data-testid="button-upload"
+                      className="h-7 px-2 py-0 text-xs flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap"
+                      aria-label="Upload"
                     >
-                      <Upload className="h-5 w-5" />
-                      Upload
+                      <Upload className="h-3 w-3 md:h-4 md:w-4" />
+                      <span className="hidden xl:inline">Upload</span>
                     </FancyGlassButton>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2480,7 +2534,7 @@ function AiGeneratorPageContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {modelConfigs?.map((model) => {
+                          {filteredModelConfigs.map((model) => {
                           const pricingKey = modelToPricingKey[model.id] || model.id;
                           const credits = pricing?.[pricingKey] || 0;
                           return (

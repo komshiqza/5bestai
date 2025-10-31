@@ -1,6 +1,7 @@
-import { useEffect } from "react";
-import { X, Download, Pencil, Upload, Trash2, Maximize2, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Download, Pencil, Upload, Trash2, Maximize2, Loader2, Copy, Check } from "lucide-react";
 import type { AiGeneration } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface AiLightboxModalProps {
   isOpen: boolean;
@@ -29,6 +30,8 @@ export function AiLightboxModal({
   userCredits,
   currentEditedUrl,
 }: AiLightboxModalProps) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!isOpen) return;
 
@@ -168,7 +171,28 @@ export function AiLightboxModal({
               <span className="material-symbols-outlined text-primary text-xl">auto_awesome</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-sm text-gray-400 mb-1">Prompt</h2>
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h2 className="text-sm text-gray-400">Prompt</h2>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await navigator.clipboard.writeText(generation.prompt);
+                      setCopied(true);
+                      toast({ title: "Copied!", description: "Prompt copied to clipboard." });
+                      setTimeout(() => setCopied(false), 1500);
+                    } catch (err) {
+                      toast({ title: "Copy failed", description: "Couldn't copy the prompt.", variant: "destructive" });
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/20 text-white/90 hover:bg-white/10 transition text-xs"
+                  title="Copy prompt"
+                  data-testid="button-copy-prompt"
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
+                </button>
+              </div>
               <p className="text-base sm:text-lg font-medium text-white leading-relaxed" data-testid="text-lightbox-prompt">
                 {generation.prompt}
               </p>

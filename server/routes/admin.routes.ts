@@ -1199,6 +1199,43 @@ export function registerAdminRoutes(app: Express): void {
     },
   );
 
+  // Prompt Sales & Commission Statistics
+  app.get(
+    "/api/admin/prompt-sales/stats",
+    authenticateToken,
+    requireAdmin,
+    async (req: AuthRequest, res) => {
+      try {
+        const stats = await storage.getPromptSalesStats();
+        res.json(stats);
+      } catch (error) {
+        res.status(500).json({ 
+          error: error instanceof Error ? error.message : "Failed to fetch prompt sales stats" 
+        });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/prompt-sales/transactions",
+    authenticateToken,
+    requireAdmin,
+    async (req: AuthRequest, res) => {
+      try {
+        const { limit = "50", offset = "0" } = req.query;
+        const transactions = await storage.getPromptSalesTransactions(
+          parseInt(limit as string),
+          parseInt(offset as string)
+        );
+        res.json(transactions);
+      } catch (error) {
+        res.status(500).json({ 
+          error: error instanceof Error ? error.message : "Failed to fetch transactions" 
+        });
+      }
+    }
+  );
+
   // Note: Pricing endpoints moved to settings.routes.ts
 }
 

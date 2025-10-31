@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
-import { X, Heart, User, Calendar, Share2, Tag, Sparkles, MessageSquare, ShoppingCart, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, Heart, User, Calendar, Share2, Tag, Sparkles, MessageSquare, ShoppingCart, ChevronDown, Copy, Check } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { optimizeImageUrl } from "@/lib/cloudinary";
 import { formatPrizeAmount } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContestLightboxModalProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export function ContestLightboxModal({
 }: ContestLightboxModalProps) {
   const { data: currentUser } = useAuth();
   const infoPanelRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
   
   // Fetch purchased prompts for global check
   const { data: purchasedPrompts = [] } = useQuery({
@@ -192,20 +195,7 @@ export function ContestLightboxModal({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-6 space-y-6">
-            
-            {/* Title & Description */}
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-2" data-testid="text-submission-title">
-                {submission.title}
-              </h2>
-              {submission.description && (
-                <p className="text-gray-300 text-sm leading-relaxed" data-testid="text-submission-description">
-                  {submission.description}
-                </p>
-              )}
-            </div>
-
-            {/* Action Buttons */}
+            {/* Action Buttons moved to top per new request */}
             <div className="flex gap-3">
               <button
                 onClick={(e) => {
@@ -235,28 +225,58 @@ export function ContestLightboxModal({
                 <Share2 className="h-5 w-5" />
               </button>
             </div>
+            
+            {/* Title & Description */}
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2" data-testid="text-submission-title">
+                {submission.title}
+              </h2>
+              {submission.description && (
+                <p className="text-gray-300 text-sm leading-relaxed" data-testid="text-submission-description">
+                  {submission.description}
+                </p>
+              )}
+            </div>
+
+            {/* Action Buttons moved to bottom per requested order */}
 
             {/* Details Grid */}
             <div className="space-y-4 pt-4 border-t border-white/10">
-              
-              {/* Category */}
-              {submission.category && (
-                <div className="flex items-start gap-3" data-testid="info-category">
-                  <Tag className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Category</p>
-                    <p className="text-white font-medium">{submission.category}</p>
+              {/* Category and AI Model side by side on larger screens */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {submission.category && (
+                  <div className="flex items-start gap-3" data-testid="info-category">
+                    <Tag className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Category</p>
+                      <p className="text-white font-medium">{submission.category}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+                {submission.aiModel && (
+                  <div className="flex items-start gap-3" data-testid="info-ai-model">
+                    <Sparkles className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">AI Model</p>
+                      <p className="text-white font-medium">{submission.aiModel}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              {/* AI Model */}
-              {submission.aiModel && (
-                <div className="flex items-start gap-3" data-testid="info-ai-model">
-                  <Sparkles className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">AI Model</p>
-                    <p className="text-white font-medium">{submission.aiModel}</p>
+              {/* Tags under the row */}
+              {submission.tags && submission.tags.length > 0 && (
+                <div className="flex items-start gap-3" data-testid="info-tags">
+                  <Tag className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex flex-wrap gap-2">
+                    {submission.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-300 text-xs font-medium"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
@@ -267,7 +287,30 @@ export function ContestLightboxModal({
                   <div className="flex items-start gap-3">
                     <MessageSquare className="h-5 w-5 text-violet-400 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Prompt</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">Prompt</p>
+                        {!shouldBlur && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await navigator.clipboard.writeText(submission.prompt || "");
+                                setCopied(true);
+                                toast({ title: "Copied!", description: "Prompt copied to clipboard." });
+                                setTimeout(() => setCopied(false), 1500);
+                              } catch (err) {
+                                toast({ title: "Copy failed", description: "Couldn't copy the prompt.", variant: "destructive" });
+                              }
+                            }}
+                            className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md border border-white/20 text-white/90 hover:bg-white/10 transition text-[11px]"
+                            title="Copy prompt"
+                            data-testid="button-copy-prompt"
+                          >
+                            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                            <span>{copied ? "Copied" : "Copy"}</span>
+                          </button>
+                        )}
+                      </div>
                       <div className="relative">
                         <p 
                           className={`text-white text-sm leading-relaxed ${
@@ -302,22 +345,7 @@ export function ContestLightboxModal({
                   )}
                 </div>
               )}
-
-              {/* Tags */}
-              {submission.tags && submission.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {submission.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-300 text-xs font-medium"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Creator & Date */}
+              {/* Creator & Date now after Prompt */}
               <div className="pt-4 border-t border-white/10 space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
@@ -336,6 +364,7 @@ export function ContestLightboxModal({
                   <span>{new Date(submission.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
+              
             </div>
           </div>
         </div>

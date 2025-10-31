@@ -24,7 +24,7 @@ function ExploreContent() {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [searchTag, setSearchTag] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const prevSubmissionsRef = useRef<any[]>([]);
 
@@ -37,23 +37,23 @@ function ExploreContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Reset pagination when search tag changes
+  // Reset pagination when search query changes
   useEffect(() => {
     setAllSubmissions([]);
     setPage(1);
     setHasMore(true);
-  }, [searchTag]);
+  }, [searchQuery]);
 
   const { data: submissions = [], isLoading } = useQuery({
-    queryKey: ["/api/submissions", page, searchTag],
+    queryKey: ["/api/submissions", page, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams({
         status: 'approved',
         page: page.toString(),
         limit: '30'
       });
-      if (searchTag) {
-        params.append('tag', searchTag);
+      if (searchQuery) {
+        params.append('search', searchQuery);
       }
       const response = await fetch(`/api/submissions?${params}`);
       if (!response.ok) throw new Error("Failed to fetch submissions");
@@ -270,7 +270,7 @@ function ExploreContent() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setSearchTag(searchInput.trim());
+    setSearchQuery(searchInput.trim());
   };
 
   const { isCollapsed } = useSidebar();
@@ -284,7 +284,7 @@ function ExploreContent() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search by tag (e.g., nature, portrait, abstract...)"
+              placeholder="Search by name, description, category, tags, or AI model..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-10"
@@ -294,13 +294,13 @@ function ExploreContent() {
           <Button type="submit" data-testid="button-search">
             Search
           </Button>
-          {searchTag && (
+          {searchQuery && (
             <Button
               type="button"
               variant="outline"
               onClick={() => {
                 setSearchInput('');
-                setSearchTag('');
+                setSearchQuery('');
               }}
               data-testid="button-clear-search"
             >
@@ -351,7 +351,7 @@ function ExploreContent() {
             {!hasMore && allSubmissions.length > 0 && (
               <div className="mt-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  {searchTag ? "No more results" : "You've reached the end! 🎉"}
+                  {searchQuery ? "No more results" : "You've reached the end! 🎉"}
                 </p>
               </div>
             )}
@@ -367,7 +367,7 @@ function ExploreContent() {
           <div className="text-center py-12">
             <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">
-              {searchTag ? `No submissions found for "${searchTag}"` : "No submissions available"}
+              {searchQuery ? `No submissions found for "${searchQuery}"` : "No submissions available"}
             </p>
           </div>
         )}
