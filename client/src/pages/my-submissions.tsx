@@ -4,15 +4,20 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Image, Share2, Expand, Trash2, Play, X, User, Calendar, Pencil, Download } from "lucide-react";
+import { Image, Share2, Expand, Trash2, Play, X, User, Calendar, Pencil, Download, Edit, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { SubmissionWithUser } from "@shared/schema";
 import { GlassButton } from "@/components/ui/glass-button";
+import { EditSubmissionModal } from "@/components/EditSubmissionModal";
+import { UploadWizardModal } from "@/components/UploadWizardModal";
 export default function MySubmissions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithUser | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [editingSubmission, setEditingSubmission] = useState<SubmissionWithUser | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [submissionForUpload, setSubmissionForUpload] = useState<SubmissionWithUser | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -60,7 +65,10 @@ export default function MySubmissions() {
       });
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
-    }
+    },
+    // Auto-refresh periodically so admin approvals reflect without manual reload
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
   });
 
   const deleteSubmissionMutation = useMutation({
@@ -186,6 +194,16 @@ export default function MySubmissions() {
     }
   };
 
+  const handleEditSubmission = (submission: SubmissionWithUser) => {
+    setEditingSubmission(submission);
+  };
+
+  const handleUploadToContest = (submission: SubmissionWithUser) => {
+    // Open upload wizard with submission data
+    setSubmissionForUpload(submission);
+    setUploadModalOpen(true);
+  };
+
   const handleCardClick = (e: React.MouseEvent, submissionId: string) => {
     // Only toggle on mobile (below lg breakpoint)
     if (window.innerWidth < 1024) {
@@ -284,7 +302,38 @@ export default function MySubmissions() {
 
                   {/* Hover Overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300">
-                    <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 ${activeCardId === submission.id ? 'opacity-100 lg:opacity-0' : 'opacity-0'} lg:group-hover:opacity-100 transition-opacity duration-300`}>
+                    <div className={`absolute top-2 sm:top-3 right-2 sm:right-3 flex flex-row items-center gap-1 sm:gap-2 flex-wrap ${activeCardId === submission.id ? 'opacity-100 lg:opacity-0' : 'opacity-0'} lg:group-hover:opacity-100 transition-opacity duration-300`}>
+                      {/* Edit Button */}
+                      <GlassButton 
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditSubmission(submission);
+                        }}
+                        title="Edit submission details"
+                        data-testid={`button-edit-${submission.id}`}
+                      >
+                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </GlassButton>
+
+                      {/* Edit in Generator Button */}
+                      {/* Upload to Contest Button */}
+                      <GlassButton 
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUploadToContest(submission);
+                        }}
+                        title="Upload to contest"
+                        data-testid={`button-upload-contest-${submission.id}`}
+                      >
+                        <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </GlassButton>
+
                       <GlassButton 
                         variant="ghost"
                         size="icon"
@@ -293,6 +342,7 @@ export default function MySubmissions() {
                           e.stopPropagation();
                           handleShare(submission);
                         }}
+                        title="Share"
                         data-testid={`button-share-${submission.id}`}
                       >
                         <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -305,6 +355,7 @@ export default function MySubmissions() {
                           e.stopPropagation();
                           handleExpand(submission);
                         }}
+                        title="Expand"
                         data-testid={`button-expand-${submission.id}`}
                       >
                         <Expand className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -488,6 +539,82 @@ export default function MySubmissions() {
         </div>
       )}
 
+
+      {/* Edit Submission Modal */}
+      {editingSubmission && (
+        <EditSubmissionModal 
+          isOpen={!!editingSubmission}
+          submission={{
+            id: editingSubmission.id,
+            title: editingSubmission.title,
+            description: editingSubmission.description || undefined,
+            tags: (editingSubmission as any).tags,
+            aiModel: (editingSubmission as any).aiModel,
+            prompt: (editingSubmission as any).prompt,
+            generationId: (editingSubmission as any).generationId,
+            promptForSale: (editingSubmission as any).promptForSale,
+            promptPrice: (editingSubmission as any).promptPrice,
+            promptCurrency: (editingSubmission as any).promptCurrency,
+          }}
+          onClose={() => setEditingSubmission(null)}
+          onSubmit={async (data) => {
+            try {
+              const response = await fetch(`/api/submissions/${editingSubmission.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+                credentials: "include",
+              });
+
+              if (!response.ok) {
+                throw new Error("Failed to update submission");
+              }
+
+              setEditingSubmission(null);
+              queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
+              toast({
+                title: "Submission updated",
+                description: "Your submission details have been saved.",
+              });
+            } catch (error) {
+              console.error("Error updating submission:", error);
+              toast({
+                title: "Error",
+                description: "Failed to update submission. Please try again.",
+                variant: "destructive",
+              });
+            }
+          }}
+        />
+      )}
+
+      {/* Upload Wizard Modal */}
+      {submissionForUpload && (
+        <UploadWizardModal
+          isOpen={uploadModalOpen}
+          onClose={() => {
+            setUploadModalOpen(false);
+            setSubmissionForUpload(null);
+            queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
+          }}
+          preselectedSubmissionData={{
+            mediaUrl: submissionForUpload.mediaUrl,
+            cloudinaryPublicId: (submissionForUpload as any).cloudinaryPublicId || '',
+            title: submissionForUpload.title,
+            description: submissionForUpload.description || '',
+            category: (submissionForUpload as any).category || '',
+            tags: (submissionForUpload as any).tags || [],
+            prompt: (submissionForUpload as any).prompt || '',
+            aiModel: (submissionForUpload as any).aiModel || '',
+            promptPrice: (submissionForUpload as any).promptPrice || 0,
+            promptCurrency: (submissionForUpload as any).promptCurrency || 'GLORY',
+            promptForSale: (submissionForUpload as any).promptForSale || false,
+            submissionId: submissionForUpload.id,
+            generationId: (submissionForUpload as any).generationId || undefined,
+          }}
+          hideMyGalleryOption
+        />
+      )}
 
     </div>
   );

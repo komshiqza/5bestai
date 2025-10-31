@@ -1324,14 +1324,21 @@ function AiGeneratorPageContent() {
                         <Label className="mb-1 block text-xs text-muted-foreground">
                           Num Images ({numImages})
                         </Label>
-                        <Slider
-                          value={[numImages]}
-                          onValueChange={(value) => setNumImages(value[0])}
-                          min={1}
-                          max={8}
-                          step={1}
-                          className="mt-2"
-                        />
+                        <div className="mt-2 flex gap-2 w-full">
+                          {[1,2,3,4].map((n) => (
+                            <Button
+                              key={n}
+                              variant={numImages === n ? "default" : "ghost"}
+                              size="sm"
+                              className={`flex-1 h-9 p-0 ${numImages === n ? 'font-semibold' : ''}`}
+                              onClick={() => setNumImages(n)}
+                              aria-pressed={numImages === n}
+                              data-testid={`button-num-images-${n}`}
+                            >
+                              {n}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
 
                       {/* Aspect Ratio */}
@@ -2063,8 +2070,8 @@ function AiGeneratorPageContent() {
                                 data-testid={`img-generation-${gen.id}`}
                               />
                               
-                              {/* Hover Actions */}
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                              {/* Hover Actions - top right */}
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                 <GlassButton
                                   variant="ghost"
                                   size="icon"
@@ -2077,6 +2084,7 @@ function AiGeneratorPageContent() {
                                     handleDownload(downloadUrl, gen.id);
                                   }}
                                   disabled={downloadingId === gen.id}
+                                  data-testid={`button-download-generation-${gen.id}`}
                                 >
                                   {downloadingId === gen.id ? (
                                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -2084,7 +2092,7 @@ function AiGeneratorPageContent() {
                                     <Download className="h-3 w-3" />
                                   )}
                                 </GlassButton>
-                                
+
                                 <GlassButton
                                   variant="ghost"
                                   size="icon"
@@ -2094,6 +2102,7 @@ function AiGeneratorPageContent() {
                                     deleteMutation.mutate(gen.id);
                                   }}
                                   disabled={deleteMutation.isPending}
+                                  data-testid={`button-delete-generation-${gen.id}`}
                                 >
                                   {deleteMutation.isPending ? (
                                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -2495,14 +2504,21 @@ function AiGeneratorPageContent() {
                       <Label className="mb-1 block text-xs text-muted-foreground">
                         Num Images ({numImages})
                       </Label>
-                      <Slider
-                        value={[numImages]}
-                        onValueChange={(value) => setNumImages(value[0])}
-                        min={1}
-                        max={8}
-                        step={1}
-                        className="mt-2"
-                      />
+                      <div className="mt-2 flex gap-2 w-full">
+                        {[1,2,3,4].map((n) => (
+                          <Button
+                            key={n}
+                            variant={numImages === n ? "default" : "ghost"}
+                            size="sm"
+                            className={`flex-1 h-9 p-0 ${numImages === n ? 'font-semibold' : ''}`}
+                            onClick={() => setNumImages(n)}
+                            aria-pressed={numImages === n}
+                            data-testid={`button-num-images-${n}`}
+                          >
+                            {n}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Aspect Ratio */}
@@ -2902,8 +2918,8 @@ function AiGeneratorPageContent() {
                             data-testid={`img-generation-${gen.id}`}
                           />
                           
-                          {/* Hover Actions */}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                          {/* Hover Actions - top right */}
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                             <GlassButton
                               variant="ghost"
                               size="icon"
@@ -2917,6 +2933,7 @@ function AiGeneratorPageContent() {
                                 handleDownload(downloadUrl, gen.id);
                               }}
                               disabled={downloadingId === gen.id}
+                              data-testid={`button-download-generation-${gen.id}`}
                             >
                               {downloadingId === gen.id ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -2924,7 +2941,7 @@ function AiGeneratorPageContent() {
                                 <Download className="h-3 w-3" />
                               )}
                             </GlassButton>
-                            
+
                             <GlassButton
                               variant="ghost"
                               size="icon"
@@ -2934,6 +2951,7 @@ function AiGeneratorPageContent() {
                                 deleteMutation.mutate(gen.id);
                               }}
                               disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-generation-${gen.id}`}
                             >
                               {deleteMutation.isPending ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />

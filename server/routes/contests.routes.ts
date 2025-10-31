@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { storage } from "../storage";
 import {
@@ -18,7 +19,18 @@ export function registerContestRoutes(
   // GET /api/contests - Get all contests
   app.get("/api/contests", async (req, res) => {
     try {
-      const { status } = req.query;
+      const { status, includeDrafts } = req.query as Record<string, string | undefined>;
+
+      // Try to authenticate to determine admin visibility
+      const authToken = (req as any).cookies?.authToken;
+      let isUserAdmin = false;
+      if (authToken) {
+        try {
+          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
+          isUserAdmin = decoded.role === "admin";
+        } catch {}
+      }
+
       const contests = await storage.getContests(
         status ? { status: status as string } : undefined,
       );
@@ -38,9 +50,11 @@ export function registerContestRoutes(
       );
 
       // Filter out contests that were auto-ended if user requested a specific status
-      const filteredContests = status
+      // Hide draft contests by default for everyone; only include when explicitly requested by admin
+      const wantDrafts = includeDrafts === '1' || includeDrafts === 'true';
+      const filteredContests = (status
         ? updatedContests.filter((contest) => contest.status === status)
-        : updatedContests;
+        : updatedContests).filter((contest) => (wantDrafts && isUserAdmin) || contest.status !== "draft");
 
       // Flatten prizeDistribution from config for frontend
       const contestsWithPrizes = filteredContests.map((contest) => ({
@@ -61,6 +75,21 @@ export function registerContestRoutes(
       const contest = await storage.getContestBySlug(slug);
 
       if (!contest) {
+        return res.status(404).json({ error: "Contest not found" });
+      }
+
+      // Hide draft contests by default; allow only when explicitly requested by admin via includeDrafts
+      const { includeDrafts } = req.query as Record<string, string | undefined>;
+      const authToken = (req as any).cookies?.authToken;
+      let isUserAdmin = false;
+      if (authToken) {
+        try {
+          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
+          isUserAdmin = decoded.role === "admin";
+        } catch {}
+      }
+      const wantDrafts = includeDrafts === '1' || includeDrafts === 'true';
+      if (contest.status === "draft" && !(wantDrafts && isUserAdmin)) {
         return res.status(404).json({ error: "Contest not found" });
       }
 
@@ -506,6 +535,21 @@ export function registerContestRoutes(
     try {
       let contest = await storage.getContest(req.params.id);
       if (!contest) {
+        return res.status(404).json({ error: "Contest not found" });
+      }
+
+      // Hide draft contests by default; allow only when explicitly requested by admin via includeDrafts
+      const { includeDrafts } = req.query as Record<string, string | undefined>;
+      const authToken = (req as any).cookies?.authToken;
+      let isUserAdmin = false;
+      if (authToken) {
+        try {
+          const decoded = jwt.verify(authToken, process.env.SESSION_SECRET!) as any;
+          isUserAdmin = decoded.role === "admin";
+        } catch {}
+      }
+      const wantDrafts = includeDrafts === '1' || includeDrafts === 'true';
+      if (contest.status === "draft" && !(wantDrafts && isUserAdmin)) {
         return res.status(404).json({ error: "Contest not found" });
       }
 

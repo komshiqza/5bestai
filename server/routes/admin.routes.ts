@@ -437,7 +437,7 @@ export function registerAdminRoutes(app: Express): void {
           
           await storage.createGloryTransaction({
             userId: request.userId,
-            delta: -request.amountGlory,
+            delta: (-request.amountGlory).toString(),
             currency: "GLORY",
             reason: `Cashout request approved: ${request.amountToken} ${request.tokenType}`,
           });
@@ -702,7 +702,7 @@ export function registerAdminRoutes(app: Express): void {
         if (delta !== 0) {
           await storage.createGloryTransaction({
             userId,
-            delta: delta,
+            delta: delta.toString(),
             currency,
             reason,
             contestId: null,
@@ -940,7 +940,7 @@ export function registerAdminRoutes(app: Express): void {
 
         await storage.createGloryTransaction({
           userId: request.userId,
-          delta: -request.amountGlory,
+          delta: (-request.amountGlory).toString(),
           currency: "GLORY",
           reason: `Cashout request approved`,
           contestId: null,
@@ -1074,7 +1074,7 @@ export function registerAdminRoutes(app: Express): void {
 
             await storage.createGloryTransaction({
               userId: request.userId,
-              delta: -request.amountGlory,
+              delta: (-request.amountGlory).toString(),
               currency: "GLORY",
               reason: `Cashout request approved`,
               contestId: null,

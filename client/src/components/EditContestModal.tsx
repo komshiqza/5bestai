@@ -623,7 +623,7 @@ export function EditContestModal({ isOpen, onClose, onSubmit, contest }: EditCon
                         <button
                           type="button"
                           onClick={async () => {
-                            const response = await fetch(`/api/submissions?contestId=${contest.id}`, { credentials: 'include' });
+                            const response = await fetch(`/api/submissions?contestId=${contest.id}&includeAll=1`, { credentials: 'include' });
                             if (response.ok) {
                               const contestSubmissions = await response.json();
                               const topVoted = contestSubmissions

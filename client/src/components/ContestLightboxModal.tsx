@@ -4,6 +4,7 @@ import { GlassButton } from "./GlassButton";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { optimizeImageUrl } from "@/lib/cloudinary";
+import { formatPrizeAmount } from "@/lib/utils";
 
 interface ContestLightboxModalProps {
   isOpen: boolean;
@@ -143,12 +144,7 @@ export function ContestLightboxModal({
     }
   };
 
-  const formatPrice = (price: string | null | undefined): string => {
-    if (!price) return "0";
-    const num = parseFloat(price);
-    if (isNaN(num)) return price || "0";
-    return num.toString();
-  };
+  const formatPrice = (price: string | null | undefined): string => formatPrizeAmount(price);
 
   return (
     <div 

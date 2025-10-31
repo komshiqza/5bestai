@@ -253,82 +253,119 @@ export function SolanaPayment({
           const amount = parseFloat(url.searchParams.get('amount') || '0');
           const referenceParam = url.searchParams.get('reference');
           const memoParam = url.searchParams.get('memo');
-          
-          console.log("Payment details:", { recipientAddress, amount, referenceParam, memoParam });
+          const splTokenParam = url.searchParams.get('spl-token');
 
-          // Import Solana web3.js for direct transaction creation
+          console.log("Payment details:", { recipientAddress, amount, referenceParam, memoParam, splTokenParam });
+
+          // Build and send transaction depending on whether an SPL token is requested
+          if (splTokenParam) {
+            // SPL token payment (e.g. USDC)
+            try {
+              const [{ Connection, PublicKey, Transaction }, { getAssociatedTokenAddress, createTransferCheckedInstruction, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID }] = await Promise.all([
+                import('@solana/web3.js'),
+                import('@solana/spl-token'),
+              ]);
+
+              const rpcUrl = import.meta.env.VITE_HELIUS_RPC_URL || 'https://api.mainnet-beta.solana.com';
+              const connection = new Connection(rpcUrl, 'confirmed');
+
+              const payer = walletResponse.publicKey as any;
+              const mint = new PublicKey(splTokenParam);
+              const recipientPub = new PublicKey(recipientAddress);
+
+              const senderAta = await getAssociatedTokenAddress(mint, payer);
+              const recipientAta = await getAssociatedTokenAddress(mint, recipientPub);
+
+              const tx = new Transaction();
+
+              // If recipient ATA doesn't exist, create it (payer will pay for creation)
+              const recipientAtaInfo = await connection.getAccountInfo(recipientAta);
+              if (!recipientAtaInfo) {
+                tx.add(createAssociatedTokenAccountInstruction(payer, recipientAta, recipientPub, mint));
+              }
+
+              // Determine decimals: prefer provided prop for custom tokens, otherwise default 6 for USDC
+              const decimals = customTokenDecimals ?? (currency === 'USDC' ? 6 : 6);
+              const amountChecked = BigInt(Math.round(amount * Math.pow(10, decimals)));
+
+              const transferIx = createTransferCheckedInstruction(
+                senderAta,
+                mint,
+                recipientAta,
+                payer,
+                amountChecked,
+                decimals
+              );
+
+              // Attach reference as non-signer writable key per Solana Pay
+              if (referenceParam) {
+                try {
+                  transferIx.keys.push({ pubkey: new PublicKey(referenceParam), isSigner: false, isWritable: false });
+                } catch (e) {
+                  // ignore malformed reference
+                }
+              }
+
+              tx.add(transferIx as any);
+
+              // Finalize and send
+              const { blockhash } = await connection.getLatestBlockhash();
+              tx.recentBlockhash = blockhash;
+              tx.feePayer = payer;
+
+              toast({ title: "Sending Token Transaction", description: "Please approve the token transfer in your wallet..." });
+
+              const signed = await win.solana.signAndSendTransaction(tx);
+              console.log('✅ Token tx sent', signed.signature);
+              toast({ title: 'Payment Sent', description: `Transaction: ${signed.signature.substring(0, 20)}...` });
+              onSuccess(signed.signature);
+              return;
+            } catch (err: any) {
+              console.error('SPL token transfer failed, falling back to protocol/copy:', err);
+              // Fall through to attempt protocol or copy
+            }
+          }
+
+          // Fallback: no SPL flow or SPL flow failed — send SOL transfer
           const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = await import('@solana/web3.js');
-          
-          // Create connection using custom Helius RPC (better rate limits) or fallback to public mainnet
           const rpcUrl = import.meta.env.VITE_HELIUS_RPC_URL || 'https://api.mainnet-beta.solana.com';
           const connection = new Connection(rpcUrl, 'confirmed');
-          
-          // Create transaction directly
+
           const transaction = new Transaction();
-          
-          // Add transfer instruction
           const transferInstruction = SystemProgram.transfer({
             fromPubkey: walletResponse.publicKey,
             toPubkey: new PublicKey(recipientAddress),
             lamports: Math.round(amount * LAMPORTS_PER_SOL),
           });
-          
-          // Add reference as account key to transfer instruction (Solana Pay spec)
+
           if (referenceParam) {
-            transferInstruction.keys.push({
-              pubkey: new PublicKey(referenceParam),
-              isSigner: false,
-              isWritable: false,
-            });
+            try {
+              transferInstruction.keys.push({ pubkey: new PublicKey(referenceParam), isSigner: false, isWritable: false });
+            } catch (e) {}
           }
-          
+
           transaction.add(transferInstruction);
-          
-          // Get latest blockhash
+
           const { blockhash } = await connection.getLatestBlockhash();
           transaction.recentBlockhash = blockhash;
           transaction.feePayer = walletResponse.publicKey;
 
-          toast({
-            title: "Sending Transaction",
-            description: "Please approve the transaction in Phantom...",
-          });
+          toast({ title: "Sending Transaction", description: "Please approve the transaction in Phantom..." });
 
           try {
             console.log("🔄 Sending transaction to Phantom for signature...");
-            
-            // Use Phantom's signAndSendTransaction method
             const signedTransaction = await win.solana.signAndSendTransaction(transaction);
-            
             console.log("✅ Transaction sent successfully:", signedTransaction.signature);
-            
-            toast({
-              title: "Payment Sent!",
-              description: `Transaction: ${signedTransaction.signature.substring(0, 20)}...`,
-            });
-            
-            // Notify parent component of successful payment
+            toast({ title: "Payment Sent!", description: `Transaction: ${signedTransaction.signature.substring(0, 20)}...` });
             onSuccess(signedTransaction.signature);
-            
           } catch (transactionError: any) {
             console.log("❌ Transaction failed:", transactionError);
-            
             if (transactionError.code === 4001) {
-              toast({
-                title: "Transaction Cancelled",
-                description: "You cancelled the transaction.",
-                variant: "destructive",
-              });
+              toast({ title: "Transaction Cancelled", description: "You cancelled the transaction.", variant: "destructive" });
             } else {
-              toast({
-                title: "Transaction Failed",
-                description: `Error: ${transactionError.message || 'Unknown error'}`,
-                variant: "destructive",
-              });
+              toast({ title: "Transaction Failed", description: `Error: ${transactionError.message || 'Unknown error'}`, variant: "destructive" });
             }
           }
-
-          return;
           
         } catch (phantomError: any) {
           console.error("Phantom integration error:", phantomError);

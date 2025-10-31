@@ -130,6 +130,7 @@ export function registerUserRoutes(app: Express): void {
         const submissions = await storage.getSubmissions(filters);
         res.json(submissions);
       } catch (error) {
+        console.error("/api/me/submissions error:", error);
         res.status(500).json({ error: "Failed to fetch submissions" });
       }
     },
@@ -463,7 +464,7 @@ export function registerUserRoutes(app: Express): void {
         // Record transaction in glory ledger
         await storage.createGloryTransaction({
           userId,
-          delta: 0, // Crypto payments don't affect GLORY balance
+          delta: "0", // Crypto payments don't affect GLORY balance
           currency: "SOL",
           reason: `Solana payment verified - ${expectedAmount} SOL`,
           contestId: contestId || null,
@@ -638,7 +639,7 @@ export function registerUserRoutes(app: Express): void {
         console.log("📝 [PAYMENT] Recording transaction in ledger...");
         const ledgerEntry = await storage.createGloryTransaction({
           userId,
-          delta: 0, // Crypto payments don't affect GLORY balance
+          delta: "0", // Crypto payments don't affect GLORY balance
           currency: "SOL",
           reason: `Solana payment verified via reference - ${expectedAmount} SOL`,
           contestId: contestId || null,

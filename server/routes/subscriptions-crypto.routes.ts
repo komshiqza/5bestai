@@ -294,7 +294,7 @@ export function registerCryptoSubscriptionRoutes(app: Express): void {
         console.log("📝 [SUBSCRIPTION] Recording in glory ledger...");
         await storage.createGloryTransaction({
           userId,
-          delta: 0, // Crypto payments don't affect GLORY balance
+          delta: "0", // Crypto payments don't affect GLORY balance
           currency: currency,
           reason: `Subscription purchase: ${tier.name} tier - ${expectedAmount} ${currency}`,
           txHash: signature,

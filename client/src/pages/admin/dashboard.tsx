@@ -144,7 +144,7 @@ export default function AdminDashboard() {
   const { data: contests = [] } = useQuery({
     queryKey: ["/api/contests"],
     queryFn: async () => {
-      const response = await fetch("/api/contests", { credentials: "include" });
+  const response = await fetch("/api/contests?includeDrafts=1", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch contests");
       return response.json();
     },
@@ -230,6 +230,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
       toast({
         title: "Submission status updated",
         description: "The submission's status has been successfully updated.",
@@ -253,6 +254,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
       toast({
         title: "Submission deleted",
         description: "The submission has been permanently deleted.",
@@ -275,6 +277,7 @@ export default function AdminDashboard() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
       setSelectedSubmissionIds([]);
       toast({
         title: "Submissions approved",
@@ -298,6 +301,7 @@ export default function AdminDashboard() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
       setSelectedSubmissionIds([]);
       toast({
         title: "Submissions rejected",
@@ -321,6 +325,7 @@ export default function AdminDashboard() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/submissions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/submissions"] });
       setSelectedSubmissionIds([]);
       toast({
         title: "Submissions deleted",

@@ -170,7 +170,7 @@ export function registerPromptRoutes(app: Express): void {
         // Record transaction (this automatically credits the user balance)
         await storage.createGloryTransaction({
           userId,
-          delta: expectedAmount,
+          delta: String(expectedAmount),
           currency: currency,
           reason: `Received ${expectedAmount} ${currency} from Solana payment for prompt purchase`,
           txHash: signature,

@@ -48,10 +48,10 @@ function Router() {
   const { privateMode } = usePrivateMode();
   const [location] = useLocation();
 
-  // Hide navbar on pages with sidebar (AI Studio and Explore)
-  const hasSidebar = location === '/ai-generator' || location.startsWith('/image-editor/') || location === '/explore';
+  // Hide navbar on pages with sidebar (AI Studio, Explore, and Contests)
+  const hasSidebar = location === '/ai-generator' || location.startsWith('/image-editor/') || location === '/explore' || location === '/contests' || location.startsWith('/contest/');
   
-  // Hide footer on Explore page (infinite scroll) and AI Studio pages
+  // Hide footer on Explore page (infinite scroll), AI Studio pages, and Contest pages
   const hideFooter = hasSidebar;
   
   // Footer: Show when Private Mode is OFF OR user is logged in, AND not on pages with infinity scroll

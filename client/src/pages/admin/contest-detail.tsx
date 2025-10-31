@@ -28,7 +28,7 @@ export default function AdminContestDetail() {
   const { data: contest, isLoading: contestLoading } = useQuery({
     queryKey: ["/api/contests", id],
     queryFn: async () => {
-      const response = await fetch(`/api/contests/${id}`, { credentials: "include" });
+  const response = await fetch(`/api/contests/${id}?includeDrafts=1`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch contest");
       return response.json();
     },
@@ -38,7 +38,7 @@ export default function AdminContestDetail() {
   const { data: submissions = [], isLoading: submissionsLoading } = useQuery({
     queryKey: ["/api/submissions", { contestId: id }],
     queryFn: async () => {
-      const response = await fetch(`/api/submissions?contestId=${id}`, { credentials: "include" });
+  const response = await fetch(`/api/submissions?contestId=${id}&includeAll=1`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch submissions");
       return response.json();
     },

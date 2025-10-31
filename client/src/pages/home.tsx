@@ -43,13 +43,13 @@ export default function Home() {
       <section className="min-h-screen container mx-auto flex flex-col items-center justify-center px-4 sm:px-6 text-center">
         <div className="flex max-w-4xl flex-col items-center gap-6 sm:gap-8 relative">
           <div className={`flex flex-col gap-4 ${isVisible ? 'animate-fade-in-up animation-delay-100' : 'opacity-0'}`}>
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter gradient-text animate-pulse-slow" data-testid="hero-title">
-              Where Prompts Become Glory
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter gradient-text animate-pulse-slow leading-tight" data-testid="hero-title">
+              Where Prompts<br className="sm:hidden" /> Become Glory
             </h1>
-            <h2 className="text-base sm:text-lg lg:text-xl text-muted-foreground" data-testid="hero-description">
+            <h2 className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground" data-testid="hero-description">
               The world's first AI Art Contest platform powered by the $GLORY token.
             </h2>
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground" data-testid="text-hero-subline">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground" data-testid="text-hero-subline">
               Upload your AI creations. Vote. Win crypto rewards.
             </p>
           </div>
@@ -72,17 +72,19 @@ export default function Home() {
           </div>
 
           {/* CTAs */}
-          <div className={`flex flex-col gap-3 sm:gap-4 sm:flex-row w-full sm:w-auto px-4 sm:px-0 ${isVisible ? 'animate-fade-in-up animation-delay-400' : 'opacity-0'}`}>
-            <Link href="/explore" data-testid="hero-button-explore">
-              <GlassButton className="px-4 sm:px-6 py-3 text-sm sm:text-base w-full sm:w-auto">
-                Explore
-              </GlassButton>
-            </Link>
-            <Link href="/contests" data-testid="hero-button-contests">
-              <GlassButton className="px-4 sm:px-6 py-3 text-sm sm:text-base w-full sm:w-auto">
-                Contests
-              </GlassButton>
-            </Link>
+          <div className={`w-full px-4 sm:px-0 max-w-md ${isVisible ? 'animate-fade-in-up animation-delay-400' : 'opacity-0'}`}>
+            <div className="flex flex-row gap-2 w-full">
+              <Link href="/explore" data-testid="hero-button-explore" className="flex-1 min-w-0">
+                <GlassButton className="w-full flex items-center justify-center px-2 py-2 sm:px-3 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap truncate">
+                  Explore
+                </GlassButton>
+              </Link>
+              <Link href="/contests" data-testid="hero-button-contests" className="flex-1 min-w-0">
+                <GlassButton className="w-full flex items-center justify-center px-2 py-2 sm:px-3 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap truncate">
+                  Contests
+                </GlassButton>
+              </Link>
+            </div>
           </div>
 
           {/* Floating Elements */}
@@ -157,17 +159,19 @@ export default function Home() {
             <p className="text-lg text-muted-foreground mb-8">
               Join thousands of creators competing for GLORY rewards
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/register" data-testid="cta-button-register">
-                <GlassButton className="text-lg px-8 py-3">
-                  Sign Up Now
-                </GlassButton>
-              </Link>
-              <Link href="/pricing" data-testid="cta-button-pricing">
-                <Button size="lg" variant="outline" className="text-lg px-8 py-3">
-                  View Pricing
-                </Button>
-              </Link>
+            <div className="w-full px-4 sm:px-0 max-w-md">
+              <div className="flex flex-row gap-2 w-full">
+                <Link href="/register" data-testid="cta-button-register" className="flex-1 min-w-0">
+                  <GlassButton className="w-full flex items-center justify-center px-2 py-2 sm:px-3 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap truncate">
+                    Sign Up Now
+                  </GlassButton>
+                </Link>
+                <Link href="/pricing" data-testid="cta-button-pricing" className="flex-1 min-w-0">
+                  <Button size="lg" variant="outline" className="w-full flex items-center justify-center px-2 py-2 sm:px-3 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap truncate">
+                    View Pricing
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </section>

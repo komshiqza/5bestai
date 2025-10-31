@@ -211,6 +211,10 @@ export interface IStorage {
   
   // Pro Edit: Credit Management
   refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean>;
+
+  // Admin maintenance
+  recalculateSubmissionVotes(submissionId: string): Promise<number>;
+  recalculateAllSubmissionVotes(): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -448,8 +452,8 @@ export class MemStorage implements IStorage {
     }
 
     return contests.map(contest => {
-      const submissions = Array.from(this.submissions.values()).filter(s => s.contestId === contest.id);
-      const approvedSubmissions = submissions.filter(s => s.status === 'approved');
+  const submissions = Array.from(this.submissions.values()).filter(s => s.contestId === contest.id);
+  const approvedSubmissions = submissions.filter(s => s.status === 'approved');
       const uniqueUsers = new Set(submissions.map(s => s.userId));
       
       // Find top submission by votes (for cover image)
@@ -461,7 +465,7 @@ export class MemStorage implements IStorage {
       
       return {
         ...contest,
-        submissionCount: submissions.length,
+        submissionCount: approvedSubmissions.length,
         participantCount: uniqueUsers.size,
         totalVotes: submissions.reduce((sum, s) => sum + s.votesCount, 0),
         topSubmissionImageUrl: topSubmission?.mediaUrl || null
@@ -535,7 +539,7 @@ export class MemStorage implements IStorage {
         return {
           ...submission,
           user: { id: user.id, username: user.username },
-          contest: contest ? { id: contest.id, title: contest.title } : { id: '', title: submission.contestName || 'Deleted Contest' }
+          contest: contest ? { id: contest.id, title: contest.title } : { id: '', title: submission.contestName || 'Not in active Contest' }
         };
       });
   }
@@ -1043,6 +1047,14 @@ export class MemStorage implements IStorage {
   async refundAiCredits(userId: string, amount: number, reason: string, jobId: string): Promise<boolean> {
     throw new Error("MemStorage does not support Pro Edit - use DbStorage");
   }
+
+  async recalculateSubmissionVotes(_submissionId: string): Promise<number> {
+    throw new Error("MemStorage does not support vote recalculation - use DbStorage");
+  }
+
+  async recalculateAllSubmissionVotes(): Promise<number> {
+    throw new Error("MemStorage does not support vote recalculation - use DbStorage");
+  }
 }
 
 export class DbStorage implements IStorage {
@@ -1050,6 +1062,42 @@ export class DbStorage implements IStorage {
     this.seedDatabase().catch(err => {
       console.error("[DB] Failed to seed database:", err);
     });
+  }
+
+  async recalculateSubmissionVotes(submissionId: string): Promise<number> {
+    // Count votes for the submission
+    const voteCountResult = await db
+      .select({ cnt: count(votes.id) })
+      .from(votes)
+      .where(eq(votes.submissionId, submissionId));
+    const cnt = voteCountResult[0]?.cnt ?? 0;
+
+    // Update submission's votesCount
+    await db
+      .update(submissions)
+      .set({ votesCount: cnt })
+      .where(eq(submissions.id, submissionId));
+
+    return cnt;
+  }
+
+  async recalculateAllSubmissionVotes(): Promise<number> {
+    // Fetch all submission ids
+    const allSubs = await db.select({ id: submissions.id }).from(submissions);
+    let updated = 0;
+    for (const s of allSubs) {
+      const voteCountResult = await db
+        .select({ cnt: count(votes.id) })
+        .from(votes)
+        .where(eq(votes.submissionId, s.id));
+      const cnt = voteCountResult[0]?.cnt ?? 0;
+      await db
+        .update(submissions)
+        .set({ votesCount: cnt })
+        .where(eq(submissions.id, s.id));
+      updated++;
+    }
+    return updated;
   }
 
   private async seedDatabase() {
@@ -1259,7 +1307,10 @@ export class DbStorage implements IStorage {
     for (const contest of contestsData) {
       const submissionCount = await db.select({ count: count() })
         .from(submissions)
-        .where(eq(submissions.contestId, contest.id));
+        .where(and(
+          eq(submissions.contestId, contest.id),
+          eq(submissions.status, 'approved')
+        ));
       
       const participantCount = await db.select({ count: countDistinct(submissions.userId) })
         .from(submissions)
@@ -1318,62 +1369,79 @@ export class DbStorage implements IStorage {
   }
 
   async getSubmissions(filters: { contestId?: string; userId?: string; status?: string; tag?: string; page?: number; limit?: number }): Promise<SubmissionWithUser[]> {
-    const conditions = [];
-    if (filters.contestId) conditions.push(eq(submissions.contestId, filters.contestId));
-    if (filters.userId) conditions.push(eq(submissions.userId, filters.userId));
-    if (filters.status) conditions.push(eq(submissions.status, filters.status));
-    if (filters.tag) {
-      // Check if any tag in the array contains the search string (case-insensitive)
-      // SAFE: Escape special characters to prevent SQL injection
-      const sanitizedTag = filters.tag.replace(/[%_\\]/g, '\\$&');
-      conditions.push(sql`EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${'%' + sanitizedTag + '%'}) ESCAPE '\\')`);
-    }
+    try {
+      const conditions = [] as any[];
+      if (filters.contestId) conditions.push(eq(submissions.contestId, filters.contestId));
+      if (filters.userId) conditions.push(eq(submissions.userId, filters.userId));
+      if (filters.status) conditions.push(eq(submissions.status, filters.status));
+      if (filters.tag) {
+        // Check if any tag in the array contains the search string (case-insensitive)
+        // SAFE: Escape special characters to prevent SQL injection
+        const sanitizedTag = filters.tag.replace(/[%_\\]/g, '\\$&');
+        conditions.push(sql`EXISTS (SELECT 1 FROM unnest(${submissions.tags}) AS tag WHERE LOWER(tag) LIKE LOWER(${'%' + sanitizedTag + '%'}) ESCAPE '\\')`);
+      }
 
-    // Calculate pagination with maximum limit to prevent DoS
-    const page = filters.page || 1;
-    const limit = Math.min(filters.limit || 20, 100); // Max 100 items per page
-    const offset = (page - 1) * limit;
+      // Calculate pagination with maximum limit to prevent DoS
+      const page = filters.page || 1;
+      const limit = Math.min(filters.limit || 20, 100); // Max 100 items per page
+      const offset = (page - 1) * limit;
 
-    const submissionsData = await db.query.submissions.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(submissions.createdAt)],
-      limit: limit,
-      offset: offset
-    });
+      // Build query using select builder for reliable offset handling
+      // Use 'any' casts to work around Drizzle's builder type narrowing on chained methods
+      let qb: any = db.select().from(submissions) as any;
+      if (conditions.length > 0) {
+        qb = (qb as any).where(and(...conditions));
+      }
+      const submissionsData: Submission[] = await (qb as any)
+        .orderBy(desc(submissions.createdAt))
+        .limit(limit)
+        .offset(offset);
 
     // Batch fetch all users in one query (instead of N queries)
-    const userIdSet = new Set(submissionsData.map(s => s.userId));
-    const userIds = Array.from(userIdSet);
-    const usersData = await db.query.users.findMany({
-      where: inArray(users.id, userIds),
-      columns: { id: true, username: true }
-    });
+  const userIdSet = new Set<string>(submissionsData.map((s: Submission) => s.userId));
+  const userIds: string[] = Array.from(userIdSet);
+    const usersData = userIds.length > 0
+      ? await db.query.users.findMany({
+          where: inArray(users.id, userIds),
+          columns: { id: true, username: true }
+        })
+      : [];
     const usersMap = new Map(usersData.map(u => [u.id, u]));
     
     // Batch fetch all contests in one query (instead of N queries)
-    const contestIdSet = new Set(submissionsData.map(s => s.contestId).filter((id): id is string => id !== null));
-    const contestIds = Array.from(contestIdSet);
-    const contestsData = await db.query.contests.findMany({
-      where: inArray(contests.id, contestIds),
-      columns: { id: true, title: true }
-    });
+    const contestIdSet = new Set<string>(
+      submissionsData
+        .map((s: Submission) => s.contestId)
+        .filter((id): id is string => id !== null)
+    );
+    const contestIds: string[] = Array.from(contestIdSet);
+    const contestsData = contestIds.length > 0
+      ? await db.query.contests.findMany({
+          where: inArray(contests.id, contestIds),
+          columns: { id: true, title: true }
+        })
+      : [];
     const contestsMap = new Map(contestsData.map(c => [c.id, c]));
     
     // Map results efficiently
     const result: SubmissionWithUser[] = submissionsData
-      .map(submission => {
+      .map((submission: Submission) => {
         const user = usersMap.get(submission.userId);
         if (!user) return null;
         
         return {
           ...submission,
           user,
-          contest: (submission.contestId ? contestsMap.get(submission.contestId) : null) || { id: '', title: submission.contestName || 'Deleted Contest' }
+          contest: (submission.contestId ? contestsMap.get(submission.contestId) : null) || { id: '', title: submission.contestName || 'Not in active Contest' }
         };
       })
       .filter((item): item is SubmissionWithUser => item !== null);
 
-    return result;
+      return result;
+    } catch (err) {
+      console.error('[DB] getSubmissions error:', err);
+      throw err;
+    }
   }
 
   async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {

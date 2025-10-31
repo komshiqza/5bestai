@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Trophy, Search, Filter, Calendar, Users } from "lucide-react";
 import { useState } from "react";
 import { formatPrizeAmount } from "@/lib/utils";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 
-export default function Contests() {
+function ContestsContent() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -21,26 +23,30 @@ export default function Contests() {
   });
 
   const filteredContests = contests.filter((contest: any) => {
-    const matchesStatus = statusFilter === "all" || contest.status === statusFilter;
+    const matchesStatus = statusFilter === "all"
+      ? (contest.status === "active" || contest.status === "ended")
+      : contest.status === statusFilter;
     const matchesSearch = contest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          contest.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
   const getStatusCounts = () => {
+    const active = contests.filter((c: any) => c.status === "active").length;
+    const ended = contests.filter((c: any) => c.status === "ended").length;
     return {
-      all: contests.length,
-      active: contests.filter((c: any) => c.status === "active").length,
-      draft: contests.filter((c: any) => c.status === "draft").length,
-      ended: contests.filter((c: any) => c.status === "ended").length,
+      all: active + ended,
+      active,
+      ended,
     };
   };
 
   const statusCounts = getStatusCounts();
+  const { isCollapsed } = useSidebar();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen py-16" data-testid="contests-loading">
+      <div className={`min-h-screen py-16 transition-all duration-300 ${isCollapsed ? 'md:ml-[90px]' : 'md:ml-64'}`} data-testid="contests-loading">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="animate-pulse">
             <div className="h-8 bg-muted rounded w-1/3 mb-4"></div>
@@ -57,7 +63,7 @@ export default function Contests() {
   }
 
   return (
-    <div className="min-h-screen py-8 pb-32 md:py-16 md:pb-16" data-testid="contests-page">
+    <div className={`min-h-screen py-8 pb-32 md:py-16 md:pb-16 transition-all duration-300 ${isCollapsed ? 'md:ml-[90px]' : 'md:ml-64'}`} data-testid="contests-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
@@ -89,15 +95,6 @@ export default function Contests() {
               data-testid="filter-active"
             >
               Active ({statusCounts.active})
-            </Button>
-            <Button
-              variant={statusFilter === "draft" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setStatusFilter("draft")}
-              className={statusFilter === "draft" ? "bg-muted text-muted-foreground" : ""}
-              data-testid="filter-draft"
-            >
-              Draft ({statusCounts.draft})
             </Button>
             <Button
               variant={statusFilter === "ended" ? "default" : "ghost"}
@@ -187,5 +184,14 @@ export default function Contests() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Contests() {
+  return (
+    <SidebarProvider>
+      <Sidebar />
+      <ContestsContent />
+    </SidebarProvider>
   );
 }

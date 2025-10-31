@@ -12,13 +12,16 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatPrizeAmount } from "@/lib/utils";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 
-export default function ContestDetailPage() {
+function ContestDetailContent() {
   const [match, params] = useRoute("/contest/:slug");
   const slug = params?.slug || "";
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isCollapsed } = useSidebar();
 
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -366,8 +369,9 @@ export default function ContestDetailPage() {
   };
 
   return (
-    <>
-      <div className="flex-1 px-4 py-6 pb-32 md:pb-6 sm:px-6 md:px-10 lg:px-20">
+    <div className={`transition-all duration-300 ${isCollapsed ? 'md:ml-[90px]' : 'md:ml-64'}`}>
+      <>
+        <div className="flex-1 px-4 py-6 pb-32 md:pb-6 sm:px-6 md:px-10 lg:px-20">
         <div className="mx-auto max-w-screen-xl">
           {/* Back Button */}
           <Link href="/contests" className="inline-flex items-center text-gray-400 hover:text-white mb-6 md:mb-8 transition-colors" data-testid="link-back-contests">
@@ -376,31 +380,43 @@ export default function ContestDetailPage() {
           </Link>
 
           {/* Header Controls - Contest Type Selector, Timer, Prize Pool */}
-          <div className="mb-8 md:mb-12 flex flex-col items-center justify-between gap-6 md:gap-8">
-            {/* Contest Type Selector and Upload Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4 w-full">
-              <div className="w-full max-w-sm text-center">
-                <h1 className="text-xl sm:text-2xl font-bold text-white mb-2" data-testid="text-contest-title">
-                  {contest.title}
-                </h1>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full sm:w-auto">
+          <div className="mb-8 md:mb-12 flex flex-col items-center justify-between gap-6 md:gap-8 w-full">
+            {/* Contest Title */}
+            <div className="w-full text-center">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white" data-testid="text-contest-title">
+                {contest.title}
+              </h1>
+            </div>
+            
+            {/* Action Buttons - Responsive Layout */}
+            <div className="w-full max-w-2xl px-2 sm:px-0">
+              <div className="flex flex-row gap-2 w-full">
+                <Link href="/ai-generator" className="flex-1 min-w-0">
+                  <GlassButton
+                    className="w-full flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap truncate"
+                    data-testid="button-create"
+                  >
+                    Create
+                  </GlassButton>
+                </Link>
+                
                 <GlassButton
                   onClick={handleShowUpload}
-                  className="flex flex-shrink-0 items-center justify-center gap-2 px-6 py-3 text-base font-bold w-full sm:w-auto"
+                  className="flex-1 min-w-0 w-full flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap"
                   data-testid="button-upload"
                 >
-                  <Upload className="h-5 w-5" />
-                  Upload
+                  <Upload className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="truncate">Upload</span>
                 </GlassButton>
+                
                 <GlassButton
                   onClick={() => setShowRules(true)}
                   variant="primary"
-                  className="flex flex-shrink-0 items-center justify-center gap-2 px-6 py-3 text-base font-bold w-full sm:w-auto"
+                  className="flex-1 min-w-0 w-full flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap"
                   data-testid="button-show-rules"
                 >
-                  <FileText className="h-5 w-5" />
-                  Contest Rules
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="truncate">Rules</span>
                 </GlassButton>
               </div>
             </div>
@@ -1002,7 +1018,17 @@ export default function ContestDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+      </>
+    </div>
+  );
+}
+
+export default function ContestDetail() {
+  return (
+    <SidebarProvider>
+      <Sidebar />
+      <ContestDetailContent />
+    </SidebarProvider>
   );
 }
 

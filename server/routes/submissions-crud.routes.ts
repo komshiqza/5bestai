@@ -36,7 +36,8 @@ export function registerSubmissionCrudRoutes(app: Express): void {
         }
       }
 
-      const { contestId, userId, status, tag, page, limit } = req.query;
+  const { contestId, userId, status, tag, page, limit, includeAll } = req.query as Record<string, string | undefined>;
+  const includeAllFlag = includeAll === '1' || includeAll === 'true';
 
       // Parse pagination parameters
       const pageNum = page ? parseInt(page as string, 10) : 1;
@@ -72,12 +73,14 @@ export function registerSubmissionCrudRoutes(app: Express): void {
       // Set Cache-Control header
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
-      // Admins can see all submissions
+      // Admins can see all submissions, but for contest feeds we hide pending unless explicitly requested
       if (isUserAdmin) {
+        // If contestId present and includeAll not set, force approved-only to keep contest feeds clean even for admins
+        const effectiveStatus = contestId && !includeAllFlag ? "approved" : (status as string | undefined);
         const submissions = await storage.getSubmissions({
           contestId: contestId as string | undefined,
           userId: userId as string | undefined,
-          status: status as string | undefined,
+          status: effectiveStatus,
           tag: tag as string | undefined,
           page: validPage,
           limit: validLimit,
@@ -97,8 +100,15 @@ export function registerSubmissionCrudRoutes(app: Express): void {
       });
 
       if (currentUserId) {
+        // If a specific contest feed is requested, do NOT include own pending items in the public feed
+        if (contestId) {
+          const enrichedSubmissions = await enrichSubmissions(approvedSubmissions);
+          return res.json(enrichedSubmissions);
+        }
+
+        // For non-contest general listing, include user's own submissions alongside approved
         const ownSubmissions = await storage.getSubmissions({
-          contestId: contestId as string | undefined,
+          contestId: undefined,
           userId: currentUserId,
           status: undefined,
           tag: tag as string | undefined,
@@ -147,16 +157,31 @@ export function registerSubmissionCrudRoutes(app: Express): void {
           promptForSale,
           promptPrice,
           promptCurrency,
+          existingSubmissionId,
         } = req.body;
 
-        // Check if either file or mediaUrl is provided (gallery selection)
-        if (!req.file && !mediaUrl) {
+        // If reusing an existing submission, fetch and verify ownership once
+        let existingForReuse: any | null = null;
+        if (existingSubmissionId) {
+          existingForReuse = await storage.getSubmission(existingSubmissionId);
+          if (!existingForReuse) {
+            return res.status(404).json({ error: "Existing submission not found" });
+          }
+          if (existingForReuse.userId !== req.user!.id) {
+            return res.status(403).json({ error: "Not authorized to reuse this submission" });
+          }
+        }
+
+        const effectiveType: string | undefined = type || existingForReuse?.type;
+
+        // Check if either file, mediaUrl, or an existing submission is provided
+        if (!req.file && !mediaUrl && !existingSubmissionId) {
           return res
             .status(400)
             .json({ error: "File or mediaUrl is required" });
         }
 
-        if (!title || !type) {
+        if (!title || !effectiveType) {
           return res.status(400).json({ error: "Title and type are required" });
         }
 
@@ -198,7 +223,7 @@ export function registerSubmissionCrudRoutes(app: Express): void {
           // Validate contest type - check if submission type matches contest allowed type
           if (config && config.contestType) {
             const contestType = config.contestType.toLowerCase();
-            const submissionType = type.toLowerCase();
+            const submissionType = effectiveType.toLowerCase();
 
             if (contestType === "image" && submissionType !== "image") {
               return res
@@ -302,14 +327,23 @@ export function registerSubmissionCrudRoutes(app: Express): void {
           }
         }
 
-        let finalMediaUrl: string;
+  let finalMediaUrl: string;
         let finalThumbnailUrl: string | null = null;
         let cloudinaryPublicId: string | null = null;
         let cloudinaryResourceType: string | null = null;
         let isGalleryReuse = false;
+  let targetSubmissionId: string | null = null;
 
-        // Upload new file or use existing mediaUrl from gallery
-        if (req.file) {
+        // Upload new file, reuse existing submission, or use existing mediaUrl from gallery
+        if (existingSubmissionId && existingForReuse) {
+          // Use original media references from existing submission
+          finalMediaUrl = existingForReuse.mediaUrl;
+          finalThumbnailUrl = existingForReuse.thumbnailUrl || null;
+          cloudinaryPublicId = existingForReuse.cloudinaryPublicId || null;
+          cloudinaryResourceType = existingForReuse.cloudinaryResourceType || null;
+          isGalleryReuse = true;
+          targetSubmissionId = existingForReuse.id;
+        } else if (req.file) {
           const uploadResult = await uploadFile(req.file);
           finalMediaUrl = uploadResult.url;
           finalThumbnailUrl = uploadResult.thumbnailUrl || null;
@@ -402,30 +436,53 @@ export function registerSubmissionCrudRoutes(app: Express): void {
         const isPromptForSale =
           promptForSale === "true" || promptForSale === true;
 
-        // Create submission
-        const submission = await storage.createSubmission({
-          userId: req.user!.id,
-          contestId: contestId || null,
-          contestName: contest ? contest.title : null, // Preserve contest name for historical reference
-          type,
-          title,
-          description: description || "",
-          mediaUrl: finalMediaUrl,
-          thumbnailUrl: finalThumbnailUrl,
-          cloudinaryPublicId,
-          cloudinaryResourceType,
-          status: "pending", // Requires admin approval
-          entryFeeAmount, // Store entry fee amount at submission time
-          entryFeeCurrency, // Store entry fee currency at submission time
-          category: category || null,
-          aiModel: aiModel || null,
-          prompt: prompt || null,
-          generationId: generationId || null,
-          tags: parsedTags,
-          promptForSale: isPromptForSale,
-          promptPrice: isPromptForSale ? promptPrice || null : null,
-          promptCurrency: isPromptForSale ? promptCurrency || "GLORY" : null,
-        });
+        // Create or update submission
+        let submission;
+        if (targetSubmissionId) {
+          // Update existing submission to attach to contest without cloning
+          submission = await storage.updateSubmission(targetSubmissionId, {
+            contestId: contestId || null,
+            contestName: contest ? contest.title : null,
+            // Keep original type/media fields; allow updating title/description/meta
+            title,
+            description: description || "",
+            status: "pending",
+            entryFeeAmount,
+            entryFeeCurrency,
+            category: category || null,
+            aiModel: aiModel || null,
+            prompt: prompt || null,
+            generationId: generationId || null,
+            tags: parsedTags,
+            promptForSale: isPromptForSale,
+            promptPrice: isPromptForSale ? promptPrice || null : null,
+            promptCurrency: isPromptForSale ? promptCurrency || "GLORY" : null,
+          });
+        } else {
+          submission = await storage.createSubmission({
+            userId: req.user!.id,
+            contestId: contestId || null,
+            contestName: contest ? contest.title : null, // Preserve contest name for historical reference
+            type,
+            title,
+            description: description || "",
+            mediaUrl: finalMediaUrl,
+            thumbnailUrl: finalThumbnailUrl,
+            cloudinaryPublicId,
+            cloudinaryResourceType,
+            status: "pending", // Requires admin approval
+            entryFeeAmount, // Store entry fee amount at submission time
+            entryFeeCurrency, // Store entry fee currency at submission time
+            category: category || null,
+            aiModel: aiModel || null,
+            prompt: prompt || null,
+            generationId: generationId || null,
+            tags: parsedTags,
+            promptForSale: isPromptForSale,
+            promptPrice: isPromptForSale ? promptPrice || null : null,
+            promptCurrency: isPromptForSale ? promptCurrency || "GLORY" : null,
+          });
+        }
 
         // Deduct entry fee AFTER submission is successfully created
         if (
@@ -442,11 +499,11 @@ export function registerSubmissionCrudRoutes(app: Express): void {
             // createGloryTransaction automatically updates the user balance
             await storage.createGloryTransaction({
               userId: req.user!.id,
-              delta: -config.entryFeeAmount,
+              delta: String(-config.entryFeeAmount),
               currency,
               reason: `Entry fee for contest: ${contest.title}`,
               contestId: contestId || null,
-              submissionId: submission.id,
+              submissionId: submission!.id,
             });
           }
         }
@@ -680,12 +737,33 @@ export function registerSubmissionCrudRoutes(app: Express): void {
           title: z.string().min(1).max(255).optional(),
           description: z.string().max(5000).optional(),
           tags: z.array(z.string()).optional(),
+          promptForSale: z.boolean().optional(),
+          promptPrice: z.union([z.number().min(0), z.string().regex(/^\d+(\.\d+)?$/)]).transform(val => 
+            typeof val === 'string' ? val : val.toString()
+          ).optional(),
+          promptCurrency: z.enum(['GLORY', 'SOL', 'USDC']).optional(),
         });
 
         const validatedData = updateSchema.parse(req.body);
+
+        // Ensure numeric fields are stored in the DB-friendly format
+        const updates: any = { ...validatedData };
+
+        // If promptForSale is explicitly false, clear price and currency
+        if (Object.prototype.hasOwnProperty.call(validatedData, 'promptForSale') && !validatedData.promptForSale) {
+          updates.promptPrice = null;
+          updates.promptCurrency = null;
+        }
+
+        // Normalize promptPrice to a numeric value (DB numeric column expects a number)
+        if (validatedData.promptPrice !== undefined && validatedData.promptPrice !== null) {
+          const num = parseFloat(String(validatedData.promptPrice));
+          updates.promptPrice = Number.isFinite(num) ? num : null;
+        }
+
         const updatedSubmission = await storage.updateSubmission(
           req.params.id,
-          validatedData,
+          updates,
         );
         res.json(updatedSubmission);
       } catch (error) {

@@ -46,16 +46,32 @@ interface UploadWizardModalProps {
     model?: string;
     generationId?: string;
   };
+  preselectedSubmissionData?: {
+    mediaUrl: string;
+    cloudinaryPublicId: string;
+    title: string;
+    description: string;
+    category: string;
+    tags: string[];
+    prompt: string;
+    aiModel: string;
+    promptPrice: number;
+    promptCurrency: string;
+    promptForSale: boolean;
+    submissionId: string;
+    generationId?: string;
+  };
+  hideMyGalleryOption?: boolean;
 }
 
-export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSubmissionMode }: UploadWizardModalProps) {
+export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSubmissionMode, preselectedSubmissionData, hideMyGalleryOption }: UploadWizardModalProps) {
   const { data: user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Form state
   const [file, setFile] = useState<File | null>(null);
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState<{url: string, type: string, thumbnailUrl?: string, cloudinaryPublicId?: string} | null>(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<{submissionId?: string, url: string, type: string, thumbnailUrl?: string, cloudinaryPublicId?: string} | null>(null);
   const [uploadMode, setUploadMode] = useState<'new' | 'gallery'>('new');
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -139,6 +155,33 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
       setGenerationId(aiSubmissionMode.generationId || null);
     }
   }, [aiSubmissionMode]);
+
+  // Pre-fill form from existing submission data
+  useEffect(() => {
+    if (preselectedSubmissionData && isOpen) {
+      setTitle(preselectedSubmissionData.title);
+      setDescription(preselectedSubmissionData.description);
+      setCategory(preselectedSubmissionData.category || CATEGORIES[0]);
+      setTags(preselectedSubmissionData.tags);
+      setPrompt(preselectedSubmissionData.prompt);
+      setAiModel(preselectedSubmissionData.aiModel);
+      setGenerationId(preselectedSubmissionData.generationId || null);
+      setPromptForSale(preselectedSubmissionData.promptForSale);
+      // Format prompt price for display (remove trailing zeros)
+      setPromptPrice(formatPrizeAmount(preselectedSubmissionData.promptPrice));
+      // Pre-select the image into the Upload tab so Tab 1 shows the current image
+      setUploadMode('gallery');
+      setSelectedGalleryImage({
+        submissionId: preselectedSubmissionData.submissionId,
+        url: preselectedSubmissionData.mediaUrl,
+        type: 'image',
+        thumbnailUrl: (preselectedSubmissionData as any).thumbnailUrl || undefined,
+        cloudinaryPublicId: preselectedSubmissionData.cloudinaryPublicId || undefined,
+      });
+      setPromptCurrency(preselectedSubmissionData.promptCurrency as 'SOL' | 'USDC' | 'GLORY');
+      setStep(2); // Start on step 2 (details tab)
+    }
+  }, [preselectedSubmissionData, isOpen]);
 
   // Get optimal payment method based on contest config and user balance
   const getOptimalPaymentMethod = useCallback(() => {
@@ -252,6 +295,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
       // Only apply if we haven't already applied this specific AI image
       if (appliedAiModeRef.current !== aiSubmissionMode.cloudinaryPublicId) {
         setSelectedGalleryImage({
+          // AI generator images are not yet in gallery; no submissionId
           url: aiSubmissionMode.imageUrl,
           type: 'image',
           cloudinaryPublicId: aiSubmissionMode.cloudinaryPublicId
@@ -440,6 +484,10 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         // Only add contestId if not uploading to My Gallery
         if (selectedContest !== "my-gallery") {
           submissionData.contestId = selectedContest;
+          // If reusing an existing gallery submission, signal server to attach instead of clone
+          if (selectedGalleryImage.submissionId) {
+            submissionData.existingSubmissionId = selectedGalleryImage.submissionId;
+          }
         }
         
         // New fields
@@ -457,28 +505,41 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
         if (txHash) {
           submissionData.paymentTxHash = txHash;
         }
-
-        const response = await fetch("/api/submissions", {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(submissionData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          console.error("💥 Submission failed:", error);
-          
-          // Show user-friendly error message
-          toast({
-            title: "Submission Failed",
-            description: error.error || "Failed to submit. Please try again.",
-            variant: "destructive",
+        // If destination is My Gallery and the image already exists in gallery, update metadata only
+        if (selectedContest === "my-gallery" && selectedGalleryImage.submissionId) {
+          const patchRes = await fetch(`/api/submissions/${selectedGalleryImage.submissionId}`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, description, category, aiModel, prompt, generationId, tags, promptForSale, promptPrice: promptForSale ? promptPrice : null, promptCurrency: promptForSale ? promptCurrency : null })
           });
-          
-          throw new Error(error.error || "Failed to submit");
+          if (!patchRes.ok) {
+            const error = await patchRes.json();
+            throw new Error(error.error || "Failed to update gallery item");
+          }
+        } else {
+          const response = await fetch("/api/submissions", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(submissionData),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            console.error("💥 Submission failed:", error);
+            
+            // Show user-friendly error message
+            toast({
+              title: "Submission Failed",
+              description: error.error || "Failed to submit. Please try again.",
+              variant: "destructive",
+            });
+            
+            throw new Error(error.error || "Failed to submit");
+          }
         }
       }
 
@@ -697,6 +758,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
                 prompt={prompt}
                 setPrompt={setPrompt}
                 isFromAiGenerator={!!aiSubmissionMode}
+                generationId={generationId}
               />
             )}
 
@@ -718,6 +780,7 @@ export function UploadWizardModal({ isOpen, onClose, preselectedContestId, aiSub
                 setPromptPrice={setPromptPrice}
                 promptCurrency={promptCurrency}
                 setPromptCurrency={setPromptCurrency}
+                hideMyGalleryOption={hideMyGalleryOption}
               />
             )}
           </div>
@@ -947,6 +1010,7 @@ function StepDetails({
   prompt,
   setPrompt,
   isFromAiGenerator,
+  generationId,
 }: {
   title: string;
   setTitle: (v: string) => void;
@@ -964,6 +1028,7 @@ function StepDetails({
   prompt: string;
   setPrompt: (v: string) => void;
   isFromAiGenerator: boolean;
+  generationId: string | null;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -1060,27 +1125,27 @@ function StepDetails({
 
         {/* AI Model */}
         <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mt-6 mb-1">
-          AI Model {isFromAiGenerator && <span className="text-xs text-slate-500">(auto-filled)</span>}
+          AI Model {(isFromAiGenerator || generationId) && <span className="text-xs text-slate-500">(auto-filled)</span>}
         </label>
         <input
           value={aiModel}
           onChange={(e) => setAiModel(e.target.value)}
           placeholder="e.g., DALL-E 3, Midjourney, Stable Diffusion"
-          disabled={isFromAiGenerator}
+          disabled={isFromAiGenerator || !!generationId}
           className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
           data-testid="input-ai-model"
         />
 
         {/* Prompt */}
         <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mt-4 mb-1">
-          Prompt {isFromAiGenerator && <span className="text-xs text-slate-500">(auto-filled)</span>}
+          Prompt {(isFromAiGenerator || generationId) && <span className="text-xs text-slate-500">(auto-filled)</span>}
         </label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           rows={4}
           placeholder="Enter the prompt used to create this image..."
-          disabled={isFromAiGenerator}
+          disabled={isFromAiGenerator || !!generationId}
           className="w-full rounded-xl border border-slate-300/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
           data-testid="input-prompt"
         />
@@ -1106,6 +1171,7 @@ function StepContest({
   setPromptPrice,
   promptCurrency,
   setPromptCurrency,
+  hideMyGalleryOption,
 }: {
   contests: any[];
   selectedContest: string;
@@ -1123,6 +1189,7 @@ function StepContest({
   setPromptPrice: (v: string) => void;
   promptCurrency: 'SOL' | 'USDC' | 'GLORY';
   setPromptCurrency: (c: 'SOL' | 'USDC' | 'GLORY') => void;
+  hideMyGalleryOption?: boolean;
 }) {
   const selectedContestData = contests.find((c) => c.id === selectedContest);
   const contestConfig = selectedContestData?.config || {};
@@ -1171,7 +1238,7 @@ function StepContest({
           data-testid="select-contest"
         >
           <option value="">Choose destination</option>
-          <option value="my-gallery">Only in My Gallery</option>
+          {!hideMyGalleryOption ? <option value="my-gallery">Only in My Gallery</option> : null}
           {contests.map((c) => (
             <option key={c.id} value={c.id}>
               {c.title} - {formatPrizeAmount(c.prizeGlory)} {c.config?.currency || 'GLORY'}
@@ -1370,8 +1437,8 @@ function GallerySelector({
   onSelectImage,
 }: {
   userSubmissions: any[];
-  selectedImage: {url: string, type: string, thumbnailUrl?: string} | null;
-  onSelectImage: (img: {url: string, type: string, thumbnailUrl?: string} | null) => void;
+  selectedImage: {submissionId?: string, url: string, type: string, thumbnailUrl?: string} | null;
+  onSelectImage: (img: {submissionId?: string, url: string, type: string, thumbnailUrl?: string} | null) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -1424,6 +1491,7 @@ function GallerySelector({
             <div
               key={sub.id}
               onClick={() => onSelectImage({
+                submissionId: sub.id,
                 url: sub.mediaUrl,
                 type: sub.type,
                 thumbnailUrl: sub.thumbnailUrl

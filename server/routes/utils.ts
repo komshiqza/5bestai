@@ -28,7 +28,7 @@ export async function refundEntryFee(submissionId: string): Promise<boolean> {
     // Create refund transaction
     await storage.createGloryTransaction({
       userId: submission.userId,
-      delta: Number(entryFeeAmount), // Positive delta to add back
+      delta: entryFeeAmount, // Keep original precision as string
       reason: `Entry fee refund for rejected submission in contest: ${contestName}`,
       currency,
     });
